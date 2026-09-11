@@ -1,0 +1,3248 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBG Savant</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f2f4f6;
+  --panel:#ffffff;
+  --panel-2:#f6f8f9;
+  --line:#cfd8dc;
+  --line-soft:#e6ebed;
+  --rule:#2e7d8a;            /* 見出しの下線。Savant のティール */
+  --text:#12181e;
+  --muted:#6c7783;           /* ティール寄りの灰 */
+  --hot:#d22d41;             /* 良い側 */
+  --cold:#3b5fa8;            /* 悪い側 */
+  --mid:#b8bec4;
+  --track:#dfe5e8;
+  --grass:#b9dcd7;
+  --dirt:#ffffff;
+  --single:#e8622a;
+  --double:#7a6fd0;
+  --triple:#e8b62a;
+  --homer:#e0459a;
+  --out:#8b98a4;
+  --shadow:0 1px 2px rgba(18,24,30,.05), 0 4px 14px rgba(18,24,30,.06);
+  --team-first:#c62828;      /* 先攻 */
+  --team-second:#1565c0;     /* 後攻 */
+}
+:root[data-theme="dark"]{
+  --ground:#0c1015; --panel:#151a20; --panel-2:#1b2129; --line:#2d353e; --line-soft:#232a32;
+  --rule:#4aa3b0; --text:#e8edf1; --muted:#8d99a5; --hot:#e2485a; --cold:#5482d6;
+  --mid:#4b545e; --track:#252d35; --grass:#1d322e; --dirt:#222a30;
+  --team-first:#ff7b7b; --team-second:#6fa8ff;
+  --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.5);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0c1015; --panel:#151a20; --panel-2:#1b2129; --line:#2d353e; --line-soft:#232a32;
+    --rule:#4aa3b0; --text:#e8edf1; --muted:#8d99a5; --hot:#e2485a; --cold:#5482d6;
+    --mid:#4b545e; --track:#252d35; --grass:#1d322e; --dirt:#222a30;
+    --team-first:#ff7b7b; --team-second:#6fa8ff;
+    --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.5);
+  }
+}
+
+*{box-sizing:border-box}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{margin:0; background:var(--ground); color:var(--text);
+  font-family:"Source Sans 3",system-ui,sans-serif; font-size:14px; line-height:1.5; padding:0 0 40px}
+h1,h2,h3{margin:0; font-family:"Barlow Condensed","Source Sans 3",sans-serif; font-weight:600}
+.mono{font-family:"Roboto Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+
+/* ------------------------------------------------------------ header */
+header{background:var(--panel); border-bottom:1px solid var(--line); padding:11px 18px 0}
+.top{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+.wordmark{font-family:"Barlow Condensed",sans-serif; font-size:29px; font-weight:700;
+  letter-spacing:.03em; text-transform:uppercase; line-height:1}
+.wordmark b{color:var(--hot)}
+.sub{color:var(--muted); font-size:12.5px}
+.io{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+button,label.filebtn,#parkPick{font:inherit; font-size:12.5px; color:var(--text); background:var(--panel-2);
+  border:1px solid var(--line); border-radius:3px; padding:5px 11px; cursor:pointer}
+button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
+#parkPick{max-width:230px}
+:focus-visible{outline:2px solid var(--rule); outline-offset:2px}
+/* 選手のタブは多くなると横スクロールする。
+   打者/投手の切り替えは巻き込まれないよう外に出して常に見せる */
+.tabrow{display:flex; align-items:flex-end; gap:10px; margin-top:11px}
+.tabrow[hidden]{display:none}
+.tabs{display:flex; gap:2px; overflow-x:auto; flex:1; min-width:0; padding-bottom:1px}
+.tab{font-family:"Barlow Condensed",sans-serif; font-size:16px; letter-spacing:.02em;
+  padding:6px 15px 7px; border:1px solid var(--line); border-bottom:0; border-radius:4px 4px 0 0;
+  background:var(--panel-2); color:var(--muted); white-space:nowrap; cursor:pointer}
+.tab[aria-selected="true"]{background:var(--panel); color:var(--text); font-weight:600;
+  box-shadow:inset 0 3px 0 var(--rule); margin-bottom:-1px}
+.side{display:flex; gap:2px; flex:none}
+.side .tab{border-color:var(--rule)}
+
+#drop{margin:12px 18px 0; padding:8px 13px; background:var(--panel);
+  border:1px dashed var(--line); border-radius:4px; color:var(--muted); font-size:12.5px;
+  display:flex; gap:11px; align-items:center; flex-wrap:wrap}
+#drop.over{border-color:var(--rule); background:var(--panel-2)}
+.badge{font-size:11px; border:1px solid currentColor; border-radius:99px; padding:0 9px}
+.badge.warn{color:#a8791a}
+.badge.ok{color:var(--rule)}
+
+/* ------------------------------------------------------------ 顔写真 */
+.face{display:inline-block; border-radius:3px; vertical-align:middle; flex:none;
+  image-rendering:pixelated; object-fit:cover; background:var(--panel-2)}
+.face.ph{display:inline-flex; align-items:center; justify-content:center; color:#fff;
+  font-family:"Barlow Condensed",sans-serif; font-weight:700; line-height:1}
+.withface{display:inline-flex; align-items:center; gap:6px; min-width:0}
+.withface span{overflow:hidden; text-overflow:ellipsis}
+.who .facebig{margin-bottom:6px}
+
+/* ------------------------------------------------- パワプロ風の能力画面 */
+.abwrap{display:grid; grid-template-columns:minmax(230px,340px) minmax(0,1fr); gap:12px}
+@media (max-width:820px){.abwrap{grid-template-columns:1fr}}
+/* ---- 能力画面。ここだけはサイトのテーマに乗らず、独自の配色で描く ---- */
+.pawa{
+  --ink:#13395f; --plate:#ffffff;
+  --label:#d6e9f8; --pale:#eaf4fd; --paletext:#96b2c8;
+  background:linear-gradient(#eaf5fd 0%, #d3e7f7 55%, #c2ddf2 100%);
+  border-radius:10px; padding:12px; color:var(--ink);
+  font-family:"M PLUS Rounded 1c","Source Sans 3",system-ui,sans-serif}
+.pawa .card{box-shadow:0 1px 0 rgba(19,57,95,.06)}
+.pawa .tabs2{display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap}
+.pawa .tabs2 span{padding:4px 14px; border-radius:6px 6px 0 0; font-size:12.5px;
+  font-weight:700; background:#a9c7de; color:#fff}
+.pawa .tabs2 span.on{background:#1d6fb8}
+.pawa .card{background:var(--plate); border-radius:9px; padding:10px}
+
+/* 名前・背番号・顔・成績 */
+.abhead{display:flex; align-items:center; gap:8px; padding:0 0 10px; flex-wrap:wrap}
+.abhead .plate{background:#fff; border:2px solid #e8a33c; border-radius:7px;
+  padding:3px 14px; font-size:20px; font-weight:800; line-height:1.2;
+  text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.abhead .numbox{background:#2b3a47; color:#fff; border-radius:6px; padding:4px 10px;
+  font-family:"Barlow Condensed",sans-serif; font-size:20px; font-weight:700}
+.abhead .facebox{background:#fff; border-radius:7px; padding:3px; line-height:0}
+.abhead .stat{display:flex; align-items:center; gap:8px; background:#fff;
+  border-radius:7px; padding:5px 12px; font-size:14px; font-weight:700}
+.abhead .apt{display:flex; align-items:center; gap:4px; background:#fff;
+  border-radius:7px; padding:5px 10px; font-size:14px; font-weight:700}
+.abhead .apt span{color:#b9c4cc}
+.abhead .apt span.on{color:#1d6fb8; font-size:16px}
+.abhead .stat b{background:#e3ecf3; color:#6d8aa6; border-radius:5px;
+  padding:3px 9px; font-size:12px; font-weight:700}
+
+/* 能力の 1 行。項目名は水色の箱、段位と数字は大きく */
+.abrow{display:flex; align-items:center; gap:10px; padding:3px 0}
+.abrow .nm{width:92px; text-align:center; padding:5px 2px; border-radius:7px;
+  background:var(--label); font-weight:700; letter-spacing:.12em; font-size:13.5px;
+  color:var(--ink)}
+.abrow .rank{width:24px; text-align:center; font-weight:800; line-height:1;
+  font-family:"Barlow Condensed",sans-serif; font-size:26px}
+.abrow .num{width:54px; text-align:right; font-family:"Barlow Condensed",sans-serif;
+  font-variant-numeric:tabular-nums; font-weight:800; font-size:26px; line-height:1}
+.abrow .arrow{color:#e0459a; font-size:20px; line-height:1}
+
+/* 右上の基礎能力 */
+.basics{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px}
+.basic.good{background:#b9daf8; color:#0f4a86}
+.basic.bad{background:#ffd2d2; color:#9b2226}
+.basic{background:var(--pale); color:var(--paletext); border-radius:5px; padding:6px 4px;
+  font-size:12px; text-align:center; letter-spacing:.06em; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; font-weight:700}
+
+/* 特殊能力。空き枠も出す */
+.skills{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px}
+.skill{padding:6px 4px; border-radius:5px; font-size:12.5px; font-weight:700;
+  text-align:center; letter-spacing:.04em; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis}
+/* 水=低い能力 青=高い能力 赤=悪い能力 緑=個性的 金=青より良い */
+.skill.low{background:#d9eefb; color:#3d7ea8}
+.skill.good{background:#b9daf8; color:#0f4a86}
+.skill.bad{background:#ffd2d2; color:#9b2226}
+.skill.green{background:#cdeed6; color:#1d6b32}
+.skill.empty{background:var(--pale)}
+.pawa .note{color:#6d8aa6}
+/* 変化球の方向 */
+.breaks{display:grid; grid-template-columns:repeat(3,1fr); gap:3px; width:150px;
+  aspect-ratio:1; margin:4px auto}
+.breaks div{display:flex; align-items:center; justify-content:center; border-radius:3px;
+  background:var(--panel-2); font-family:"Roboto Mono",monospace; font-size:12px;
+  font-weight:700; color:var(--muted)}
+.breaks div.on{background:var(--rule); color:#fff}
+.breaks div.mid{background:transparent; color:var(--muted); font-size:10px}
+.breaklist{font-size:12px}
+.breaklist div{display:flex; gap:6px; padding:2px 0}
+.breaklist b{margin-left:auto; font-family:"Roboto Mono",monospace}
+
+/* ------------------------------------------------------------- TOP */
+.cards{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
+@media (max-width:760px){.cards{grid-template-columns:1fr}}
+.card{border:1px solid var(--line); border-radius:6px; background:var(--panel); overflow:hidden}
+.card h4{margin:0; padding:6px 10px; font-family:"Barlow Condensed",sans-serif; font-size:15px;
+  letter-spacing:.05em; background:var(--panel-2); border-bottom:1px solid var(--line-soft)}
+.card ol{margin:0; padding:4px 0; list-style:none; counter-reset:rank}
+.card li{display:flex; align-items:center; gap:7px; padding:3px 10px; font-size:12.5px}
+.card li::before{counter-increment:rank; content:counter(rank);
+  width:14px; text-align:center; color:var(--muted); font-family:"Roboto Mono",monospace;
+  font-size:10.5px; flex:none}
+.card li b{margin-left:auto; font-family:"Roboto Mono",monospace; font-weight:700}
+.card .empty{padding:8px 10px}
+.toptable{width:100%; font-size:12px}
+.toptable td,.toptable th{padding:3px 6px; white-space:nowrap}
+.toptable td.nm,.toptable th.nm{text-align:left; font-family:"Source Sans 3",sans-serif}
+/* ベストオーダー */
+.lineup{width:100%; font-size:12.5px}
+.lineup td{padding:4px 6px}
+.lineup td.slot{width:26px; color:var(--muted); font-family:"Roboto Mono",monospace}
+.lineup td.nm{text-align:left; font-family:"Source Sans 3",sans-serif}
+.lineup tr.pit td{border-top:2px solid var(--rule)}
+
+/* --------------------------------------------------------- リーダーボード */
+.lbbar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:0 0 10px}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:5px; overflow:hidden}
+.seg button{border:0; border-radius:0; background:var(--panel); padding:5px 13px;
+  font-size:12px; letter-spacing:.04em}
+.seg button[aria-selected="true"]{background:var(--rule); color:#fff}
+.lbwrap{overflow:auto; max-height:calc(100vh - 230px)}
+table.lb{font-size:12.5px; min-width:100%}
+table.lb thead th{position:sticky; top:0; background:var(--panel); z-index:2; cursor:pointer;
+  white-space:nowrap; padding:6px 6px}
+table.lb thead th:hover{color:var(--text)}
+table.lb thead th.sorted{color:var(--rule); border-bottom:2px solid var(--rule)}
+table.lb td{padding:3px 6px; white-space:nowrap}
+table.lb td.nm{font-family:"Source Sans 3",sans-serif; text-align:left; color:var(--text)}
+table.lb tbody tr:hover td{background:var(--panel-2)}
+table.lb td.rank{color:var(--muted); width:34px}
+/* 規定打席に届いていない選手 */
+table.lb tr.unq td{color:var(--muted)}
+table.lb tr.unq td.nm{opacity:.75}
+
+/* 先攻は赤、後攻は青。プラグインのスコアボードと揃える */
+.t-first{color:var(--team-first)}
+.t-second{color:var(--team-second)}
+table.board tr.first td.team{color:var(--team-first)}
+table.board tr.second td.team{color:var(--team-second)}
+
+/* ------------------------------------------------------------- リザルト */
+.gamepick{display:flex; gap:6px; flex-wrap:wrap; padding:0 0 10px}
+.gamepick button{font-size:12px; padding:4px 11px}
+.gamepick button[aria-selected="true"]{background:var(--rule); color:#fff; border-color:var(--rule)}
+table.board{width:auto; font-size:13px; text-align:center; border-collapse:collapse;
+  border:1px solid var(--line); margin-bottom:2px}
+table.board th,table.board td{text-align:center; padding:4px 0; width:34px;
+  border:1px solid var(--line-soft); font-family:"Roboto Mono",monospace}
+table.board thead th{background:var(--panel-2); border-bottom:1px solid var(--line)}
+table.board td.team,table.board th.team{text-align:left; padding:4px 10px; width:auto;
+  min-width:150px; font-family:"Source Sans 3",sans-serif; color:var(--text)}
+table.board .big{font-weight:700; background:var(--panel-2); border-left:1px solid var(--line)}
+table.board tr.win td.team{font-weight:700}
+.boardnote{display:flex; flex-wrap:wrap; gap:16px; padding:10px 0 0; font-size:12px;
+  align-items:center}
+/* 見出しと顔を同じ高さに揃える。揃えないと写真の分だけ文字が下がる */
+.boardnote > span{display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap}
+.boardnote b{font-family:"Barlow Condensed",sans-serif; font-size:13px; letter-spacing:.04em;
+  color:var(--muted)}
+.inninghead{font-family:"Barlow Condensed",sans-serif; font-size:16px; letter-spacing:.03em;
+  padding:9px 0 3px; color:var(--rule)}
+/* 回ごとに表を分けているので、列の幅を決め打ちにしないと回ごとにずれる */
+table.pa2{font-size:12px; table-layout:fixed; width:auto; min-width:720px}
+table.pa2 th,table.pa2 td{padding:3px 6px; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap}
+table.pa2 td.nm,table.pa2 th.nm{font-family:"Source Sans 3",sans-serif; text-align:left}
+table.pa2 td.res{text-align:left}
+table.pa2 col.c-p{width:158px} table.pa2 col.c-r{width:104px}
+table.pa2 col.c-s{width:52px} table.pa2 col.c-m{width:62px}
+.rbi{color:var(--hot); font-weight:700}
+
+/* ------------------------------------------------------------ layout */
+main{display:grid; grid-template-columns:minmax(340px,1.08fr) minmax(430px,1.48fr) minmax(360px,1.08fr);
+  gap:12px; padding:12px 18px; align-items:start}
+main.wide{grid-template-columns:minmax(0,1fr); max-width:1180px; margin-inline:auto}
+section.span{grid-column:1/-1}
+@media (max-width:1280px){main{grid-template-columns:1fr 1fr}}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.col{display:flex; flex-direction:column; gap:12px}
+section{background:var(--panel); border:1px solid var(--line); border-radius:5px;
+  box-shadow:var(--shadow); overflow:hidden}
+.pad{padding:12px 14px 14px}
+
+/* 見出しはティールの太い下線。Savant と同じ */
+.head{font-family:"Barlow Condensed",sans-serif; font-size:19px; letter-spacing:.02em;
+  display:flex; align-items:baseline; gap:8px; padding:2px 0 5px;
+  border-bottom:3px solid var(--rule); margin-bottom:9px}
+.head small{font-family:"Source Sans 3",sans-serif; font-size:11.5px; color:var(--muted);
+  font-weight:400; margin-left:auto}
+.title{text-align:center; font-family:"Barlow Condensed",sans-serif; font-size:22px;
+  padding:11px 12px 9px}
+.title b{color:var(--hot)}
+
+/* ------------------------------------------------------------ 選手ヘッダ */
+.who{padding:14px 14px 12px; text-align:center; border-bottom:1px solid var(--line-soft)}
+.who .nm{font-family:"Barlow Condensed",sans-serif; font-size:34px; line-height:1.05}
+.who .meta{color:var(--muted); font-size:12.5px; margin-top:2px}
+
+/* ------------------------------------------------------------ tables */
+table{width:100%; border-collapse:collapse; font-size:12.5px}
+th,td{text-align:right; padding:4px 4px; border-bottom:1px solid var(--line-soft)}
+th:first-child,td:first-child{text-align:left; color:var(--muted)}
+thead th{font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+  font-weight:700; border-bottom:1px solid var(--line)}
+td{font-family:"Roboto Mono",monospace; font-variant-numeric:tabular-nums}
+tr.total td{background:var(--panel-2); font-weight:700; border-bottom:0}
+tr.total td:first-child{font-weight:700; color:var(--text)}
+.scroll{overflow-x:auto}
+/* 打席の一覧。多くなるのでスクロールさせる。
+   投手名が空の行があっても列がずれないよう、幅は固定にする */
+.palist{max-height:320px; overflow:auto}
+.palist thead th{position:sticky; top:0; background:var(--panel); z-index:2;
+  text-align:center}
+table.pafix{table-layout:fixed; min-width:584px}
+table.pafix th,table.pafix td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+col.c-game{width:136px} col.c-name{width:112px} col.c-res{width:92px}
+col.c-num{width:50px} col.c-flag{width:66px}
+.palist td.nm,.palist td.res{font-family:"Source Sans 3",sans-serif; text-align:left}
+.palist td.nm{color:var(--text)}
+.palist td.nm .none{color:var(--muted)}
+.palist td.yes{color:var(--hot); font-weight:700}
+.palist td.no{color:var(--muted)}
+/* 打席結果は色の四角に白抜き。ヒット=青、四球=黄緑、三振=黄、それ以外のアウト=赤 */
+.rtag{display:inline-block; width:100%; text-align:center; color:#fff;
+  border-radius:3px; padding:1px 4px; font-size:11.5px; font-weight:700;
+  letter-spacing:.02em}
+.r-hit{background:#1f6fd0}
+.r-walk{background:#5a9e2f}
+/* 三振はしっかり黄色に。白抜きだと読めないので、この色だけ文字を濃くする */
+.r-k{background:#f5c518; color:#2b2200}
+.r-out{background:var(--hot)}
+/* 試合の行は 4 試合ぶんだけ見せて、あとはスクロール。
+   見出しと通算行は貼り付けたままにする */
+.gamescroll{max-height:158px; overflow-y:auto; overflow-x:auto}
+.gamescroll thead th{position:sticky; top:0; background:var(--panel); z-index:2}
+.gamescroll tr.total td{position:sticky; bottom:0; z-index:2;
+  box-shadow:inset 0 1px 0 var(--line)}
+
+/* ------------------------------------------------------------ percentile */
+.legend{display:grid; grid-template-columns:104px 1fr 44px; gap:9px; align-items:end;
+  padding:0 14px 3px; font-size:10.5px; letter-spacing:.09em; font-weight:700}
+.legend .marks{position:relative; height:15px}
+.legend .marks span{position:absolute; bottom:2px; transform:translateX(-50%); white-space:nowrap}
+.legend .marks i{position:absolute; bottom:-4px; width:0; height:0; transform:translateX(-50%);
+  border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid currentColor}
+.poor{color:var(--cold)} .avg{color:var(--mid)} .great{color:var(--hot)}
+
+.prow{display:grid; grid-template-columns:104px 1fr 44px; gap:9px; align-items:center;
+  padding:3px 14px}
+.prow + .prow{border-top:1px dashed var(--line-soft)}
+.prow .nm{font-size:12.5px; font-weight:600; text-align:right; line-height:1.15}
+.prow .nm small{display:block; font-weight:400; color:var(--muted); font-size:10px}
+.bar{position:relative; height:19px; background:var(--track); border-radius:2px}
+.bar .fill{position:absolute; inset:0 auto 0 0; border-radius:2px}
+.bar .tickmid{position:absolute; top:0; bottom:0; left:50%; width:1px; background:var(--panel);
+  opacity:.85}
+.bar .num{position:absolute; top:50%; transform:translate(-50%,-50%);
+  width:21px; height:21px; border-radius:99px; border:2px solid var(--panel);
+  display:flex; align-items:center; justify-content:center; color:#fff;
+  font-family:"Roboto Mono",monospace; font-size:10px; font-weight:500;
+  box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.prow .val{font-family:"Roboto Mono",monospace; font-size:12.5px; font-weight:500; text-align:right}
+.note{font-size:11px; color:var(--muted); padding:9px 14px 0; line-height:1.5}
+
+/* ------------------------------------------------------------ zone */
+.zonewrap{display:flex; gap:11px; align-items:flex-start; flex-wrap:wrap}
+.zone{display:grid; grid-template-columns:repeat(5,60px); grid-auto-rows:48px; gap:2px}
+.z{border-radius:2px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  border:1px solid transparent; color:#11161d}
+.z.in{border-color:rgba(17,22,28,.5)}
+:root[data-theme="dark"] .z.in{border-color:rgba(255,255,255,.55)}
+.z b{font-family:"Roboto Mono",monospace; font-size:12px; font-weight:500}
+.z i{font-style:normal; font-size:9px; opacity:.85; font-family:"Roboto Mono",monospace}
+.zlegend{font-size:11px; color:var(--muted); max-width:150px; line-height:1.55}
+
+/* ------------------------------------------------------------ pitch usage */
+.usage{width:100%; border-collapse:collapse; font-size:12.5px}
+.usage td{border-bottom:1px solid var(--line-soft); padding:4px 4px}
+.usage .pillcell{text-align:left; width:1%; white-space:nowrap}
+.ptype{display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  font-family:"Source Sans 3",sans-serif}
+.pdot{width:26px; height:14px; border-radius:99px; display:inline-block; flex:none}
+.ubar{position:relative; height:13px; background:var(--track); border-radius:99px; min-width:40px}
+.ubar i{position:absolute; inset:0 auto 0 0; border-radius:99px; display:block}
+
+/* 投球の散布図 */
+.locwrap{display:flex; gap:10px; align-items:flex-start}
+.loclegend{display:flex; flex-direction:column; gap:5px; font-size:11px; padding-top:6px}
+.loclegend span{display:flex; align-items:center; gap:6px; white-space:nowrap}
+.loclegend i{width:11px; height:11px; border-radius:99px; flex:none}
+
+/* heat charts */
+.heats{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.heat h3{font-size:13px; display:flex; justify-content:space-between; align-items:baseline;
+  gap:6px; white-space:nowrap}
+.heat h3 > span:first-child{overflow:hidden; text-overflow:ellipsis}
+.heat h3 span{font-family:"Roboto Mono",monospace; font-size:10.5px; color:var(--muted); font-weight:400}
+.hgrid{display:grid; grid-template-columns:repeat(5,1fr); grid-auto-rows:1fr; gap:1px;
+  margin-top:5px; aspect-ratio:1}
+.hcell{border-radius:1px; border:1px solid transparent}
+.heat svg{display:block; width:100%; margin-top:5px}
+.hcell.in{border-color:rgba(17,22,28,.45)}
+:root[data-theme="dark"] .hcell.in{border-color:rgba(255,255,255,.5)}
+
+/* spray */
+.parkbox{margin:0 0 9px; border:1px solid var(--line-soft); border-radius:7px;
+  background:var(--panel-2); font-size:11.5px}
+.parkbox summary{cursor:pointer; padding:6px 10px; letter-spacing:.05em;
+  list-style:none; display:flex; align-items:center; gap:8px}
+.parkbox summary::-webkit-details-marker{display:none}
+.parkbox summary::before{content:"\25B8"; color:var(--muted); font-size:10px}
+.parkbox[open] summary::before{content:"\25BE"}
+.parkbox summary small{color:var(--muted); margin-left:auto; letter-spacing:0}
+.parklist{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  gap:2px 12px; padding:2px 10px 9px}
+.parklist label{display:flex; align-items:center; gap:6px; cursor:pointer; padding:2px 0}
+.parklist label i{width:14px; height:3px; border-radius:2px; flex:none}
+.parklist label b{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.parklist label small{color:var(--muted); margin-left:auto; white-space:nowrap;
+  font-family:"Roboto Mono", monospace; font-size:10.5px}
+.parklist input{accent-color:var(--rule); margin:0}
+.hrparks{border-bottom:1px dotted var(--muted); cursor:help}
+.spraywrap{display:flex; gap:10px; align-items:flex-start}
+.spraylegend{display:flex; flex-direction:column; gap:5px; font-size:11px; padding-top:6px}
+.spraylegend span{display:flex; align-items:center; gap:6px; letter-spacing:.04em}
+.dotmark{width:11px; height:11px; border-radius:99px; flex:none}
+.empty{padding:24px 14px; text-align:center; color:var(--muted); font-size:12.5px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="top">
+    <div class="wordmark">SBG <b>Savant</b></div>
+    <div class="sub">result / record の csv から打者・投手を見る</div>
+    <div class="io">
+      <button id="theme">テーマ</button>
+      <select id="parkPick" title="チャートに使う球場" hidden><option value="">既定の球場</option></select>
+    </div>
+  </div>
+  <div class="tabrow" id="viewRow">
+    <div class="tabs" id="viewTabs"></div>
+  </div>
+  <div class="tabrow" id="playerRow">
+    <div class="tabs" id="tabs"></div>
+    <div class="side" id="sideTabs"></div>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<script>
+/* ==========================================================================
+   result/<試合ID>.csv  game_id,inning,half,order,pitcher,batter,result,rbi,runs,outs,base1..3
+   record/<名前>.csv    side,game,pa,pitch_no,inning,half,count,outs,pitcher,batter,type,
+                        velocity,v_break,h_break,zone,in_zone,plate_x,plate_y,
+                        swing,whiff,contact,call,exit_velocity,launch_angle,spray_angle,
+                        distance,result
+   ========================================================================== */
+const DATA={plate:[], pitch:[], play:[], files:[]};
+let PLAYER="", SIDE="bat", SAMPLE=true;
+/** 選手ページの見せ方。savant か pawa(パワプロ風)。 */
+let STYLE="savant";
+/** 上のタブ。player / leaderboard / result。 */
+let VIEW="top";
+/** リーダーボードの状態。並べ替えの列と向きを覚えておく。 */
+const LB={side:"bat", mode:"std", key:null, dir:-1};
+/** リザルトで開いている試合。 */
+let GAME="";
+/** 打者の規定打席。試合数は問わない。率で並べるときの線引きに使う。 */
+const QUAL_PA=10;
+
+const HIT=new Set(["SINGLE","DOUBLE","TRIPLE","HOME_RUN"]);
+const NOT_AB=new Set(["WALK","HIT_BY_PITCH","SACRIFICE_BUNT","SACRIFICE_FLY"]);
+const JA={SINGLE:"単打",DOUBLE:"二塁打",TRIPLE:"三塁打",HOME_RUN:"本塁打",WALK:"四球",
+  HIT_BY_PITCH:"死球",STRIKE_OUT:"三振",GROUND_OUT:"ゴロアウト",FLY_OUT:"フライアウト",
+  SACRIFICE_BUNT:"犠打",SACRIFICE_FLY:"犠飛",ERROR:"失策",FIELDER_CHOICE:"野選",
+  DOUBLE_PLAY:"併殺",TRIPLE_PLAY:"三重殺",
+  CALLED_STRIKE:"見逃し",SWINGING_STRIKE:"空振り",BALL:"ボール",IN_PLAY:"打球",FOUL:"ファール"};
+const ZONE_IN=new Set([7,8,9,12,13,14,17,18,19]);
+/** 球種の色。使用率順に割り当てる。 */
+const TYPE_COLORS=["#d5455c","#dcb04a","#3fbfe0","#3f9e93","#e88b2e","#d9d13f","#8c5b46"];
+
+/* ---------------------------------------------------------------- 顔写真
+   プレイヤー名と同じファイル名の画像をドロップすると顔になる。
+   data URI にしてページ内に持つので、外へ取りに行かない。
+   localStorage に控えるので、次に開いたときは読み込み直さなくてよい。 */
+const FACES={};
+const FACE_KEY="sbg-savant-faces";
+function loadFaces(){
+  try{ Object.assign(FACES, JSON.parse(localStorage.getItem(FACE_KEY)||"{}")); }
+  catch(e){ /* 使えない環境でも困らない */ }
+}
+function saveFaces(){
+  try{ localStorage.setItem(FACE_KEY, JSON.stringify(FACES)); }catch(e){}
+}
+/** 名前から決まる色。顔が無いときの丸に使う。 */
+function nameColor(name){
+  let h=0;
+  for(let i=0;i<String(name).length;i++) h=(h*31+String(name).charCodeAt(i))%360;
+  return `hsl(${h} 45% 46%)`;
+}
+/** 顔の画像。無ければ頭文字の丸。 */
+function face(name, size){
+  size=size||22;
+  const src=FACES[String(name)];
+  const box=`width:${size}px;height:${size}px`;
+  if(src) return `<img class="face" src="${src}" alt="" style="${box}">`;
+  const ch=(String(name||"?").trim()[0]||"?").toUpperCase();
+  return `<span class="face ph" style="${box};background:${nameColor(name)};font-size:${Math.round(size*0.52)}px">${esc(ch)}</span>`;
+}
+/** 顔と名前を並べたもの。表のセルに入れる。 */
+function withFace(name, size){
+  if(!name) return '<span class="none">マネキン</span>';
+  return `<span class="withface">${face(name,size)}<span>${esc(name)}</span></span>`;
+}
+
+/* ------------------------------------------------------------------ csv */
+function splitCsv(line){
+  const out=[]; let cur="", q=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(q){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ out.push(cur); cur=""; }
+    else cur+=c;
+  }
+  out.push(cur); return out;
+}
+const TEXT_COLS=new Set(["game_id","game","pa","count","half","side","type","result",
+  "call","pitcher","batter"]);
+/** 表計算で書き出した列名も受け取れるようにする。 */
+const ALIAS={
+  gameid:"game_id", game_id:"game_id",
+  pitchername:"pitcher", battername:"batter",
+  resulttype:"result", runsscored:"runs", outsonplay:"outs",
+  runneronfirst:"base1", runneronsecond:"base2", runneronthird:"base3",
+  battingorder:"order"
+};
+function parseCsv(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(!lines.length) return {head:[],rows:[]};
+  const head=splitCsv(lines[0]).map(h=>{
+    const k=h.trim().toLowerCase().replace(/\s+/g,"");
+    return ALIAS[k] || h.trim().toLowerCase();
+  });
+  const rows=lines.slice(1).map(line=>{
+    const cells=splitCsv(line), row={};
+    head.forEach((h,i)=>{
+      const v=(cells[i]??"").trim();
+      const lower=v.toLowerCase();
+      if(lower==="true"||lower==="false") row[h]=(lower==="true");
+      else if(v!=="" && !TEXT_COLS.has(h) && !isNaN(Number(v))) row[h]=Number(v);
+      else row[h]=v;
+    });
+    return row;
+  });
+  return {head,rows};
+}
+
+/* ------------------------------------------------- 打球からの期待値
+   打球速度(km/h)と打球角度(度)から、その 1 打球の期待安打率と期待塁打。
+   実測から作った表ではなく、野球としてもっともらしい形を手で置いたもの。 */
+function battedExpectation(ev,la){
+  if(!isFinite(ev)||!isFinite(la)) return {ba:0.55,tb:0.90};
+  const clamp=(x,lo,hi)=>x<lo?lo:(x>hi?hi:x);
+  // 打球速度を 0〜1 に均す。この試合の打球は中央値 166、上位 25% が 182km/h あるので、
+  // 実測の散らばりに合わせて 125〜220 で目盛りを取る。
+  // ここを狭くすると強い当たりが全部「上限」に張り付いて区別できなくなる。
+  const hard=clamp((ev-125)/95,0,1);
+
+  // ゴロは飛距離ではなく「野手の間を抜けるか」で決まる。速さだけを見る。
+  const ground = la<-10 ? 0.09+0.34*hard : 0.20+0.50*hard;
+
+  // 打ち上げた打球は飛距離で決まる。30 度が一番飛び、そこから離れるほど落ちる。
+  // 角度で区切らず連続にしてあるので、40 度でも 50 度でも
+  // 速ければちゃんと柵を越える。
+  const af = Math.max(0, 1 - Math.pow((la-30)/48, 2));
+  const carry = hard*af;                       // 0〜1。1 に近いほど遠くへ飛ぶ
+  // carry 0.554(=40度180km/h) で .800、0.684(=30度190km/h) で 1.000 を通る。
+  // それより手前は曲線で落として、平凡な当たりが過大にならないようにする。
+  const air = clamp(carry<0.554
+      ? 0.80*Math.pow(carry/0.554, 0.52)
+      : 0.80+1.54*(carry-0.554), 0.02, 1.00);
+
+  // 8〜16 度はゴロとライナーの中間。急に切り替わらないよう混ぜる。
+  const mix = clamp((la-8)/8, 0, 1);
+  const ba = ground*(1-mix) + air*mix;
+
+  // 塁打。柵を越える見込みが立つほど 1 打球あたりの塁打が伸びる。
+  const hr = clamp((carry-0.52)/0.30, 0, 1);
+  const tb = (ground*1.18)*(1-mix) + (air*(1.35+2.65*hr))*mix;
+  return {ba, tb};
+}
+/**
+ * 打球の種類。バレルを最優先に、ゴロ・ライナー・フライを強弱で分ける。
+ *
+ * <p>強い / 弱いの線は Hard Hit と同じ 153km/h。
+ * 角度はゴロが 10 度未満、ライナーが 25 度まで、それより上がフライ。
+ */
+function battedKind(ev,la){
+  if(!isFinite(ev)||!isFinite(la)) return "";
+  if(isBarrel(ev,la)) return "バレル";
+  const hard=ev>=153;
+  if(la<10) return hard ? "強ゴロ" : "弱ゴロ";
+  if(la<25) return "ライナー";
+  return hard ? "強いフライ" : "弱いフライ";
+}
+
+/**
+ * バレル。MLB の定義に合わせてある。
+ * 158km/h(98mph) で 26〜30 度。そこから 1km/h ごとに上下 0.65 度ずつ広がり、
+ * 187km/h(116mph) の 8〜50 度で頭打ち。
+ */
+function isBarrel(ev,la){
+  if(!(ev>=158)) return false;
+  const extra=Math.min((ev-158)*0.65, 18.9);
+  return la>=26-extra && la<=30+extra;
+}
+
+/* --------------------------------- 目盛り。上位何%ではなく値に数値を割り当てる */
+/* 実測に合わせた目盛り。
+   x 系はリーグの実際の成績が真ん中あたりに来るように置いてある。
+     打率 .351 / 出塁率 .388 / 長打率 .577
+   打球速度も三振率も MLB とはまるで違うので、MLB の基準では全員が振り切れる。 */
+const SCALE={
+  xwoba:[0.220,0.580], xba:[0.180,0.560], xslg:[0.220,0.980],
+  ev:[145,192], barrel:[12,50], hard:[58,94], sweet:[42,76],
+  chase:[42,16], whiff:[40,14], k:[52,26], bb:[1,12],
+  xera:[8.0,2.0], gb:[18,44], wrc:[40,190], k9:[4.0,16.0], bb9:[6.0,0.5],
+  // 守備と走塁。いずれも 1 プレーあたりに直した値で見る
+  range:[-0.25,0.25], arm_value:[-0.20,0.20], arm:[95,145],
+  baserun:[-0.20,0.25],
+  // 投手側で向きが変わるもの
+  ev_p:[192,145], barrel_p:[50,12], hard_p:[94,58], xba_p:[0.560,0.180],
+  k_p:[26,52], bb_p:[12,1], chase_p:[16,42], whiff_p:[14,40]
+};
+function score(key,value){
+  const s=SCALE[key];
+  if(!s||value===null||!isFinite(value)) return null;
+  const [lo,hi]=s;
+  return Math.max(0,Math.min(100,Math.round((value-lo)/(hi-lo)*100)));
+}
+function scoreColor(v){
+  if(v===null) return "var(--mid)";
+  const t=v/100;
+  return t<0.5 ? mix("--cold","--mid",t/0.5) : mix("--mid","--hot",(t-0.5)/0.5);
+}
+const mix=(a,b,k)=>`color-mix(in srgb, var(${b}) ${Math.round(k*100)}%, var(${a}))`;
+
+/* ------------------------------------------------- 守備と走塁
+
+   record/<名前>_play.csv の 1 行 = 1 つの打球に対する、その選手の関わり。
+   kind=field なら守備、kind=run なら走塁。 */
+
+/** 外野の守備位置。落球の重さを変えるのに使う。 */
+const OUTFIELD=new Set(["LEFT_FIELDER","CENTER_FIELDER","RIGHT_FIELDER"]);
+
+const playOf=(name,kind)=>DATA.play.filter(r=>
+  r.player===name && (!kind || r.kind===kind));
+
+function nz(value){
+  const n=Number(value);
+  return isFinite(n) ? n : null;
+}
+
+/**
+ * その打球に追いつけたはずか。
+ *
+ * <p>落下地点までの距離を、滞空時間で割った「必要な速さ」で見る。
+ * 人が走れるのはおよそ 6 ブロック/秒なので、そこを五分に置く。
+ * 近くにゆっくり上がった打球なら誰でも捕れて、
+ * 遠くへ速く抜けた打球は誰にも捕れない、という形になる。
+ */
+function reachChance(distance, hangTicks){
+  if(distance===null || hangTicks===null || hangTicks<=0) return null;
+  const need=distance/Math.max(0.25, hangTicks/20);
+  return 1/(1+Math.exp((need-6.0)/1.1));
+}
+
+/**
+ * 守備の集計。
+ *
+ * <p>Range は「捕れた数 − 捕れたはずの数」。
+ * 捕球は落球の少なさで、外野のノーバウンド落球だけ重く見る。
+ * 手が届いていた飛球を落とすのは、失点に直結するため。
+ * 肩は送球の速さ、送球の正確さは悪送球の少なさ。
+ */
+function fieldingLine(rows){
+  let chances=0, made=0, expected=0;
+  let armSum=0, armN=0, assists=0, putouts=0;
+  let throws=0, errors=0, errorWeight=0;
+  let drops=0, dropWeight=0, bases=0;
+  rows.forEach(r=>{
+    const sx=nz(r.startx), sz=nz(r.startz), lx=nz(r.landx), lz=nz(r.landz);
+    const outfield=OUTFIELD.has(String(r.position||""));
+    const speed=nz(r.throwspeed);
+    if(speed!==null && speed>0){ armSum+=speed; armN++; }
+    if(r.assist===true) assists++;
+    if(r.gotout===true) putouts++;
+    if(r.threwtobase===true){
+      throws++;
+      if(r.throwerror===true){
+        errors++;
+        // 外野の悪送球はそこまで重く見ない。距離があるぶん逸れやすい。
+        errorWeight += outfield ? 0.4 : 1.0;
+      }
+    }
+    const allowed=nz(r.basesallowed);
+    if(allowed!==null) bases+=allowed;
+    if(r.fumbled===true){
+      drops++;
+      // 外野のノーバウンド落球は大減点。捕れていれば確実にアウトだった。
+      dropWeight += (outfield && r.fumbleonfly===true) ? 3.0 : 1.0;
+    }
+    if(sx===null||sz===null||lx===null||lz===null) return;
+    const distance=Math.hypot(sx-lx, sz-lz);
+    const chance=reachChance(distance, nz(r.hangticks));
+    if(chance===null) return;
+    chances++;
+    expected+=chance;
+    // 滞空が長い打球はフライ。捕ればアウト。
+    // 転がった打球は、触って落とさなければ処理できたとみなす。
+    const fly=nz(r.hangticks)>=25;
+    made += (fly ? r.caughtonfly===true
+                 : (r.gotout===true || (r.assist===true)
+                    || (r.threwtobase===true && r.fumbled!==true))) ? 1 : 0;
+  });
+  return {
+    chances, made, expected,
+    // 1 つのアウトはおよそ 0.75 点ぶんの価値がある
+    range: chances ? (made-expected)*0.75 : null,
+    arm: armN ? armSum/armN : null,
+    // 送球の値打ち。刺した数を足し、悪送球と余計な進塁を引く。
+    armValue: (armN||throws) ? assists*0.45 - errorWeight*0.5 - bases*0.12 : null,
+    // 捕球。落球の重さぶんだけ引く。
+    catchRuns: chances ? -dropWeight*0.5 : null,
+    throwAccuracy: throws ? 100*(throws-errors)/throws : null,
+    drops, dropWeight, assists, putouts, throws, errors, bases
+  };
+}
+
+/**
+ * 走塁の集計。
+ *
+ * <p>進塁は「1 つ先までは当たり前、2 つ以上進めたら上積み」。
+ * 走塁死(タッチアウト・飛び出し)は引く。封殺は走者のせいではないので数えない。
+ */
+function baserunLine(rows){
+  let plays=0, extra=0, outs=0, sprint=0, sprintN=0;
+  rows.forEach(r=>{
+    const from=nz(r.startbase), to=nz(r.endbase);
+    plays++;
+    const ratio=nz(r.sprintratio);
+    if(ratio!==null){ sprint+=ratio; sprintN++; }
+    const kind=String(r.outkind||"");
+    if(r.outonplay===true && (kind==="TAG"||kind==="DOUBLED_OFF")) outs++;
+    if(from===null||to===null) return;
+    if(to-from>=2) extra+=(to-from)-1;
+  });
+  return {
+    plays, extra, outs,
+    sprint: sprintN ? sprint/sprintN : null,
+    // 1 つ余分に進めばおよそ 0.3 点、走塁死はおよそ 0.5 点の損
+    runs: plays ? extra*0.3 - outs*0.5 : null,
+    extraRate: plays ? 100*extra/plays : null
+  };
+}
+
+/* ------------------------------------------------------------- 集計 */
+const plateOf=(n,s)=>DATA.plate.filter(r=>r[s==="bat"?"batter":"pitcher"]===n);
+const pitchOf=(n,s)=>{
+  const want=s==="bat"?"Batting":"Pitching", key=s==="bat"?"batter":"pitcher";
+  return DATA.pitch.filter(r=>r[key]===n && (r.side===want||!r.side));
+};
+function line(rows){
+  const c={}; rows.forEach(r=>{c[r.result]=(c[r.result]||0)+1;});
+  const pa=rows.length;
+  const ab=rows.reduce((n,r)=>n+(NOT_AB.has(r.result)?0:1),0);
+  const h=rows.reduce((n,r)=>n+(HIT.has(r.result)?1:0),0);
+  const tb=(c.SINGLE||0)+2*(c.DOUBLE||0)+3*(c.TRIPLE||0)+4*(c.HOME_RUN||0);
+  const bb=c.WALK||0, hbp=c.HIT_BY_PITCH||0, so=c.STRIKE_OUT||0, sf=c.SACRIFICE_FLY||0;
+  const rbi=rows.reduce((n,r)=>n+(Number(r.rbi)||0),0);
+  const den=ab+bb+hbp+sf;
+  const obp=den?(h+bb+hbp)/den:null, slg=ab?tb/ab:null;
+  return {counts:c,pa,ab,h,tb,bb,hbp,so,rbi,hr:c.HOME_RUN||0,d2:c.DOUBLE||0,d3:c.TRIPLE||0,
+    avg:ab?h/ab:null, obp, slg, ops:(obp!==null&&slg!==null)?obp+slg:null,
+    kRate:pa?100*so/pa:null, bbRate:pa?100*bb/pa:null};
+}
+function summarize(rows){
+  const bip=rows.filter(r=>r.contact===true&&r.call==="IN_PLAY"&&Number(r.exit_velocity)>0);
+  const swings=rows.filter(r=>r.swing===true).length;
+  const whiffs=rows.filter(r=>r.whiff===true).length;
+  const outZone=rows.filter(r=>r.in_zone===false);
+  const chase=outZone.filter(r=>r.swing===true).length;
+  let xba=0,xslg=0,barrel=0,hard=0,sweet=0,ev=0,gb=0;
+  bip.forEach(r=>{
+    const e=Number(r.exit_velocity), l=Number(r.launch_angle), x=battedExpectation(e,l);
+    xba+=x.ba; xslg+=x.tb; ev+=e;
+    if(isBarrel(e,l)) barrel++;
+    if(e>=153) hard++;
+    if(l>=8&&l<=32) sweet++;
+    if(l<10) gb++;
+  });
+  const n=bip.length;
+  // 打席の数と四死球も record から数える。
+  // 打席結果は 1 球ごとの記録にも入っているので、result 側と混ぜずに済む。
+  const ended=rows.filter(r=>r.result);
+  const bb=ended.filter(r=>r.result==="WALK").length;
+  const hbp=ended.filter(r=>r.result==="HIT_BY_PITCH").length;
+  const so=ended.filter(r=>r.result==="STRIKE_OUT").length;
+  // xBA と xSLG は打数で割る。打球だけで割ると「インプレーになったときの打率」に
+  // なってしまい、三振の分が抜けて実際の打率と比べられない。
+  // 三振は期待値 0 の打数として分母にだけ入れる。
+  const ab=n+so;
+  return {n,bip,pitches:rows.length,swings,whiffs,xbaSum:xba,
+    pa:ended.length, bb, hbp, so, ab,
+    xba:ab?xba/ab:null, xslg:ab?xslg/ab:null, ev:n?ev/n:null,
+    barrel:n?100*barrel/n:null, hard:n?100*hard/n:null,
+    sweet:n?100*sweet/n:null, gb:n?100*gb/n:null,
+    chase:outZone.length?100*chase/outZone.length:null,
+    whiff:swings?100*whiffs/swings:null};
+}
+
+/* --------------------------------------------------- 投手の成績(result から) */
+/**
+ * 投球回・防御率など。
+ *
+ * <p>result の outs 列(そのプレーで取ったアウト)を足して投球回にする。
+ * 自責点は分けて記録していないので、失点をそのまま防御率に使う。
+ */
+function pitcherLine(rows){
+  const L=line(rows);
+  const outs=rows.reduce((n,r)=>n+(Number(r.outs)||0),0);
+  const runs=rows.reduce((n,r)=>n+(Number(r.runs)||0),0);
+  const ip=outs/3;
+  return Object.assign(L, {outs, runs, ip,
+    era: ip? 9*runs/ip : null,
+    whip: ip? (L.h+L.bb)/ip : null});
+}
+/** 投球回の表示。5 回 1/3 なら 5.1。 */
+function ipText(outs){
+  if(!isFinite(outs)) return "—";
+  return Math.floor(outs/3)+"."+(outs%3);
+}
+/** その行は裏の攻撃か。 */
+const isBottom=r=>String(r.half||"").toUpperCase().startsWith("B");
+
+/**
+ * 勝ち投手と負け投手。
+ *
+ * <p>規定投球回のような縛りは置かない。
+ * 「最後に勝ち越した回の 1 つ前の回で 3 アウト目を取った投手」が勝利投手、
+ * 「その勝ち越し点を許した投手」が敗戦投手。
+ */
+function decisions(rows){
+  if(!rows.length) return null;
+  let top=0, bottom=0;
+  const walk=rows.map(r=>{
+    if(isBottom(r)) bottom+=Number(r.runs)||0; else top+=Number(r.runs)||0;
+    return {r, bottom:isBottom(r), top:top, bot:bottom};
+  });
+  const last=walk[walk.length-1];
+  if(last.top===last.bot) return null;              // 引き分け
+  const winnerIsBottom=last.bot>last.top;
+  // 勝ったチームがリードを取り、そのまま最後まで手放さなかった打席を後ろから探す
+  let go=0;
+  for(let i=walk.length-1;i>=0;i--){
+    const lead=winnerIsBottom ? walk[i].bot-walk[i].top : walk[i].top-walk[i].bot;
+    if(lead<=0){ go=i+1; break; }
+  }
+  if(go>=walk.length) return null;
+  const goRow=walk[go].r;
+  const lose=goRow.pitcher||"";
+  // 勝ち越した回の 1 つ前の回(勝ったチームの守り)の 3 アウト目
+  let win="";
+  const sameHalf=(a,b)=>Number(a.inning)===Number(b.inning) && isBottom(a)===isBottom(b);
+  let j=go-1;
+  while(j>=0 && sameHalf(walk[j].r, goRow)) j--;
+  if(j>=0){
+    const prev=walk[j].r;
+    // その回の最後にアウトを取った打席
+    let k=j;
+    while(k>=0 && sameHalf(walk[k].r, prev) && !(Number(walk[k].r.outs)>0)) k--;
+    win=(k>=0 && sameHalf(walk[k].r, prev)) ? (walk[k].r.pitcher||"") : (prev.pitcher||"");
+  }else{
+    // 初回に勝ち越した。勝ったチームの先発を勝利投手にする
+    const first=rows.find(r=>isBottom(r)!==winnerIsBottom);
+    win=first ? (first.pitcher||"") : "";
+  }
+  return {win, lose, goRow, winnerIsBottom};
+}
+/**
+ * その試合のセーブとホールド。
+ *
+ * <p>セーブ = 途中登板で、勝った側の投手として最終回の 3 アウト目を取った投手。
+ * 勝利投手には付けない。
+ *
+ * <p>ホールド = 途中登板で、同点かリードしている場面で登板し、
+ * 同点で入ったなら勝ち越されも勝ち越しもしないまま、
+ * リードで入ったなら追いつかれも逆転もされないまま投げ終えた投手。
+ * セーブが付いた投手には付けない。
+ */
+function reliefCredits(rows, decided){
+  const out={save:"", holds:[]};
+  if(!rows.length) return out;
+  let top=0, bottom=0;
+  const walk=rows.map(r=>{
+    const low=isBottom(r);
+    if(low) bottom+=Number(r.runs)||0; else top+=Number(r.runs)||0;
+    // 投げているのは守っている側。表の攻撃なら投手は後攻(1)。
+    return {r, side: low?0:1, top, bot:bottom, outs:Number(r.outs)||0};
+  });
+  const last=walk[walk.length-1];
+  if(last.top===last.bot) return out;                 // 引き分けなら付かない
+  const winnerSide = last.bot>last.top ? 1 : 0;
+  const lead=(w,side)=> side===0 ? w.top-w.bot : w.bot-w.top;
+
+  // 各チームの先発と、投手ごとの登板の範囲
+  const starter={}, span={};
+  walk.forEach((w,i)=>{
+    if(starter[w.side]===undefined) starter[w.side]=w.r.pitcher||"";
+    const name=w.r.pitcher||"";
+    if(!name) return;
+    if(!span[name]) span[name]={side:w.side, from:i, to:i};
+    else span[name].to=i;
+  });
+  const relief=name=>name && span[name] && starter[span[name].side]!==name;
+
+  // セーブ
+  const closer=last.r.pitcher||"";
+  if(relief(closer) && span[closer].side===winnerSide
+     && last.outs>0 && closer!==(decided&&decided.win)){
+    out.save=closer;
+  }
+  // ホールド
+  Object.keys(span).forEach(name=>{
+    if(!relief(name) || name===out.save) return;
+    const {side, from, to}=span[name];
+    const before = from>0 ? walk[from-1] : {top:0, bot:0};
+    const entry = lead(before, side);
+    if(entry<0) return;                                // 負けている場面での登板
+    for(let i=from;i<=to;i++){
+      const now=lead(walk[i], side);
+      if(now<0) return;                                // 逆転された
+      if(entry>0 && now<=0) return;                    // 追いつかれた
+    }
+    // 同点で入ったのに味方が勝ち越したら、その投手は勝ち投手側の扱い
+    if(entry===0 && lead(walk[to], side)>0) return;
+    out.holds.push(name);
+  });
+  return out;
+}
+
+/** 読み込んである全部の試合の責任投手。名前 -> {w,l,sv,hld}。 */
+function decisionMap(){
+  const out={};
+  const at=name=>(out[name]=out[name]||{w:0,l:0,sv:0,hld:0});
+  gameIds().forEach(g=>{
+    const rows=DATA.plate.filter(r=>String(r.game_id)===g);
+    const d=decisions(rows);
+    if(d){
+      if(d.win) at(d.win).w++;
+      if(d.lose) at(d.lose).l++;
+    }
+    const relief=reliefCredits(rows, d);
+    if(relief.save) at(relief.save).sv++;
+    relief.holds.forEach(name=>at(name).hld++);
+  });
+  return out;
+}
+/** その試合でその投手に付いた救援の記録。 */
+function reliefFor(gameId, name, which){
+  const rows=DATA.plate.filter(r=>String(r.game_id)===gameId);
+  const relief=reliefCredits(rows, decisions(rows));
+  if(which==="save") return relief.save===name ? 1 : 0;
+  return relief.holds.includes(name) ? 1 : 0;
+}
+function reliefTotal(name, which){
+  return gameIds().reduce((n,g)=>n+reliefFor(g,name,which),0);
+}
+function gameIds(){
+  return [...new Set(DATA.plate.map(r=>String(r.game_id)).filter(Boolean))].sort();
+}
+/**
+ * 試合 ID の見せ方。
+ *
+ * <p>20260910 + 通し番号 02 なら「2026/9/10 二試合目」。
+ * 形が違う ID はそのまま出す。
+ */
+function gameLabel(id){
+  const text=String(id||"");
+  const m=text.match(/^(\d{4})(\d{2})(\d{2})(\d{0,2})$/);
+  if(!m) return text;
+  const month=Number(m[2]), day=Number(m[3]), no=Number(m[4]);
+  if(month<1 || month>12 || day<1 || day>31) return text;
+  const count=no>0 ? " " + no + "試合目" : "";
+  return `${m[1]}/${month}/${day}${count}`;
+}
+
+/* ------------------------------------------------------------- wRC+ */
+/** wOBA。重みは一般的なもの。result から出す。 */
+function wobaOf(L){
+  const single=L.h-L.d2-L.d3-L.hr;
+  const den=L.ab+L.bb+L.hbp+(L.counts.SACRIFICE_FLY||0);
+  if(!den) return null;
+  return (0.699*L.bb + 0.728*L.hbp + 0.883*single
+        + 1.244*L.d2 + 1.569*L.d3 + 2.004*L.hr) / den;
+}
+let LEAGUE=null;
+/** リーグ全体の基準。wRC+ を出すのに使う。読み込みが変わったら作り直す。 */
+function league(){
+  if(LEAGUE && LEAGUE.rows===DATA.plate.length) return LEAGUE;
+  const L=line(DATA.plate);
+  const runs=DATA.plate.reduce((n,r)=>n+(Number(r.runs)||0),0);
+  LEAGUE={rows:DATA.plate.length, woba:wobaOf(L), rpa:L.pa?runs/L.pa:null};
+  return LEAGUE;
+}
+/**
+ * wRC+。100 がリーグ平均。
+ * リーグの平均は読み込んである result 全部から出しているので、
+ * ファイルを足すと基準も動く。球場補正は入れていない。
+ */
+function wrcPlus(L){
+  const lg=league();
+  const w=wobaOf(L);
+  if(w===null||lg.woba===null||!lg.rpa) return null;
+  const scale=1.25;
+  return 100*((w-lg.woba)/scale + lg.rpa)/lg.rpa;
+}
+
+/* ------------------------------------------------------------- 表示 */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const f3=v=>v===null||!isFinite(v)?"—":v.toFixed(3).replace(/^0\./,".");
+const f1=v=>v===null||!isFinite(v)?"—":v.toFixed(1);
+const pc=v=>v===null||!isFinite(v)?"—":v.toFixed(1);
+const f2=v=>v===null||!isFinite(v)?"—":v.toFixed(2);
+
+function render(){
+  renderViewTabs();
+  const app=document.getElementById("app");
+  const playerRow=document.getElementById("playerRow");
+  playerRow.hidden = VIEW!=="player";
+  app.classList.toggle("wide", VIEW!=="player");
+  if(VIEW==="top"){ renderParks(); app.innerHTML=topView(); return; }
+  if(VIEW==="leaderboard"){ renderParks(); app.innerHTML=leaderboardView(); return; }
+  if(VIEW==="result"){ renderParks(); app.innerHTML=resultView(); return; }
+  renderTabs();
+  renderParks();
+  if(!PLAYER){ app.innerHTML='<section><div class="empty">csv を読み込むと選手が並びます</div></section>'; return; }
+  if(STYLE==="pawa"){
+    app.innerHTML = SIDE==="bat" ? pawaBatter() : pawaPitcher();
+    return;
+  }
+  app.innerHTML = SIDE==="bat" ? batterView() : pitcherView();
+  if(SIDE==="bat"){ drawSpray(); } else { drawLoc(); drawHeats(); }
+  // 試合は古い順のまま。直近が見えるよう、開いた時点で一番下へ送る
+  document.querySelectorAll(".gamescroll").forEach(el=>{ el.scrollTop=el.scrollHeight; });
+}
+const VIEWS=[["top","Top"],["player","Player"],["leaderboard","Leaderboard"],["result","Result"]];
+function renderViewTabs(){
+  document.getElementById("viewTabs").innerHTML=VIEWS.map(([k,label])=>
+    `<div class="tab" data-view="${k}" aria-selected="${k===VIEW}">${label}</div>`).join("");
+}
+function renderTabs(){
+  const names=new Set();
+  DATA.plate.forEach(r=>{ if(r.batter)names.add(r.batter); if(r.pitcher)names.add(r.pitcher); });
+  DATA.pitch.forEach(r=>{ if(r.batter)names.add(r.batter); if(r.pitcher)names.add(r.pitcher); });
+  const list=[...names].filter(Boolean).sort();
+  if(!list.includes(PLAYER)) PLAYER=list[0]||"";
+  document.getElementById("tabs").innerHTML=
+    list.map(n=>`<div class="tab" data-name="${esc(n)}" aria-selected="${n===PLAYER}">${esc(n)}</div>`).join("");
+  // 打者/投手は選手のタブとは別枠。横スクロールに巻き込まれず常に見える
+  document.getElementById("sideTabs").innerHTML=
+    `<div class="tab" data-side="bat" aria-selected="${SIDE==="bat"}">打者</div>
+     <div class="tab" data-side="pit" aria-selected="${SIDE==="pit"}">投手</div>
+     <div class="tab" data-style="savant" aria-selected="${STYLE==="savant"}"
+        style="margin-left:10px">Savant</div>
+     <div class="tab" data-style="pawa" aria-selected="${STYLE==="pawa"}">能力</div>`;
+}
+
+/** POOR / AVERAGE / GREAT の見出し。 */
+function pctLegend(){
+  return `<div class="legend">
+    <span></span>
+    <div class="marks">
+      <span class="poor" style="left:4%">POOR</span><i class="poor" style="left:4%"></i>
+      <span class="avg" style="left:50%">AVERAGE</span><i class="avg" style="left:50%"></i>
+      <span class="great" style="left:96%">GREAT</span><i class="great" style="left:96%"></i>
+    </div><span></span></div>`;
+}
+/**
+ * 守備と走塁のパーセンタイル。
+ *
+ * <p>record/<名前>_play.csv がある選手だけ出す。
+ * 値はいずれも 1 プレーあたりに直してある。
+ * 出場数が違う選手どうしを並べるため。
+ */
+function fieldingPanel(name){
+  const F=fieldingLine(playOf(name,"field"));
+  const B=baserunLine(playOf(name,"run"));
+  if(!F.chances && !B.plays) return "";
+  const per=(value, n) => value===null||!n ? null : value/n;
+  const rows=[
+    ["Range","打球への到達","range", per(F.range,F.chances), v=>v.toFixed(3)],
+    ["Arm Value","送球の値打ち","arm_value", per(F.armValue,Math.max(1,F.throws)),
+      v=>v.toFixed(3)],
+    ["Arm","送球の速さ","arm", F.arm, f1],
+    ["Baserunning","走塁の値打ち","baserun", per(B.runs,B.plays), v=>v.toFixed(3)]
+  ];
+  return `<div class="pad" style="padding-top:10px">
+      <div class="head">Fielding &amp; Baserunning<small>守備 ${F.chances} 機会 / 走塁 ${B.plays} 回</small></div>
+    </div>
+    ${rows.map(r=>prow(...r)).join("")}`;
+}
+function prow(name, sub, key, value, fmt){
+  const s=score(key,value), color=scoreColor(s), w=s===null?0:s;
+  return `<div class="prow">
+    <div class="nm">${name}${sub?`<small>${sub}</small>`:""}</div>
+    <div class="bar">
+      <div class="fill" style="width:${w}%; background:${color}"></div>
+      <div class="tickmid"></div>
+      ${s===null?"":`<div class="num" style="left:${w}%; background:${color}">${s}</div>`}
+    </div>
+    <div class="val">${value===null||!isFinite(value)?"—":fmt(value)}</div>
+  </div>`;
+}
+
+/** 試合ごとの成績表。最後に通算行。 */
+function gameTable(rows, cols, calc){
+  calc = calc || line;
+  const games=[...new Set(rows.map(r=>String(r.game_id)))].sort();
+  const body=games.map(g=>{
+    const L=calc(rows.filter(r=>String(r.game_id)===g));
+    return `<tr><td>${esc(gameLabel(g))}</td>${cols.map(c=>`<td>${c.get(L,g)}</td>`).join("")}</tr>`;
+  }).join("");
+  const T=calc(rows);
+  return `<div class="gamescroll"><table>
+    <thead><tr><th>試合</th>${cols.map(c=>`<th>${c.head}</th>`).join("")}</tr></thead>
+    <tbody>${body}
+      <tr class="total"><td>${games.length} 試合</td>${cols.map(c=>`<td>${c.get(T,null)}</td>`).join("")}</tr>
+    </tbody></table></div>`;
+}
+/** その試合の勝ち投手(または負け投手)がその選手なら 1。 */
+function decisionFor(gameId, name, which){
+  const d=decisions(DATA.plate.filter(r=>String(r.game_id)===gameId));
+  return d && d[which]===name ? 1 : 0;
+}
+function decisionTotal(name, which){
+  return gameIds().reduce((n,g)=>n+decisionFor(g,name,which),0);
+}
+
+/* ------------------------------------------------------------ TOP 画面
+   主要成績の上位、record から拾った目立つ 1 打席、そしてベストオーダー。 */
+/** 投手の率を出すのに要る最低投球回。 */
+const QUAL_IP=3;
+
+function topView(){
+  if(!DATA.plate.length && !DATA.pitch.length){
+    return '<section class="span"><div class="empty">csv を読み込むと表示されます</div></section>';
+  }
+  const bat=leaderRows("bat"), pit=leaderRows("pit");
+  const qb=d=>d.L.pa>=QUAL_PA;                 // 規定打席
+  const qp=d=>d.L.outs/3>=QUAL_IP;             // 規定投球回
+  const batCards=[
+    card("AVG",  bat, qb, d=>d.L.avg,  f3, true),
+    card("HR",   bat, null, d=>d.L.hr,  v=>v, true),
+    card("RBI",  bat, null, d=>d.L.rbi, v=>v, true),
+    card("HIT",  bat, null, d=>d.L.h,   v=>v, true),
+    card("OPS",  bat, qb, d=>d.L.ops,  f3, true),
+    card("wRC+", bat, qb, d=>d.wrc,    v=>String(Math.round(v)), true)
+  ].join("");
+  const pitCards=[
+    card("ERA",  pit, qp, d=>d.L.era,  f2, false),
+    card("WIN",  pit, null, d=>d.w,     v=>v, true),
+    card("SO",   pit, null, d=>d.L.so,  v=>v, true),
+    card("IP",   pit, null, d=>d.L.outs, ipText, true),
+    card("SAVE", pit, null, d=>d.sv,    v=>v, true),
+    card("WHIP", pit, qp, d=>d.L.whip, f2, false)
+  ].join("");
+  return `<section class="span"><div class="pad">
+    <div class="head">Batting Leaders<small>上位 3 人</small></div>
+    <div class="cards">${batCards}</div>
+    <div class="head" style="margin-top:14px">Pitching Leaders<small>上位 3 人</small></div>
+    <div class="cards">${pitCards}</div>
+    <p class="note" style="padding:8px 0 0">
+      率の項目は規定打席 ${QUAL_PA} / 規定投球回 ${QUAL_IP} 以上の選手だけを並べています。</p>
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">Best Plays<small>record より 上位 5</small></div>
+    <div class="cards">
+      ${playCard("Top Exit Velocity", topBatted("exit_velocity"), r=>f1(Number(r.exit_velocity))+" km/h")}
+      ${playCard("Top Distance", topBatted("distance"), r=>f1(distanceOf(r))+" m")}
+      ${whiffCard()}
+    </div>
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">Best Order<small>規定打席到達者の wRC+ 上位 9 人</small></div>
+    ${bestOrder(bat, pit)}
+  </div></section>`;
+}
+
+/**
+ * 主要成績の上位 3 人。
+ *
+ * @param filter 規定に届いた選手だけに絞るとき。null なら全員
+ * @param high   大きいほうが上位か
+ */
+function card(title, rows, filter, get, fmt, high){
+  const list=rows.filter(d=>{
+    if(filter && !filter(d)) return false;
+    const v=get(d);
+    return v!==null && v!==undefined && isFinite(v);
+  }).sort((a,b)=>high ? get(b)-get(a) : get(a)-get(b)).slice(0,3);
+  const body=list.length ? `<ol>${list.map(d=>`<li>${face(d.name,20)}
+      <span>${esc(d.name)}</span><b>${fmt(get(d))}</b></li>`).join("")}</ol>`
+    : '<div class="empty">記録がありません</div>';
+  return `<div class="card"><h4>${title}</h4>${body}</div>`;
+}
+
+/** その項目が大きい打席を上位 5 つ。record の打球から拾う。 */
+function topBatted(key){
+  return DATA.pitch
+    .filter(r=>r.contact===true && r.call==="IN_PLAY" && Number(r.exit_velocity)>0)
+    .filter((r,i,all)=>all.findIndex(o=>sameBatted(o,r))===i)
+    .map(r=>({...r, _v: key==="distance" ? distanceOf(r) : Number(r[key])}))
+    .filter(r=>isFinite(r._v) && r._v>0)
+    .sort((a,b)=>b._v-a._v)
+    .slice(0,5);
+}
+/** 同じ打球か。打者側と投手側の記録に同じ球が入っている。 */
+function sameBatted(a,b){
+  return a.game===b.game && a.inning===b.inning && a.pa===b.pa
+      && a.pitch_no===b.pitch_no && a.batter===b.batter;
+}
+function playCard(title, rows, fmt){
+  const body=rows.length ? `<ol>${rows.map(r=>`<li>${face(r.batter,20)}
+      <span>${esc(r.batter||"?")}<small style="color:var(--muted)"> ${esc(gameLabel(r.game))}</small></span>
+      <b>${fmt(r)}</b></li>`).join("")}</ol>`
+    : '<div class="empty">打球の記録がありません</div>';
+  return `<div class="card"><h4>${title}</h4>${body}</div>`;
+}
+/** 1 試合で最も空振りを奪った投手。上位 5 つ。 */
+function whiffCard(){
+  const seen=new Set(), count={};
+  DATA.pitch.forEach(r=>{
+    if(r.whiff!==true || !r.pitcher) return;
+    const key=[r.game,r.inning,r.half,r.pa,r.pitch_no,r.batter].join("|");
+    if(seen.has(key)) return;                  // 打者側と投手側で同じ球を二度数えない
+    seen.add(key);
+    const at=r.pitcher+"|"+r.game;
+    count[at]=(count[at]||0)+1;
+  });
+  const rows=Object.entries(count)
+    .map(([k,n])=>({name:k.split("|")[0], game:k.split("|")[1], n}))
+    .sort((a,b)=>b.n-a.n).slice(0,5);
+  const body=rows.length ? `<ol>${rows.map(r=>`<li>${face(r.name,20)}
+      <span>${esc(r.name)}<small style="color:var(--muted)"> ${esc(gameLabel(r.game))}</small></span>
+      <b>${r.n}</b></li>`).join("")}</ol>`
+    : '<div class="empty">投球の記録がありません</div>';
+  return `<div class="card"><h4>Swing &amp; Miss</h4>${body}</div>`;
+}
+
+/**
+ * ベストオーダー。
+ *
+ * <p>打者は規定打席に届いた人の wRC+ 上位 9 人。
+ * 打順は wRC+ の順位で 3-4-1-2-5-6-7-8-9 の並びにする。
+ * 投手は防御率・投球回・奪三振をまとめた点数で選ぶ。
+ */
+const ORDER_BY_RANK=[3,4,1,2,5,6,7,8,9];
+function bestOrder(bat, pit){
+  const list=bat.filter(d=>d.L.pa>=QUAL_PA && d.wrc!==null && isFinite(d.wrc))
+                .sort((a,b)=>b.wrc-a.wrc).slice(0,9);
+  if(list.length<1) return '<div class="empty">規定打席に届いた選手がいません</div>';
+  const slots=[];
+  list.forEach((d,i)=>{ slots[ORDER_BY_RANK[i]-1]=d; });
+  const ace=bestPitcher(pit);
+  return `<div class="scroll"><table class="lineup"><tbody>
+    ${slots.map((d,i)=>d ? `<tr>
+      <td class="slot">${i+1}</td>
+      <td class="nm">${withFace(d.name,22)}</td>
+      <td>${d.L.pa} 打席</td><td>${f3(d.L.avg)}</td>
+      <td>${d.L.hr} HR</td><td>${d.L.rbi} 打点</td>
+    </tr>` : "").join("")}
+    ${ace ? `<tr class="pit">
+      <td class="slot">P</td>
+      <td class="nm">${withFace(ace.name,22)}</td>
+      <td>${ipText(ace.L.outs)} IP</td><td>${f2(ace.L.era)} ERA</td>
+      <td>${ace.w} 勝</td><td>${ace.L.so} SO</td>
+    </tr>` : ""}
+  </tbody></table></div>`;
+}
+/**
+ * 総合で一番の投手。
+ *
+ * <p>投球回・奪三振は多いほど、防御率は低いほどよい。
+ * それぞれをリーグ内の最大で割って 0〜1 に均し、足して比べる。
+ */
+function bestPitcher(pit){
+  const list=pit.filter(d=>d.L.outs/3>=QUAL_IP && d.L.era!==null && isFinite(d.L.era));
+  if(!list.length) return null;
+  const maxIp=Math.max(...list.map(d=>d.L.outs));
+  const maxSo=Math.max(...list.map(d=>d.L.so));
+  const maxEra=Math.max(...list.map(d=>d.L.era));
+  const score=d=>0.40*(d.L.outs/(maxIp||1))
+                + 0.30*(d.L.so/(maxSo||1))
+                + 0.30*(1-d.L.era/(maxEra||1));
+  return list.sort((a,b)=>score(b)-score(a))[0];
+}
+
+/* ------------------------------------------------------ リーダーボード */
+/** 打者の一覧に出す列。key は並べ替えに使う。 */
+function batterColumns(mode){
+  if(mode==="std") return [
+    {key:"g",   head:"G",   get:d=>d.games,      fmt:v=>v},
+    {key:"pa",  head:"PA",  get:d=>d.L.pa,       fmt:v=>v},
+    {key:"ab",  head:"AB",  get:d=>d.L.ab,       fmt:v=>v},
+    {key:"h",   head:"H",   get:d=>d.L.h,        fmt:v=>v},
+    {key:"d2",  head:"2B",  get:d=>d.L.d2,       fmt:v=>v},
+    {key:"d3",  head:"3B",  get:d=>d.L.d3,       fmt:v=>v},
+    {key:"hr",  head:"HR",  get:d=>d.L.hr,       fmt:v=>v},
+    {key:"rbi", head:"RBI", get:d=>d.L.rbi,      fmt:v=>v},
+    {key:"bb",  head:"BB",  get:d=>d.L.bb,       fmt:v=>v},
+    {key:"so",  head:"SO",  get:d=>d.L.so,       fmt:v=>v},
+    {key:"avg", head:"AVG", get:d=>d.L.avg,      fmt:f3, rate:true},
+    {key:"obp", head:"OBP", get:d=>d.L.obp,      fmt:f3, rate:true},
+    {key:"slg", head:"SLG", get:d=>d.L.slg,      fmt:f3, rate:true},
+    {key:"ops", head:"OPS", get:d=>d.L.ops,      fmt:f3, rate:true}
+  ];
+  return [
+    {key:"pa",    head:"PA",     get:d=>d.L.pa,     fmt:v=>v},
+    {key:"wrc",   head:"wRC+",   get:d=>d.wrc,      fmt:v=>Math.round(v), rate:true},
+    {key:"xwoba", head:"xwOBA",  get:d=>d.xwoba,    fmt:f3, rate:true},
+    {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, rate:true},
+    {key:"xslg",  head:"xSLG",   get:d=>d.S.xslg,   fmt:f3, rate:true},
+    {key:"ev",    head:"EV",     get:d=>d.S.ev,     fmt:f1, rate:true},
+    {key:"barrel",head:"Barrel%",get:d=>d.S.barrel, fmt:pc, rate:true},
+    {key:"hard",  head:"Hard%",  get:d=>d.S.hard,   fmt:pc, rate:true},
+    {key:"sweet", head:"Sweet%", get:d=>d.S.sweet,  fmt:pc, rate:true},
+    {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
+    {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true},
+    {key:"k",     head:"K%",     get:d=>d.L.kRate,  fmt:pc, rate:true},
+    {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, rate:true}
+  ];
+}
+function pitcherColumns(mode){
+  if(mode==="std") return [
+    {key:"g",   head:"G",    get:d=>d.games,   fmt:v=>v},
+    {key:"w",   head:"W",    get:d=>d.w,       fmt:v=>v},
+    {key:"l",   head:"L",    get:d=>d.l,       fmt:v=>v},
+    {key:"ip",  head:"IP",   get:d=>d.L.outs,  fmt:ipText},
+    {key:"so",  head:"SO",   get:d=>d.L.so,    fmt:v=>v},
+    {key:"bb",  head:"BB",   get:d=>d.L.bb,    fmt:v=>v},
+    {key:"r",   head:"R",    get:d=>d.L.runs,  fmt:v=>v, low:true},
+    {key:"sv",  head:"SV",   get:d=>d.sv,      fmt:v=>v},
+    {key:"hld", head:"HLD",  get:d=>d.hld,     fmt:v=>v},
+    {key:"era", head:"ERA",  get:d=>d.L.era,   fmt:f2, low:true},
+    {key:"whip",head:"WHIP", get:d=>d.L.whip,  fmt:f2, low:true}
+  ];
+  return [
+    {key:"ip",    head:"IP",     get:d=>d.L.outs,   fmt:ipText},
+    {key:"kp",    head:"K%",     get:d=>d.L.kRate,  fmt:pc},
+    {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, low:true},
+    {key:"whip",  head:"WHIP",   get:d=>d.L.whip,   fmt:f2, low:true},
+    {key:"ops",   head:"OPS",    get:d=>d.L.ops,    fmt:f3, low:true},
+    {key:"xera",  head:"xERA",   get:d=>d.xera,     fmt:f1, low:true},
+    {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, low:true},
+    {key:"ev",    head:"EV",     get:d=>d.S.ev,     fmt:f1, low:true},
+    {key:"barrel",head:"Barrel%",get:d=>d.S.barrel, fmt:pc, low:true},
+    {key:"hard",  head:"Hard%",  get:d=>d.S.hard,   fmt:pc, low:true},
+    {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc},
+    {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc},
+    {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc}
+  ];
+}
+/** 一覧に並べる選手ぶんの数字をまとめて作る。 */
+function leaderRows(side){
+  const key=side==="bat"?"batter":"pitcher";
+  const names=[...new Set(DATA.plate.map(r=>r[key]).filter(Boolean))];
+  const dec=side==="pit" ? decisionMap() : {};
+  return names.map(name=>{
+    const pa=plateOf(name,side), ps=pitchOf(name,side);
+    const L=side==="pit" ? pitcherLine(pa) : line(pa);
+    const S=summarize(ps);
+    const xwoba=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
+    return {name, L, S, xwoba,
+      games:new Set(pa.map(r=>String(r.game_id))).size,
+      wrc: side==="bat" ? wrcPlus(L) : null,
+      xera: xwoba===null?null:Math.max(0,(xwoba-0.300)*30.0),
+      w:(dec[name]||{}).w||0, l:(dec[name]||{}).l||0,
+      sv:(dec[name]||{}).sv||0, hld:(dec[name]||{}).hld||0};
+  });
+}
+function leaderboardView(){
+  if(!DATA.plate.length) return '<section><div class="empty">result の csv を読み込んでください</div></section>';
+  const cols=LB.side==="bat" ? batterColumns(LB.mode) : pitcherColumns(LB.mode);
+  if(!cols.some(c=>c.key===LB.key)) LB.key=cols[0].key;
+  const col=cols.find(c=>c.key===LB.key);
+  const rows=leaderRows(LB.side);
+  // 率で並べるときは、規定打席に届いている人を先にまとめる
+  const rated = LB.side==="bat" && col.rate;
+  const ok=d=>!rated || d.L.pa>=QUAL_PA;
+  rows.sort((a,b)=>{
+    if(rated && ok(a)!==ok(b)) return ok(a) ? -1 : 1;
+    const x=col.get(a), y=col.get(b);
+    const ax=(x===null||x===undefined||!isFinite(x))?null:x;
+    const by=(y===null||y===undefined||!isFinite(y))?null:y;
+    if(ax===null&&by===null) return a.name.localeCompare(b.name);
+    if(ax===null) return 1;                 // 記録の無い選手は下
+    if(by===null) return -1;
+    return (ax-by)*LB.dir;
+  });
+  const seg=(group,value,label)=>
+    `<button data-lb="${group}" data-value="${value}"
+      aria-selected="${LB[group]===value}">${label}</button>`;
+  return `<section class="span"><div class="pad">
+    <div class="head">Leaderboard<small>${rows.length} 選手</small></div>
+    <div class="lbbar">
+      <div class="seg">${seg("side","bat","打者")}${seg("side","pit","投手")}</div>
+      <div class="seg">${seg("mode","std","Standard")}${seg("mode","adv","Advanced")}</div>
+      <span class="note">列名を押すと並べ替え。もう一度押すと逆順。${LB.side==="bat"
+        ? `率は規定打席 ${QUAL_PA} 以上を先に並べます。` : ""}</span>
+    </div>
+    <div class="lbwrap"><table class="lb">
+      <thead><tr><th class="rank"></th><th style="text-align:left">選手</th>
+        ${cols.map(c=>`<th data-sort="${c.key}"
+          class="${c.key===LB.key?"sorted":""}">${c.head}${c.key===LB.key?(LB.dir<0?" ▼":" ▲"):""}</th>`).join("")}
+      </tr></thead>
+      <tbody>${rows.map((d,i)=>`<tr class="${rated&&!ok(d)?"unq":""}">
+        <td class="rank">${i+1}</td>
+        <td class="nm">${withFace(d.name,20)}</td>
+        ${cols.map(c=>{
+          const v=c.get(d);
+          const bad=(v===null||v===undefined||!isFinite(v));
+          return `<td>${bad?"—":c.fmt(v)}</td>`;
+        }).join("")}
+      </tr>`).join("")}</tbody>
+    </table></div>
+  </div></section>`;
+}
+
+/* ------------------------------------------------------------ リザルト */
+/** record の打席行を引ける表にする。同じ打席は 1 行だけ持つ。 */
+function recordIndex(){
+  const map=new Map();
+  DATA.pitch.forEach(r=>{
+    if(!r.result) return;
+    const k=[r.game,r.inning,isBottom(r)?"B":"T",r.batter,r.result].join("|");
+    const kept=map.get(k);
+    // 打者側の記録を優先する。投手側の記録は同じ打席の写し。
+    if(!kept || (r.side==="Batting" && kept.side!=="Batting")) map.set(k,r);
+  });
+  return map;
+}
+/**
+ * その試合で、誰がどちらのチームか。
+ *
+ * <p>表の攻撃の打者と裏の攻撃の投手が先攻、その逆が後攻。
+ * 名前 -> 0(先攻) / 1(後攻)。
+ */
+function teamSides(rows){
+  const side={};
+  rows.forEach(r=>{
+    const bottom=isBottom(r);
+    if(r.batter && side[r.batter]===undefined) side[r.batter]=bottom?1:0;
+    if(r.pitcher && side[r.pitcher]===undefined) side[r.pitcher]=bottom?0:1;
+  });
+  return side;
+}
+/** チームの色のクラス名。分からなければ空。 */
+function teamClass(side){
+  return side===0 ? "t-first" : side===1 ? "t-second" : "";
+}
+/** 顔と名前。チームの色を付ける。 */
+function withTeamFace(name, side, size){
+  if(!name) return `<span class="none">マネキン</span>`;
+  return `<span class="withface ${teamClass(side)}">${face(name,size)}<span>${esc(name)}</span></span>`;
+}
+function resultView(){
+  const games=gameIds();
+  if(!games.length) return '<section><div class="empty">result の csv を読み込んでください</div></section>';
+  if(!games.includes(GAME)) GAME=games[games.length-1];
+  const rows=DATA.plate.filter(r=>String(r.game_id)===GAME);
+  const pick=games.map(g=>
+    `<button data-game="${esc(g)}" aria-selected="${g===GAME}">${esc(gameLabel(g))}</button>`).join("");
+  return `<section class="span"><div class="pad">
+    <div class="head">Result<small>${games.length} 試合</small></div>
+    <div class="gamepick">${pick}</div>
+    ${scoreBoard(rows)}
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">打席結果<small>${rows.length} 打席</small></div>
+    ${inningTables(rows)}
+  </div></section>`;
+}
+function scoreBoard(rows){
+  const innings=Math.max(1,...rows.map(r=>Number(r.inning)||1));
+  const runs=[[],[]], hits=[[],[]], played=[[],[]];
+  for(let i=1;i<=innings;i++){
+    [0,1].forEach(side=>{
+      const half=rows.filter(r=>Number(r.inning)===i && (isBottom(r)?1:0)===side);
+      played[side][i]=half.length>0;
+      runs[side][i]=half.reduce((n,r)=>n+(Number(r.runs)||0),0);
+      hits[side][i]=half.filter(r=>HIT.has(r.result)).length;
+    });
+  }
+  const total=side=>runs[side].reduce((a,b)=>a+(b||0),0);
+  const totalH=side=>hits[side].reduce((a,b)=>a+(b||0),0);
+  const d=decisions(rows);
+  const relief=reliefCredits(rows, d);
+  const winner = total(1)>total(0) ? 1 : (total(0)>total(1) ? 0 : -1);
+  // 記録にチーム名があれば使う。無ければ先攻/後攻。
+  const first=rows.find(r=>r.topteam||r.bottomteam) || {};
+  const names=[String(first.topteam||"").trim()||"先攻",
+               String(first.bottomteam||"").trim()||"後攻"];
+  const sides=teamSides(rows);
+  const row=side=>`<tr class="${side?"second":"first"} ${winner===side?"win":""}">
+    <td class="team">${esc(names[side])}</td>
+    ${Array.from({length:innings},(_,k)=>{
+      const i=k+1;
+      return `<td>${played[side][i] ? runs[side][i] : "-"}</td>`;
+    }).join("")}
+    <td class="big">${total(side)}</td><td class="big">${totalH(side)}</td>
+  </tr>`;
+  const homers=rows.filter(r=>r.result==="HOME_RUN");
+  return `<div class="scroll"><table class="board">
+    <thead><tr><th class="team"></th>
+      ${Array.from({length:innings},(_,k)=>`<th>${k+1}</th>`).join("")}
+      <th class="big">R</th><th class="big">H</th></tr></thead>
+    <tbody>${row(0)}${row(1)}</tbody>
+  </table></div>
+  <div class="boardnote">
+    ${d&&d.win ? `<span><b>勝</b>${withTeamFace(d.win,sides[d.win],20)}</span>` : ""}
+    ${d&&d.lose ? `<span><b>敗</b>${withTeamFace(d.lose,sides[d.lose],20)}</span>` : ""}
+    ${relief.save ? `<span><b>S</b>${withTeamFace(relief.save,sides[relief.save],20)}</span>` : ""}
+    ${homers.length ? `<span><b>本塁打</b>${homers.map(h=>
+        `<span class="withface ${teamClass(sides[h.batter])}" style="margin-right:10px">${face(h.batter,20)}
+          <span>${esc(h.batter)}${Number(h.rbi)>1?`(${h.rbi}点)`:""}</span></span>`).join("")}</span>` : ""}
+  </div>`;
+}
+function inningTables(rows){
+  const index=recordIndex();
+  const sides=teamSides(rows);
+  const innings=Math.max(1,...rows.map(r=>Number(r.inning)||1));
+  let html="";
+  for(let i=1;i<=innings;i++){
+    for(const side of [0,1]){
+      const half=rows.filter(r=>Number(r.inning)===i && (isBottom(r)?1:0)===side);
+      if(!half.length) continue;
+      html+=`<div class="inninghead">${i} 回${side?"裏":"表"}</div>
+      <div class="scroll"><table class="pa2">
+      <colgroup><col class="c-p"><col class="c-p"><col class="c-r"><col class="c-s">
+        <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-m"><col class="c-s"></colgroup>
+      <thead><tr>
+        <th class="nm">打者</th><th class="nm">投手</th>
+        <th class="nm">結果</th><th>打点</th>
+        <th>初速</th><th>角度</th><th>距離</th><th>Barrel</th><th>xBA</th>
+      </tr></thead><tbody>${half.map(r=>{
+        const rec=index.get([GAME,r.inning,side?"B":"T",r.batter,r.result].join("|"));
+        const ev=rec?Number(rec.exit_velocity):NaN, la=rec?Number(rec.launch_angle):NaN;
+        const hit=rec && rec.contact===true && rec.call==="IN_PLAY" && isFinite(ev) && ev>0;
+        const x=hit ? battedExpectation(ev,la).ba : null;
+        const rbi=Number(r.rbi)||0;
+        return `<tr>
+          <td class="nm">${withTeamFace(r.batter,sides[r.batter],20)}</td>
+          <td class="nm">${withTeamFace(r.pitcher,sides[r.pitcher],20)}</td>
+          <td class="res"><span class="rtag ${resultClass(r.result)}">${JA[r.result]||r.result||""}</span></td>
+          <td class="${rbi?"rbi":""}">${rbi||""}</td>
+          <td>${hit?f1(ev):"–"}</td>
+          <td>${hit?f1(la)+"°":"–"}</td>
+          <td>${hit?f1(distanceOf(rec)):"–"}</td>
+          <td>${hit?(isBarrel(ev,la)?"true":"false"):"–"}</td>
+          <td>${x===null?"–":f3(x)}</td>
+        </tr>`;
+      }).join("")}</tbody></table></div>`;
+    }
+  }
+  return html || '<div class="empty">打席の記録がありません</div>';
+}
+
+/* ======================================================== パワプロ風の能力
+   持っている記録から 1〜100 の能力に直す。result と record の両方を見て、
+   片方しか無ければそちらだけで判断する。何も無い項目は 55(並)。 */
+/** 記録が足りない項目の値。 */
+const ABILITY_DEFAULT=55;
+
+/**
+ * 値の範囲を能力値に均す。lo が 20、hi が 95。
+ *
+ * <p>目盛りの外へ出ても 20 と 95 で止める。
+ * 端を 1 と 100 にすると、少ない記録で外れた数字がひとつ出ただけで
+ * G が並んでしまうため。
+ */
+function ability(value, lo, hi){
+  if(value===null || value===undefined || !isFinite(value)) return ABILITY_DEFAULT;
+  const t=Math.max(0, Math.min(1, (value-lo)/(hi-lo)));
+  return Math.round(20+75*t);
+}
+/**
+ * 記録の量から、その項目をどれだけ重く見るか。
+ * 記録が少ないうちは成績のほうを重く見る。
+ */
+function weightOf(n, full){
+  return Math.max(0.15, Math.min(1, n/full));
+}
+/**
+ * 打席数が足りない選手の能力を真ん中へ寄せる。
+ *
+ * <p>数試合しか出ていない選手は、たまたまの成績で
+ * 極端に高くも低くも出てしまう。
+ * 規定に届くまでは、足りない分だけ 55 へ近づける。
+ * 高すぎる人は下がり、低すぎる人は上がる。規定を超えていればそのまま。
+ *
+ * @param n    その選手の打席数(投手は投球のアウト数)
+ * @param full 規定の数
+ */
+function steady(value, n, full){
+  const trust=Math.max(0, Math.min(1, n/full));
+  return Math.round(ABILITY_DEFAULT + (value-ABILITY_DEFAULT)*trust);
+}
+/**
+ * 能力値の段位。
+ *
+ * <p>目安はパワプロに合わせてある。
+ * S=90〜 A=80〜 B=70〜 C=60〜 D=50〜 E=40〜 F=20〜 それ未満が G。
+ */
+function rank(value){
+  if(value>=90) return "S";
+  if(value>=80) return "A";
+  if(value>=70) return "B";
+  if(value>=60) return "C";
+  if(value>=50) return "D";
+  if(value>=40) return "E";
+  if(value>=20) return "F";
+  return "G";
+}
+/**
+ * 段位の色。A〜F は指定のもの。
+ * C と D、E と F は同じ色で、段位の文字で見分ける。
+ */
+const RANK_COLOR={S:"#ff5fb0",A:"#f50fd7",B:"#ff1441",C:"#ffa500",D:"#c3d21e",
+  E:"#41d400",F:"#26b6f2",G:"#8b98a4"};
+/** 右上の基礎能力の段位。上は A 止まりにする。 */
+function basicRank(value){
+  const r=rank(value);
+  return r==="S" ? "A" : r;
+}
+
+/** 能力の 1 行。名前の枠・段位・数字。 */
+function abrow(name, value){
+  const r=rank(value), color=RANK_COLOR[r];
+  return `<div class="abrow">
+    <span class="nm">${name}</span>
+    <span class="rank" style="color:${color}">${r}</span>
+    <span class="num">${value}</span>
+  </div>`;
+}
+/** 段位を出さない行(弾道や球速)。 */
+function abplain(name, text, arrow){
+  return `<div class="abrow">
+    <span class="nm">${name}</span>
+    <span class="rank arrow">${arrow || ""}</span>
+    <span class="num" style="width:auto;white-space:nowrap">${text}</span>
+  </div>`;
+}
+/**
+ * 弾道の矢印。数字が大きいほど上を向く。
+ * 2 は水平ではなく、わずかに上がる打球なので少し傾ける。
+ */
+function trajectoryArrow(level){
+  const tilt={1:-4, 2:-22, 3:-45, 4:-70}[level];
+  if(tilt===undefined) return "";
+  // 弾道が高いほど上の段位の色。1=D 2=C 3=B 4=A
+  const color=RANK_COLOR[{1:"D", 2:"C", 3:"B", 4:"A"}[level]];
+  return `<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"
+      style="vertical-align:middle;transform:rotate(${tilt}deg)">
+    <path d="M2 10h12M10 5l5 5-5 5" fill="none" stroke="${color}"
+      stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+/** 守備位置ごとの色。投手と中継ぎは同じ色。 */
+const ROLE_COLOR={pitcher:"#fd8779", catcher:"#3eeff5",
+  infield:"#facf04", outfield:"#64e86e"};
+/** 内野の守備位置。 */
+const INFIELD=new Set(["FIRST_BASEMAN","SECOND_BASEMAN","THIRD_BASEMAN","SHORTSTOP"]);
+/** 記録が無いときの色。 */
+const ROLE_UNKNOWN="#ffe45c";
+
+/** 守備位置の 1 文字表記。 */
+const POS_LABEL={PITCHER:"投", CATCHER:"捕", FIRST_BASEMAN:"一", SECOND_BASEMAN:"二",
+  THIRD_BASEMAN:"三", SHORTSTOP:"遊", LEFT_FIELDER:"左", CENTER_FIELDER:"中",
+  RIGHT_FIELDER:"右"};
+
+/**
+ * その選手が守った守備位置。多い順に並べる。投手は先頭。
+ *
+ * @return {position, n} の配列
+ */
+function aptitude(name){
+  const count={};
+  playOf(name,"field").forEach(r=>{
+    const at=String(r.position||"");
+    if(!POS_LABEL[at]) return;
+    count[at]=(count[at]||0)+1;
+  });
+  const pitched=plateOf(name,"pit").length;
+  const list=Object.keys(count)
+    .map(at=>({position:at, n:count[at]}))
+    .sort((a,b)=>b.n-a.n);
+  if(pitched) list.unshift({position:"PITCHER", n:pitched});
+  return list;
+}
+
+/** 成績の隣に出す適性。守った回数が多いところほど濃い。 */
+function aptitudeBox(name){
+  const list=aptitude(name);
+  if(!list.length) return "";
+  const most=list[0].n;
+  const cells=list.map(at=>{
+    const strong=at.n>=most*0.5;
+    return `<span class="${strong?"on":""}" title="${at.n} 回">${POS_LABEL[at.position]}</span>`;
+  });
+  return `<span class="apt"><b>適性</b>${cells.join("")}</span>`;
+}
+
+/** その守備位置がどの色になるか。 */
+function roleOf(position){
+  if(position==="PITCHER") return "pitcher";
+  if(position==="CATCHER") return "catcher";
+  return INFIELD.has(position) ? "infield" : "outfield";
+}
+
+/**
+ * その選手の守備の割合から、名前の枠に敷く色を決める。
+ *
+ * <p>投手をいちばん左に置き、あとは就いた回数の多い順。多くても 3 色まで。
+ * 記録が無ければ黄色一色。
+ */
+function plateBackground(name){
+  const count={};
+  playOf(name,"field").forEach(r=>{
+    const role=roleOf(String(r.position||""));
+    count[role]=(count[role]||0)+1;
+  });
+  // 投球の記録があれば投手もやっている
+  if(plateOf(name,"pit").length) count.pitcher=(count.pitcher||0)+999;
+  const roles=Object.keys(count)
+    .sort((a,b)=> a==="pitcher" ? -1 : b==="pitcher" ? 1 : count[b]-count[a])
+    .slice(0,3);
+  if(!roles.length) return ROLE_UNKNOWN;
+  if(roles.length===1) return ROLE_COLOR[roles[0]];
+  // 境目はぼかす。区切りの前後 2% を混ぜる。
+  const step=100/roles.length;
+  const stops=roles.map((role,i)=>{
+    const from=i===0 ? 0 : i*step+2;
+    const to=i===roles.length-1 ? 100 : (i+1)*step-2;
+    return `${ROLE_COLOR[role]} ${from.toFixed(0)}%, ${ROLE_COLOR[role]} ${to.toFixed(0)}%`;
+  });
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
+}
+
+/** 名前・顔・成績の帯。 */
+function pawaHead(name, badge, stats){
+  return `<div class="abhead">
+    <span class="plate" style="background:${plateBackground(name)}">${esc(name)}</span>
+    <span class="numbox">${badge}</span>
+    <span class="facebox">${face(name,40)}</span>
+    <span class="stat"><b>成績</b>${stats}</span>
+    ${aptitudeBox(name)}
+  </div>`;
+}
+/**
+ * 右上の基礎能力。
+ *
+ * <p>末尾の 1 文字を段位として読み、B 以上は青、F 以下は赤にする。
+ */
+function basicRow(items){
+  return `<div class="basics">${items.map(text => {
+    const letter=String(text).trim().slice(-1);
+    const tone="SAB".indexOf(letter)>=0 ? " good"
+      : "FG".indexOf(letter)>=0 ? " bad" : "";
+    return `<span class="basic${tone}">${esc(text)}</span>`;
+  }).join("")}</div>`;
+}
+/**
+ * 特殊能力。ゲームと同じように空き枠も並べる。
+ *
+ * @param slots 最低これだけの枠を出す
+ */
+function skillGrid(skills, slots){
+  // 水=低い能力 青=高い能力 赤=悪い能力 緑=個性的
+  const tone=k => k.bad ? "bad" : k.green ? "green" : k.low ? "low" : "good";
+  const cells=skills.map(k=>
+    `<span class="skill ${tone(k)}">${esc(k.name)}</span>`);
+  const least=slots || 8;
+  while(cells.length<least || cells.length%4!==0){
+    cells.push('<span class="skill empty">&nbsp;</span>');
+  }
+  return `<div class="skills">${cells.join("")}</div>`;
+}
+
+/* ------------------------------------------------------------ 打者の能力 */
+function batterAbility(name){
+  const pa=plateOf(name,"bat"), ps=pitchOf(name,"bat");
+  const L=line(pa), S=summarize(ps);
+  const has=pa.length>0, hasPitch=ps.length>0;
+
+  // 弾道。打球角度の平均から 1〜4。記録が少なければ 2。
+  let trajectory=2;
+  if(S.n>=3){
+    const avg=S.bip.reduce((n,r)=>n+Number(r.launch_angle),0)/S.n;
+    trajectory = avg<6 ? 1 : avg<13 ? 2 : avg<20 ? 3 : 4;
+  }
+  // 投球の記録の多さと、当たった打球の数。少ないほど軽く見る
+  const wPitch=hasPitch ? weightOf(ps.length, 60) : 0;
+  const wBip=S.n ? weightOf(S.n, 20) : 0;
+  // ミート。打率・三振率・空振り率・xBA・弱い打球の少なさ。
+  const meet=blend([
+    [has ? ability(L.avg, 0.120, 0.480) : null, 1.4],
+    [has ? ability(L.kRate, 60, 10) : null, 1.0],
+    [hasPitch ? ability(S.whiff, 48, 14) : null, 0.8*wPitch],
+    [hasPitch ? ability(S.xba, 0.150, 0.480) : null, 1.0*wBip],
+    [hasPitch ? ability(weakRate(S), 60, 18) : null, 0.6*wBip]
+  ]);
+  // パワー。長打・打球速度・xSLG。
+  const xbh=L.ab ? (L.d2+L.d3+L.hr)/L.ab : null;
+  const power=blend([
+    [has ? ability(xbh, 0.00, 0.35) : null, 1.0],
+    [hasPitch ? ability(S.ev, 138, 190) : null, 1.2*wBip],
+    [hasPitch ? ability(S.xslg, 0.200, 0.900) : null, 1.0*wBip]
+  ]);
+  // 規定打席に届かないうちは、上も下も真ん中へ寄せる
+  return {L, S, trajectory,
+          meet:steady(meet, L.pa, QUAL_PA),
+          power:steady(power, L.pa, QUAL_PA),
+          pa, ps};
+}
+/** 加重平均。値の無いものは飛ばす。全部無ければ 55。 */
+function blend(pairs){
+  let sum=0, weight=0;
+  pairs.forEach(([value,w])=>{
+    if(value===null||value===undefined||!isFinite(value)) return;
+    sum+=value*w; weight+=w;
+  });
+  return weight ? Math.round(sum/weight) : ABILITY_DEFAULT;
+}
+/** 弱い打球の割合(%)。 */
+function weakRate(S){
+  if(!S.n) return null;
+  const weak=S.bip.filter(r=>Number(r.exit_velocity)<153).length;
+  return 100*weak/S.n;
+}
+
+/**
+ * 守備と走塁の能力。パワプロ側で使う。
+ *
+ * <p>記録が少ないうちは {@link steady} で真ん中へ寄せる。
+ * 守備機会は打席よりずっと少ないので、5 機会を規定とする。
+ */
+const QUAL_CHANCE=5;
+
+function gloveAbility(name){
+  const F=fieldingLine(playOf(name,"field"));
+  const B=baserunLine(playOf(name,"run"));
+  const per=(value, n) => value===null||!n ? null : value/n;
+  // 記録が無い項目は 55(並)。打撃と同じ扱いにする。
+  // 走力。余分に進めた割合と、ダッシュを使った割合から。
+  const speed=B.plays
+    ? steady(blend([
+        [B.extraRate===null?null:ability(B.extraRate, 0, 70), 1.2],
+        [B.sprint===null?null:ability(B.sprint*100, 55, 100), 0.6]
+      ]), B.plays, QUAL_CHANCE)
+    : ABILITY_DEFAULT;
+  // 肩力。送球の速さそのもの。
+  const arm=F.arm===null ? ABILITY_DEFAULT
+    : steady(ability(F.arm, 95, 145), F.throws, QUAL_CHANCE);
+  // 守備力。打球にどれだけ追いつけたか。
+  const glove=F.chances
+    ? steady(ability(per(F.range,F.chances), -0.25, 0.25), F.chances, QUAL_CHANCE)
+    : ABILITY_DEFAULT;
+  // 捕球。落球の少なさ。外野のノーバウンド落球は 3 つぶんとして数えてある。
+  const hands=F.chances
+    ? steady(ability(F.dropWeight/F.chances, 0.6, 0.0), F.chances, QUAL_CHANCE)
+    : ABILITY_DEFAULT;
+  // 送球(コントロール)。悪送球の少なさ。
+  const control=F.throwAccuracy===null ? ABILITY_DEFAULT
+    : steady(ability(F.throwAccuracy, 55, 100), F.throws, QUAL_CHANCE);
+  // 走塁。走塁の値打ち。
+  const baserun=B.plays
+    ? steady(ability(per(B.runs,B.plays), -0.20, 0.25), B.plays, QUAL_CHANCE)
+    : ABILITY_DEFAULT;
+  return {F, B, speed, arm, glove, hands, control, baserun};
+}
+
+/** 打者の特殊能力。 */
+function batterSkills(name, A){
+  const basics=[], skills=[];
+  // チャンス。得点圏とそれ以外の wRC+ を比べる。
+  basics.push("チャンス " + basicRank(clutchSplit(name)));
+  basics.push("対左投手 D");
+  // 出場率から怪我のしにくさ。休まず出ているほど上。
+  const games=new Set(A.pa.map(r=>String(r.game_id))).size;
+  const all=gameIds().length;
+  basics.push("ケガしにくさ "
+    + (all ? (games/all>=0.9 ? "C" : games/all>=0.6 ? "D" : "E") : "D"));
+  basics.push("回復 C");
+  // 盗塁は記録の取りようが無いので並で置く
+  basics.push("盗塁 D");
+  const G=gloveAbility(name);
+  basics.push("走塁 " + basicRank(G.baserun));
+  basics.push("送球 " + basicRank(G.control));
+
+  if(A.L.hr>=1) skills.push({name:"パワーヒッター"});
+  if(A.L.avg!==null && A.L.avg>=0.400) skills.push({name:"アベレージヒッター"});
+  const spray=sprayLean(A.S, name);
+  if(spray==="oppo") skills.push({name:"広角打法"});
+  if(spray==="pull") skills.push({name:"引っ張り"});
+  // 選球眼は個性寄りなので緑
+  if(A.L.bbRate!==null && A.L.bbRate>=12) skills.push({name:"選球眼", green:true});
+  if(A.L.kRate!==null && A.L.kRate>=35) skills.push({name:"三振", bad:true});
+  return {basics, skills};
+}
+/** 得点圏とそれ以外の wRC+ の差から、チャンスの強さを 1〜100 で返す。 */
+function clutchSplit(name){
+  const rows=plateOf(name,"bat");
+  const scoring=rows.filter(r=>r.base2===true||r.base3===true);
+  const rest=rows.filter(r=>!(r.base2===true||r.base3===true));
+  if(scoring.length<3||rest.length<3) return ABILITY_DEFAULT;
+  const a=wrcPlus(line(scoring)), b=wrcPlus(line(rest));
+  if(a===null||b===null) return ABILITY_DEFAULT;
+  return ability(a-b, -60, 60);
+}
+function letterOf(value){
+  return " "+rank(value);
+}
+/**
+ * 引っ張りか広角か。
+ *
+ * <p>強い打球(153km/h 以上)がどちら側に多いかで見る。
+ * 右打席なら三塁側が引っ張り、左打席なら一塁側。
+ */
+function sprayLean(S, name){
+  const hard=S.bip.filter(r=>Number(r.exit_velocity)>=153 && isFinite(Number(r.spray_angle)));
+  if(hard.length<5) return "";
+  const right=String(stanceOf(name)||"R").toUpperCase()!=="L";
+  const pull=hard.filter(r=>{
+    const a=Number(r.spray_angle);
+    return right ? a<-8 : a>8;
+  }).length;
+  const oppo=hard.filter(r=>{
+    const a=Number(r.spray_angle);
+    return right ? a>8 : a<-8;
+  }).length;
+  if(pull>=hard.length*0.5 && pull>oppo*1.6) return "pull";
+  if(oppo>=hard.length*0.32 && oppo>=pull*0.8) return "oppo";
+  return "";
+}
+/** その打者の打席の左右。記録が無ければ空。 */
+function stanceOf(name){
+  const row=DATA.pitch.find(r=>r.batter===name && r.stance);
+  return row ? row.stance : "";
+}
+
+function pawaBatter(){
+  const A=batterAbility(PLAYER);
+  const skills=batterSkills(PLAYER, A);
+  const G=gloveAbility(PLAYER);
+  const L=A.L;
+  const arrow=trajectoryArrow(A.trajectory);
+  const hand=stanceOf(PLAYER)==="L" ? "左打" : stanceOf(PLAYER)==="R" ? "右打" : "—";
+  return `<section class="span"><div class="pad">
+    <div class="pawa">
+      ${pawaHead(PLAYER, L.pa + "打席",
+        `率 ${f3(L.avg)}　${L.hr}本${L.rbi}点　<b>投打</b>${hand}`)}
+      <div class="abwrap">
+        <div class="card">
+          ${abplain("弾道", A.trajectory, arrow)}
+          ${abrow("ミート", A.meet)}
+          ${abrow("パワー", A.power)}
+          ${abrow("走力", G.speed)}
+          ${abrow("肩力", G.arm)}
+          ${abrow("守備力", G.glove)}
+          ${abrow("捕球", G.hands)}
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:6px">
+          ${basicRow(skills.basics)}
+          ${skillGrid(skills.skills, 12)}
+        </div>
+      </div>
+    </div>
+  </div></section>`;
+}
+
+/* ------------------------------------------------------------ 打者 */
+function batterView(){
+  const pa=plateOf(PLAYER,"bat"), ps=pitchOf(PLAYER,"bat");
+  const L=line(pa), S=summarize(ps);
+  // 四死球と打席数も record から取る
+  const xwoba=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
+  const rows=[
+    ["xwOBA","期待出塁率","xwoba",xwoba,f3],
+    ["xBA","期待打率","xba",S.xba,f3],
+    ["xSLG","期待長打率","xslg",S.xslg,f3],
+    ["Avg Exit Velo","平均打球速度","ev",S.ev,f1],
+    ["Barrel %","バレル率","barrel",S.barrel,pc],
+    ["Hard Hit %","153km/h 以上","hard",S.hard,pc],
+    ["LA Sweet-Spot %","打球角 8〜32°","sweet",S.sweet,pc],
+    ["Chase %","ボール球スイング","chase",S.chase,pc],
+    ["Whiff %","スイングの空振り","whiff",S.whiff,pc],
+    ["K %","三振率","k",L.kRate,pc],
+    ["BB %","四球率","bb",L.bbRate,pc],
+    ["wRC+","得点創出力","wrc",wrcPlus(L),v=>String(Math.round(v))]
+  ];
+  const std=[
+    {head:"PA",get:L=>L.pa},{head:"AB",get:L=>L.ab},{head:"AVG",get:L=>f3(L.avg)},
+    {head:"HR",get:L=>L.hr},{head:"RBI",get:L=>L.rbi},{head:"H",get:L=>L.h},
+    {head:"BB",get:L=>L.bb},{head:"SO",get:L=>L.so}
+  ];
+  const adv=[
+    {head:"2B",get:L=>L.d2},{head:"3B",get:L=>L.d3},
+    {head:"K%",get:L=>pc(L.kRate)},{head:"BB%",get:L=>pc(L.bbRate)},
+    {head:"OBP",get:L=>f3(L.obp)},{head:"SLG",get:L=>f3(L.slg)},{head:"OPS",get:L=>f3(L.ops)}
+  ];
+  return `
+  <div class="col">
+    <section>
+      <div class="who"><div class="facebig">${face(PLAYER,64)}</div>
+        <div class="nm">${esc(PLAYER)}</div>
+        <div class="meta">打者 ｜ ${L.pa} 打席 ・ ${S.pitches} 球</div></div>
+      <div class="pad">
+        <div class="head">Standard</div>
+        ${pa.length? gameTable(pa,std) : '<div class="empty">打席の記録がありません</div>'}
+      </div>
+      <div class="pad" style="padding-top:0">
+        <div class="head">Advanced</div>
+        ${pa.length? gameTable(pa,adv) : ""}
+      </div>
+    </section>
+    <section><div class="pad">
+      <div class="head">ゾーン別<small>捕手目線</small></div>
+      <div class="zonewrap">${zoneGrid(ps)}
+        <div class="zlegend">上段が打率、下段は本塁打数と空振り率(空振り / スイング)。<br>
+          太枠の中がストライクゾーン。<br>色は打率の高さ。</div>
+      </div>
+    </div></section>
+  </div>
+
+  <div class="col">
+    <section>
+      <div class="title">SBG <b>Percentile</b> Rankings</div>
+      <div class="pad" style="padding-top:0">
+        <div class="head">Batting<small>${S.ab} 打数 (打球 ${S.n}) / ${S.pitches} 球</small></div>
+      </div>
+      ${pctLegend()}
+      ${rows.map(r=>prow(...r)).join("")}
+      ${fieldingPanel(PLAYER)}
+      <p class="note">上位何%かではなく、値そのものに 0〜100 の目盛りを割り当てています。右が良い側。
+        xBA / xSLG は打球速度と角度から 1 打球ずつ期待値を出して平均したもの、
+        xBA / xSLG は三振を期待値 0 の打数として分母に入れているので、実際の打率・長打率と比べられます。
+        xwOBA はそれに四死球を足して打席で割った期待出塁率です。
+        目盛りはリーグの実際の成績(打率 .351 / 出塁率 .388 / 長打率 .577)が真ん中に来るよう置いてあります。</p>
+      <div style="height:12px"></div>
+    </section>
+    <section><div class="pad">
+      <div class="head">打席一覧<small>record より</small></div>
+      ${paTable(ps,"pitcher")}
+    </div></section>
+  </div>
+
+  <div class="col">
+    <section><div class="pad">
+      <div class="head">Hits Spray Chart<small>${S.bip.length} 打球</small></div>
+      ${parkOverlayBox()}
+      <div class="spraywrap">
+        <svg id="spray" viewBox="0 0 320 306" role="img" aria-label="打球の落下地点" style="flex:1"></svg>
+        <div class="spraylegend">
+          <span><i class="dotmark" style="background:var(--single)"></i>SINGLE</span>
+          <span><i class="dotmark" style="background:var(--double)"></i>DOUBLE</span>
+          <span><i class="dotmark" style="background:var(--triple)"></i>TRIPLE</span>
+          <span><i class="dotmark" style="background:var(--homer)"></i>HOME RUN</span>
+        </div>
+      </div>
+    </div></section>
+    <section><div class="pad">
+      <div class="head">打席結果</div>${resultTable(L.counts,L.pa)}
+    </div></section>
+  </div>`;
+}
+
+/**
+ * record から打席の一覧を作る。
+ *
+ * <p>打席の最後の 1 球にだけ結果が入っているので、その行を並べる。
+ * 打球のデータはその 1 球のもの。四球や三振の行は打球の欄が空になる。
+ *
+ * @param other 相手の名前を引く列。打者なら pitcher、投手なら batter
+ */
+function paTable(rows, other){
+  // 新しい打席を上に
+  const ended=rows.filter(r=>r.result).slice().reverse();
+  if(!ended.length) return '<div class="empty">打席の記録がありません</div>';
+  return `<div class="palist"><table class="pafix">
+    <colgroup><col class="c-game"><col class="c-name"><col class="c-res">
+      <col class="c-num"><col class="c-num"><col class="c-num">
+      <col class="c-flag"><col class="c-num"><col class="c-num"></colgroup>
+    <thead><tr>
+      <th>試合</th><th>${other==="pitcher"?"投手":"打者"}</th><th>結果</th>
+      <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th><th>HR球場</th>
+    </tr></thead><tbody>
+    ${ended.map(r=>{
+      const ev=Number(r.exit_velocity), la=Number(r.launch_angle);
+      // インプレーになった球だけ打球として扱う。
+      // 三振や四球の行に、その前のファールの打球データが残っていることがある。
+      const hit=r.contact===true && r.call==="IN_PLAY" && isFinite(ev) && ev>0;
+      const kind=hit ? battedKind(ev,la) : null;
+      const x=hit ? battedExpectation(ev,la).ba : null;
+      // 登録してある球場のうち、この打球が柵を越える数
+      const parkNames=hit ? hrParkNames(Number(r.spray_angle), distanceOf(r)) : null;
+      const name=String(r[other]??"").trim();
+      return `<tr>
+        <td>${esc(gameLabel(r.game))}</td>
+        <td class="nm">${withFace(name,20)}</td>
+        <td class="res"><span class="rtag ${resultClass(r.result)}">${JA[r.result]||r.result}</span></td>
+        <td>${hit?f1(ev):"–"}</td>
+        <td>${hit?f1(la)+"°":"–"}</td>
+        <td>${hit?f1(distanceOf(r)):"–"}</td>
+        <td class="${kind==="バレル"?"yes":""}">${kind||"–"}</td>
+        <td>${x===null?"–":f3(x)}</td>
+        <td>${parkNames===null ? "–"
+          : `<span class="hrparks" title="${esc(parkNames.length
+              ? "本塁打になる球場\n" + parkNames.join("\n")
+              : "どの球場でも本塁打になりません")}">${parkNames.length}/${PARKS.length}</span>`}</td>
+      </tr>`;
+    }).join("")}
+  </tbody></table></div>`;
+}
+
+/** 打席結果の色分け。ヒット=青、四球=黄緑、三振=黄、それ以外のアウト=赤。 */
+function resultClass(result){
+  if(HIT.has(result)) return "r-hit";
+  if(result==="WALK"||result==="HIT_BY_PITCH") return "r-walk";
+  if(result==="STRIKE_OUT") return "r-k";
+  return "r-out";
+}
+
+function resultTable(counts,pa){
+  const order=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  if(!order.length) return '<div class="empty">記録がありません</div>';
+  return `<table><thead><tr><th>結果</th><th>数</th><th>割合</th></tr></thead><tbody>
+    ${order.map(([k,v])=>`<tr><td>${JA[k]||k}</td><td>${v}</td>
+      <td>${pa?(100*v/pa).toFixed(1)+"%":"—"}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function zoneGrid(rows){
+  const cell=Array.from({length:26},()=>({ab:0,h:0,hr:0,pa:0,swings:0,whiffs:0}));
+  rows.forEach(r=>{
+    const z=Number(r.zone); if(!(z>=1&&z<=25)) return;
+    const c=cell[z];
+    // 空振り率はその枠へ来た全部の球から。打席を終えた球だけでは足りない。
+    if(r.swing===true){ c.swings++; if(r.whiff===true) c.whiffs++; }
+    if(!r.result) return;
+    c.pa++;
+    if(!NOT_AB.has(r.result)) c.ab++;
+    if(HIT.has(r.result)) c.h++;
+    if(r.result==="HOME_RUN") c.hr++;
+  });
+  let html="";
+  for(let z=1;z<=25;z++){
+    const c=cell[z], avg=c.ab?c.h/c.ab:null;
+    const bg=c.pa===0?"var(--panel-2)":mix("--cold","--hot",Math.max(0,Math.min(1,(avg??0)/0.450)));
+    const whiff=c.swings ? Math.round(100*c.whiffs/c.swings) : null;
+    html+=`<div class="z${ZONE_IN.has(z)?" in":""}" style="background:${bg}"
+      title="ゾーン ${z} / ${c.pa} 打席 / ${c.swings} スイング ${c.whiffs} 空振り"><b>${c.ab?f3(avg):""}</b>
+      <i>${(c.hr?`HR${c.hr} `:"")+(whiff===null?"":whiff+"%")}</i></div>`;
+  }
+  return `<div class="zone">${html}</div>`;
+}
+
+/* ---------------------------------------------------------- 投手の能力
+   球速は 125km/h 固定。コントロールは与四球とストライク率、
+   スタミナは 1 試合あたりの投球回。変化球は使用率の上位 4 つ。 */
+
+/** 球種の名前から、変化の向きを引く表。 */
+const BREAK_DIRECTION={
+  right:["スライダー","カットボール","高速スライダー"],
+  lowRight:["カーブ","スローカーブ","スラーブ","パワーカーブ","ナックルカーブ","超スローカーブ"],
+  down:["フォーク","SFF","スプリット","チェンジアップ","縦スライダー"],
+  lowLeft:["シンカー","高速シンカー","超高速シンカー","サークルチェンジ"],
+  left:["シュート","高速シュート"],
+  up:["ファストボール","ツーシーム","ライズボール","ストレート","ツーシームファスト"]
+};
+/** 変化量を付けない球種(速球系)。 */
+const STRAIGHT=["ファストボール","ツーシーム","ライズボール","ストレート","ツーシームファスト"];
+
+/**
+ * その球種がどちらへ曲がるか。
+ *
+ * <p>表に無い名前は、実際に測った変化量から向きを決める。
+ */
+function breakDirection(name, rows){
+  for(const key in BREAK_DIRECTION){
+    if(BREAK_DIRECTION[key].some(x=>x===name)) return key;
+  }
+  const h=avgOf(rows,"h_break"), v=avgOf(rows,"v_break");
+  if(h===null&&v===null) return "down";
+  const hx=h||0, vy=v||0;
+  if(Math.abs(hx)<0.4 && vy>0.4) return "up";
+  if(Math.abs(hx)<0.4) return "down";
+  if(hx>0) return vy<-0.4 ? "lowRight" : "right";
+  return vy<-0.4 ? "lowLeft" : "left";
+}
+function avgOf(rows, key){
+  const values=rows.map(r=>Number(r[key])).filter(v=>isFinite(v));
+  return values.length ? values.reduce((a,b)=>a+b,0)/values.length : null;
+}
+
+/**
+ * 変化量。既定は 3。空振りを奪えていれば上がり、強い打球を許していれば下がる。
+ *
+ * <p>速球系と、上へ向かう球には付けない。
+ * 落ちない球はパワプロでも変化量を持たないため。
+ */
+function breakAmount(name, rows, dir){
+  if(STRAIGHT.some(x=>x===name)) return 0;
+  if(dir==="up" || dir==="upLeft" || dir==="upRight") return 0;
+  const swings=rows.filter(r=>r.swing===true).length;
+  const whiffs=rows.filter(r=>r.whiff===true).length;
+  const bip=rows.filter(r=>r.contact===true&&r.call==="IN_PLAY"&&Number(r.exit_velocity)>0);
+  let value=3;
+  if(swings>=4){
+    const rate=100*whiffs/swings;
+    value += rate>=40 ? 2 : rate>=28 ? 1 : rate<=10 ? -1 : 0;
+  }
+  if(bip.length>=4){
+    const hard=100*bip.filter(r=>Number(r.exit_velocity)>=153).length/bip.length;
+    value += hard<=45 ? 1 : hard>=80 ? -1 : 0;
+  }
+  return Math.max(1, Math.min(7, value));
+}
+
+function pitcherAbility(name){
+  const pa=plateOf(name,"pit"), ps=pitchOf(name,"pit");
+  const L=pitcherLine(pa), S=summarize(ps);
+  const games=new Set(pa.map(r=>String(r.game_id))).size;
+  // コントロール。与四球の少なさとストライク率。
+  const strikes=ps.filter(r=>r.in_zone===true).length;
+  const zoneRate=ps.length ? 100*strikes/ps.length : null;
+  const bb9=L.outs ? 27*L.bb/L.outs : null;
+  const control=blend([
+    [bb9===null?null:ability(bb9, 8.0, 0.5), 1.2],
+    [zoneRate===null?null:ability(zoneRate, 30, 68), 0.8*weightOf(ps.length, 60)]
+  ]);
+  // スタミナ。1 試合あたりの投球回。
+  const ipPerGame=games ? (L.outs/3)/games : null;
+  const stamina=ipPerGame===null?ABILITY_DEFAULT:ability(ipPerGame, 0.4, 4.0);
+  // 変化球。使用率の上位 4 つ。
+  const types=typeUsage(ps).slice(0,4).map(t=>{
+    const rows=ps.filter(r=>(r.type||"Normal")===t.name);
+    const dir=breakDirection(t.name, rows);
+    return {name:t.name, n:t.n, dir:dir, amount:breakAmount(t.name, rows, dir)};
+  });
+  // 規定投球回に届かないうちは、上も下も真ん中へ寄せる
+  return {L, S, games, types, pa, ps, bb9,
+          control:steady(control, L.outs, QUAL_IP*3),
+          stamina:steady(stamina, L.outs, QUAL_IP*3),
+          k9: L.outs ? 27*L.so/L.outs : null,
+          hr9: L.outs ? 27*L.hr/L.outs : null};
+}
+
+/** 投手の特殊能力。 */
+function pitcherSkills(name, A){
+  const basics=[], skills=[];
+  // 対ピンチ。走者が二塁以上のときとそれ以外の被 wRC+ を比べる。
+  basics.push("対ピンチ " + basicRank(splitWrc(A.pa, r=>r.base2===true||r.base3===true, true)));
+  // 対左打者。左打席と右打席での被 wRC+ を比べる。
+  basics.push("対左打者 " + basicRank(splitByStance(name)));
+  // 打たれ強さ。連打を許していないか。
+  basics.push("打たれ強さ " + basicRank(noStreak(A.pa)));
+  const all=gameIds().length;
+  basics.push("ケガしにくさ "
+    + (all ? (A.games/all>=0.9 ? "C" : A.games/all>=0.6 ? "D" : "E") : "D"));
+  // ノビ。上へ向かう球種の空振り率。
+  const rise=A.types.filter(t=>t.dir==="up").map(t=>t.name);
+  const riseRows=A.ps.filter(r=>rise.includes(r.type||"Normal"));
+  const riseSwings=riseRows.filter(r=>r.swing===true).length;
+  const riseWhiff=riseSwings ? 100*riseRows.filter(r=>r.whiff===true).length/riseSwings : null;
+  basics.push("ノビ "
+    + basicRank(riseWhiff===null ? ABILITY_DEFAULT : ability(riseWhiff, 8, 38)));
+  basics.push("クイック D");
+  basics.push("回復 D");
+
+  if(A.k9!==null && A.k9>=10) skills.push({name:"奪三振"});
+  // ゴロを打たせるのは個性寄りなので緑
+  if(A.S.gb!==null && A.S.gb>=45) skills.push({name:"ゴロピッチャー", green:true});
+  else if(A.S.gb!==null && A.S.gb<=22) skills.push({name:"フライボールピッチャー", green:true});
+  if(A.hr9!==null && A.hr9>=1) skills.push({name:"一発", bad:true});
+  if(A.bb9!==null && A.bb9>=2) skills.push({name:"四球", bad:true});
+  if(slowStarter(A.pa)) skills.push({name:"スロースターター", bad:true});
+  return {basics, skills};
+}
+/** 条件に当てはまる打席とそれ以外で、被 wRC+ を比べる。 */
+function splitWrc(rows, test, lowerIsBetter){
+  const a=rows.filter(test), b=rows.filter(r=>!test(r));
+  if(a.length<3||b.length<3) return ABILITY_DEFAULT;
+  const wa=wrcPlus(line(a)), wb=wrcPlus(line(b));
+  if(wa===null||wb===null) return ABILITY_DEFAULT;
+  const diff=lowerIsBetter ? wb-wa : wa-wb;
+  return ability(diff, -60, 60);
+}
+/** 左打者と右打者での被 wRC+ を比べる。 */
+function splitByStance(name){
+  const stance={};
+  DATA.pitch.forEach(r=>{ if(r.batter&&r.stance) stance[r.batter]=r.stance; });
+  const rows=plateOf(name,"pit");
+  return splitWrc(rows, r=>stance[r.batter]==="L", true);
+}
+/**
+ * 連打を許していないか。
+ *
+ * <p>安打の直後の打席でまた打たれた割合を見る。低いほど粘り強い。
+ */
+function noStreak(rows){
+  let chances=0, hits=0;
+  for(let i=1;i<rows.length;i++){
+    if(!HIT.has(rows[i-1].result)) continue;
+    chances++;
+    if(HIT.has(rows[i].result)) hits++;
+  }
+  if(chances<4) return ABILITY_DEFAULT;
+  return ability(100*hits/chances, 70, 15);
+}
+/** 1 回の成績が 2 回以降より悪いか。 */
+function slowStarter(rows){
+  const first=rows.filter(r=>Number(r.inning)===1);
+  const rest=rows.filter(r=>Number(r.inning)>1);
+  if(first.length<4||rest.length<4) return false;
+  const a=line(first), b=line(rest);
+  return a.obp!==null && b.obp!==null && a.obp-b.obp>=0.080;
+}
+
+/**
+ * 変化球を放射状の図で見せる。
+ *
+ * <p>中心のボールから、その向きへ変化量のぶんだけ段を積む。
+ * 球種の名前は段の先に書く。
+ */
+function breakCompass(types){
+  const W=320, H=230, cx=W/2, cy=H/2;
+  // 向きごとの角度(度。0 が右、下が正)
+  const DEG={up:-90, upRight:-45, right:0, lowRight:45,
+             down:90, lowLeft:135, left:180, upLeft:-135};
+  // 変化量の段ごとの色。外へ行くほど強い色になる
+  const STEP=["#ffb03a","#ffbe4d","#ffd93d","#ffd93d","#ffa62b","#ff7a2e","#ff4d2e"];
+  const TIP="#ff2d2d";
+  // 同じ向きの球が重ならないように、向きごとに扇状へ散らす
+  const bucket={};
+  types.forEach(t=>{ (bucket[t.dir]=bucket[t.dir] || []).push(t); });
+  let g="";
+  Object.keys(bucket).forEach(dir=>{
+    const list=bucket[dir], base=DEG[dir]===undefined ? 90 : DEG[dir];
+    // 2 本以上あるときは角度を広げ、名前の位置も前後へずらす
+    const spread=list.length>1 ? 34 : 0;
+    list.forEach((t, i)=>{
+      const deg=base + (i - (list.length-1)/2) * spread;
+      const rad=deg*Math.PI/180, ux=Math.cos(rad), uy=Math.sin(rad);
+      for(let k=1;k<t.amount;k++){
+        const x=cx+ux*(10+k*9), y=cy+uy*(10+k*9);
+        g+=`<rect x="${(x-4.5).toFixed(1)}" y="${(y-4).toFixed(1)}" width="9" height="8"
+            rx="1" fill="${STEP[Math.min(k, STEP.length)-1]}"
+            stroke="#1d6fb8" stroke-width="1.2"
+            transform="rotate(${deg.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+      }
+      // 先は矢じり。変化量が無い球は中心のすぐ外に置く
+      const tipAt=t.amount ? 10+t.amount*9 : 15;
+      const tx=cx+ux*tipAt, ty=cy+uy*tipAt;
+      g+=`<path d="M7,0 L-4,-5.5 L-4,5.5 Z" fill="${TIP}"
+          transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) rotate(${deg.toFixed(0)})"/>`;
+      // 名前。同じ向きが並ぶときは一本ごとに遠さを変えて重なりを避ける
+      const reach=tipAt + 13 + (list.length>1 ? (i%2)*13 : 0);
+      const lx=cx+ux*reach, ly=cy+uy*reach+4;
+      const anchor=ux>0.25 ? "start" : ux<-0.25 ? "end" : "middle";
+      g+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}"
+          font-size="10.5" font-weight="700" fill="#1d6fb8">${esc(t.name)}</text>`;
+    });
+  });
+  g+=`<circle cx="${cx}" cy="${cy}" r="10" fill="#fff" stroke="#e02020" stroke-width="2"/>
+      <path d="M${cx-6} ${cy-7} A 12 12 0 0 1 ${cx-6} ${cy+7}
+        M${cx+6} ${cy-7} A 12 12 0 0 0 ${cx+6} ${cy+7}"
+        fill="none" stroke="#e02020" stroke-width="1.4"/>`;
+  if(!types.length){
+    g+=`<text x="${cx}" y="${cy+36}" text-anchor="middle" font-size="11"
+        fill="#8aa7bd">変化球の記録がありません</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;margin-top:6px;
+      overflow:visible" role="img" aria-label="変化球">${g}</svg>`;
+}
+
+/** 変化球の向きを 3×3 の升目で見せる。 */
+function breakGrid(types){
+  const at={upLeft:"",up:"",upRight:"",left:"",mid:"",right:"",
+            lowLeft:"",down:"",lowRight:""};
+  types.forEach(t=>{
+    if(t.amount<=0) return;
+    at[t.dir]=Math.max(Number(at[t.dir])||0, t.amount);
+  });
+  const cell=key=>`<div class="${at[key]?"on":""}">${at[key]||""}</div>`;
+  return `<div class="breaks">
+    ${cell("upLeft")}${cell("up")}${cell("upRight")}
+    ${cell("left")}<div class="mid">球</div>${cell("right")}
+    ${cell("lowLeft")}${cell("down")}${cell("lowRight")}
+  </div>`;
+}
+
+function pawaPitcher(){
+  const A=pitcherAbility(PLAYER);
+  const skills=pitcherSkills(PLAYER, A);
+  const L=A.L;
+  return `<section class="span"><div class="pad">
+    <div class="pawa">
+      ${pawaHead(PLAYER, A.games + "試合",
+        `防 ${f2(L.era)}　${L.so}奪三振　<b>投球回</b>${ipText(L.outs)}`)}
+      <div class="abwrap">
+        <div class="card">
+          ${abplain("球速", "125 km/h")}
+          ${abrow("コントロール", A.control)}
+          ${abrow("スタミナ", A.stamina)}
+          ${breakCompass(A.types)}
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:6px">
+          ${basicRow(skills.basics)}
+          ${skillGrid(skills.skills, 12)}
+        </div>
+      </div>
+    </div>
+  </div></section>`;
+}
+
+/* ------------------------------------------------------------ 投手 */
+function pitcherView(){
+  const pa=plateOf(PLAYER,"pit"), ps=pitchOf(PLAYER,"pit");
+  const L=pitcherLine(pa), S=summarize(ps);
+  const xw=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
+  const xera=xw===null?null:Math.max(0,(xw-0.300)*30.0);
+  const rows=[
+    ["xERA","期待防御率","xera",xera,f1],
+    ["xBA","被期待打率","xba_p",S.xba,f3],
+    ["Avg Exit Velo","被打球の平均速度","ev_p",S.ev,f1],
+    ["Chase %","ボール球を振らせた","chase_p",S.chase,pc],
+    ["Whiff %","スイングの空振り","whiff_p",S.whiff,pc],
+    ["K %","奪三振率","k_p",L.kRate,pc],
+    ["BB %","与四球率","bb_p",L.bbRate,pc],
+    ["Barrel %","被バレル率","barrel_p",S.barrel,pc],
+    ["Hard Hit %","被 153km/h 以上","hard_p",S.hard,pc],
+    ["GB %","ゴロ率","gb",S.gb,pc]
+  ];
+  const std=[
+    {head:"IP",  get:L=>ipText(L.outs)},
+    {head:"W",   get:(L,g)=>g?decisionFor(g,PLAYER,"win"):decisionTotal(PLAYER,"win")},
+    {head:"L",   get:(L,g)=>g?decisionFor(g,PLAYER,"lose"):decisionTotal(PLAYER,"lose")},
+    {head:"SV",  get:(L,g)=>g?reliefFor(g,PLAYER,"save"):reliefTotal(PLAYER,"save")},
+    {head:"HLD", get:(L,g)=>g?reliefFor(g,PLAYER,"hold"):reliefTotal(PLAYER,"hold")},
+    {head:"SO",  get:L=>L.so},
+    {head:"BB",  get:L=>L.bb},
+    {head:"R",   get:L=>L.runs},
+    {head:"ERA", get:L=>f2(L.era)}
+  ];
+  const adv=[
+    {head:"K%",   get:L=>pc(L.kRate)},
+    {head:"BB%",  get:L=>pc(L.bbRate)},
+    {head:"WHIP", get:L=>f2(L.whip)},
+    {head:"OPS",  get:L=>f3(L.ops)},
+    {head:"TBF",  get:L=>L.pa},
+    {head:"H",    get:L=>L.h},
+    {head:"HR",   get:L=>L.hr}
+  ];
+  const types=typeUsage(ps);
+  return `
+  <div class="col">
+    <section>
+      <div class="who"><div class="facebig">${face(PLAYER,64)}</div>
+        <div class="nm">${esc(PLAYER)}</div>
+        <div class="meta">投手 ｜ ${L.pa} 打者 ・ ${S.pitches} 球</div></div>
+      <div class="pad">
+        <div class="head">Standard</div>
+        ${pa.length? gameTable(pa,std,pitcherLine) : '<div class="empty">対戦の記録がありません</div>'}
+      </div>
+      <div class="pad" style="padding-top:0">
+        <div class="head">Advanced</div>
+        ${pa.length? gameTable(pa,adv,pitcherLine) : ""}
+      </div>
+    </section>
+    <section><div class="pad">
+      <div class="head">Pitch Usage<small>${S.pitches} 球</small></div>
+      ${types.length? `<table class="usage"><tbody>
+        ${types.map((t,i)=>`<tr>
+          <td class="pillcell"><span class="ptype">
+            <span class="pdot" style="background:${TYPE_COLORS[i%TYPE_COLORS.length]}"></span>
+            ${esc(t.name)}</span></td>
+          <td style="width:100%"><span class="ubar">
+            <i style="width:${(100*t.n/S.pitches).toFixed(0)}%;
+               background:${TYPE_COLORS[i%TYPE_COLORS.length]}"></i></span></td>
+          <td>${(100*t.n/S.pitches).toFixed(0)}%</td>
+          <td>${f1(t.ev)}</td>
+        </tr>`).join("")}
+      </tbody></table>
+      <p class="note" style="padding:8px 0 0">右の 2 列は使用率と平均球速(km/h)。</p>`
+      : '<div class="empty">投球の記録がありません</div>'}
+    </div></section>
+  </div>
+
+  <div class="col">
+    <section>
+      <div class="title">SBG <b>Percentile</b> Rankings</div>
+      <div class="pad" style="padding-top:0">
+        <div class="head">Pitching<small>${S.ab} 被打数 (被打球 ${S.n}) / ${S.pitches} 球</small></div>
+      </div>
+      ${pctLegend()}
+      ${rows.map(r=>prow(...r)).join("")}
+      <p class="note">上位何%かではなく、値そのものに 0〜100 の目盛りを割り当てています。右が良い側。
+        xERA は被打球の期待値と与四球から出しています。</p>
+      <div style="height:12px"></div>
+    </section>
+    <section><div class="pad">
+      <div class="head">被打席一覧<small>record より</small></div>
+      ${paTable(ps,"batter")}
+    </div></section>
+  </div>
+
+  <div class="col">
+    <section><div class="pad">
+      <div class="head">投球位置<small>${located(ps).length} 球</small></div>
+      <div class="locwrap">
+        <svg id="loc" viewBox="0 0 250 270" role="img" aria-label="投球の位置" style="flex:1"></svg>
+        <div class="loclegend">${typeUsage(ps).slice(0,7).map((t,i)=>
+          `<span><i style="background:${TYPE_COLORS[i%TYPE_COLORS.length]}"></i>${esc(t.name)}</span>`).join("")}
+        </div>
+      </div>
+      <p class="note" style="padding:9px 0 0">
+        捕手目線。太枠がストライクゾーン。丸の色が球種。</p>
+    </div></section>
+    <section><div class="pad">
+      <div class="head">球種別コース<small>使用率上位 4 球種</small></div>
+      <div class="heats" id="heats"></div>
+      <p class="note" style="padding:10px 0 0">
+        捕手目線。太枠の中がストライクゾーン。色が濃いほどそこへ多く投げている。<br>
+        5×5 のマスではなく、1 球ごとの通過点から density を出して描いています。</p>
+    </div></section>
+  </div>`;
+}
+
+function typeUsage(rows){
+  const map={};
+  rows.forEach(r=>{
+    const t=r.type||"Normal";
+    const o=map[t]||(map[t]={name:t,n:0,ev:0,swings:0,whiffs:0,zones:Array(26).fill(0)});
+    o.n++; o.ev+=Number(r.velocity)||0;
+    if(r.swing===true) o.swings++;
+    if(r.whiff===true) o.whiffs++;
+    const z=Number(r.zone); if(z>=1&&z<=25) o.zones[z]++;
+  });
+  return Object.values(map).sort((a,b)=>b.n-a.n).map(o=>({...o, ev:o.ev/o.n}));
+}
+/**
+ * 本塁の面を通った位置が分かっている球。
+ *
+ * <p>打たれた球はバットに当たった時点で消えるので、
+ * 面まで届かず位置が取れないものがある。それは 0,0 で残っている。
+ */
+function located(rows){
+  return rows.filter(r=>{
+    const x=Number(r.plate_x), y=Number(r.plate_y);
+    return isFinite(x) && isFinite(y) && (x!==0 || y!==0);
+  });
+}
+/**
+ * 投球の位置を 1 球ずつ点で打つ。
+ *
+ * <p>5×5 のゾーンに丸めず、記録してある plate_x / plate_y をそのまま使う。
+ * ゾーンの箱は config の Strike_Zone_* と同じ寸法で描いている。
+ */
+function drawLoc(){
+  const svg=document.getElementById("loc"); if(!svg) return;
+  const rows=located(pitchOf(PLAYER,"pit"));
+  // ストライクゾーンの箱(config の既定値)
+  const ZW=0.6, ZB=0.5, ZT=1.7;
+  const cx=125, cy=150;                      // 本塁の中心
+  const scale=76;                            // 1m あたりの点数
+  const X=x=>cx+x*scale, Y=y=>cy-(y-(ZB+ZT)/2)*scale;
+  const box={l:X(-ZW), r:X(ZW), t:Y(ZT), b:Y(ZB)};
+  let g="";
+  // ゾーンの外側の目安(ボール 1 個ぶん外)
+  g+=`<rect x="${(box.l-14).toFixed(1)}" y="${(box.t-14).toFixed(1)}"
+      width="${(box.r-box.l+28).toFixed(1)}" height="${(box.b-box.t+28).toFixed(1)}"
+      fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>`;
+  g+=`<rect x="${box.l.toFixed(1)}" y="${box.t.toFixed(1)}"
+      width="${(box.r-box.l).toFixed(1)}" height="${(box.b-box.t).toFixed(1)}"
+      fill="var(--panel-2)" stroke="var(--text)" stroke-width="1.6"/>`;
+  // 3 分割の薄い線
+  for(let i=1;i<3;i++){
+    const x=box.l+(box.r-box.l)*i/3, y=box.t+(box.b-box.t)*i/3;
+    g+=`<line x1="${x.toFixed(1)}" y1="${box.t}" x2="${x.toFixed(1)}" y2="${box.b}"
+        stroke="var(--line)"/>`;
+    g+=`<line x1="${box.l}" y1="${y.toFixed(1)}" x2="${box.r}" y2="${y.toFixed(1)}"
+        stroke="var(--line)"/>`;
+  }
+  // 本塁ベース
+  const hp=cy+82;
+  g+=`<path d="M ${cx-26} ${hp} L ${cx+26} ${hp} L ${cx+26} ${hp+9}
+      L ${cx} ${hp+16} L ${cx-26} ${hp+9} Z"
+      fill="none" stroke="var(--line)"/>`;
+  // 球種ごとに色を振る。使用率の並びは球種別コースと同じ。
+  const order={};
+  typeUsage(pitchOf(PLAYER,"pit")).forEach((t,i)=>{ order[t.name]=i; });
+  rows.forEach(r=>{
+    const i=order[r.type||"Normal"]||0;
+    const color=TYPE_COLORS[i%TYPE_COLORS.length];
+    const x=X(Number(r.plate_x)), y=Y(Number(r.plate_y));
+    g+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.6"
+        fill="${color}" stroke="var(--panel)" stroke-width="1.2" fill-opacity="0.85">
+        <title>${esc(r.type||"Normal")} ${f1(Number(r.velocity))}km/h / ${JA[r.call]||r.call||""}</title>
+      </circle>`;
+  });
+  svg.innerHTML=g || '<text x="125" y="140" text-anchor="middle" fill="var(--muted)" font-size="12">位置の記録がありません</text>';
+}
+function drawHeats(){
+  const box=document.getElementById("heats"); if(!box) return;
+  const all=pitchOf(PLAYER,"pit");
+  const types=typeUsage(all).slice(0,4);
+  if(!types.length){ box.innerHTML='<div class="empty">投球の記録がありません</div>'; return; }
+  box.innerHTML=types.map((t,i)=>{
+    const rows=located(all.filter(r=>(r.type||"Normal")===t.name));
+    return `<div class="heat"><h3><span style="display:inline-flex;align-items:center;gap:6px">
+        <span class="pdot" style="background:${TYPE_COLORS[i%TYPE_COLORS.length]};width:18px;height:11px"></span>
+        ${esc(t.name)}</span><span>${rows.length} 球</span></h3>
+      ${densityChart(rows, "h"+i)}</div>`;
+  }).join("");
+}
+
+/* ------------------------------------------------------ コースの分布図
+   5×5 のマスに丸めず、記録してある plate_x / plate_y から密度を出して描く。
+   1 球ごとに釣鐘状の山を置いて足し合わせ(カーネル密度)、
+   濃さで段階を付けたものを並べる。 */
+/** ストライクゾーンの箱(config の既定値と同じ)。 */
+const ZONE={w:0.6, bottom:0.5, top:1.7};
+/** 1m を何ポイントで描くか。 */
+const PLATE_SCALE=75;
+/** 山の広がり(m)。小さくすると点が散り、大きくすると滑らかになる。 */
+const KDE_BANDWIDTH=0.13;
+/** 濃さの段数。 */
+const KDE_BANDS=7;
+
+function densityChart(rows, id){
+  const W=200, H=230, cell=5;
+  const cx=W/2, mid=(ZONE.bottom+ZONE.top)/2, cy=H/2;
+  const X=x=>cx+x*PLATE_SCALE, Y=y=>cy-(y-mid)*PLATE_SCALE;
+  // 枠線とベースは球が無くても描く
+  let dens="";
+  if(rows.length){
+    const h2=2*KDE_BANDWIDTH*KDE_BANDWIDTH;
+    const cols=Math.ceil(W/cell), lines=Math.ceil(H/cell);
+    const grid=new Float64Array(cols*lines);
+    let peak=0;
+    for(let r=0;r<lines;r++){
+      for(let c=0;c<cols;c++){
+        // マスの中心を m に戻す
+        const mx=((c+0.5)*cell-cx)/PLATE_SCALE;
+        const my=mid-((r+0.5)*cell-cy)/PLATE_SCALE;
+        let sum=0;
+        for(const row of rows){
+          const dx=Number(row.plate_x)-mx, dy=Number(row.plate_y)-my;
+          sum+=Math.exp(-(dx*dx+dy*dy)/h2);
+        }
+        grid[r*cols+c]=sum;
+        if(sum>peak) peak=sum;
+      }
+    }
+    if(peak>0){
+      for(let r=0;r<lines;r++){
+        for(let c=0;c<cols;c++){
+          const t=grid[r*cols+c]/peak;
+          if(t<0.08) continue;
+          // 段に丸めると、等高線のような見た目になる
+          const band=Math.min(KDE_BANDS, Math.ceil(t*KDE_BANDS));
+          const k=band/KDE_BANDS;
+          const color=k<0.62 ? "var(--cold)" : mix("--cold","--hot",(k-0.62)/0.38);
+          dens+=`<rect x="${c*cell}" y="${r*cell}" width="${cell}" height="${cell}"
+              fill="${color}" fill-opacity="${(0.10+0.78*Math.min(1,k/0.62)).toFixed(2)}"/>`;
+        }
+      }
+    }
+  }
+  // 密度はぼかして滑らかにし、枠線は輪郭のまま重ねる
+  let g=`<rect x="0" y="0" width="${W}" height="${H}" fill="var(--panel-2)" rx="4"/>
+    <g style="filter:blur(2.4px)">${dens}</g>`;
+  const l=X(-ZONE.w), r=X(ZONE.w), t=Y(ZONE.top), b=Y(ZONE.bottom);
+  for(let i=1;i<3;i++){
+    const gx=l+(r-l)*i/3, gy=t+(b-t)*i/3;
+    g+=`<line x1="${gx.toFixed(1)}" y1="${t.toFixed(1)}" x2="${gx.toFixed(1)}" y2="${b.toFixed(1)}"
+        stroke="var(--line)"/>`;
+    g+=`<line x1="${l.toFixed(1)}" y1="${gy.toFixed(1)}" x2="${r.toFixed(1)}" y2="${gy.toFixed(1)}"
+        stroke="var(--line)"/>`;
+  }
+  g+=`<rect x="${l.toFixed(1)}" y="${t.toFixed(1)}" width="${(r-l).toFixed(1)}"
+      height="${(b-t).toFixed(1)}" fill="none" stroke="var(--text)" stroke-width="1.6"/>`;
+  // 本塁ベース(捕手目線)
+  const hp=Y(ZONE.bottom)+26;
+  g+=`<path d="M ${(cx-26)} ${hp} L ${(cx+26)} ${hp} L ${(cx+26)} ${hp+9}
+      L ${cx} ${hp+17} L ${(cx-26)} ${hp+9} Z"
+      fill="var(--panel)" stroke="var(--line)"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="コースの分布">${g}</svg>`;
+}
+
+/* --------------------------------------------------------- 打球分布 */
+function sprayColor(res){
+  if(res==="HOME_RUN") return "var(--homer)";
+  if(res==="TRIPLE") return "var(--triple)";
+  if(res==="DOUBLE") return "var(--double)";
+  if(res==="SINGLE") return "var(--single)";
+  return "var(--out)";
+}
+/** 球場の大きさ(m)。両翼・左右中間・中堅。測った球場が無いときの既定。 */
+const FENCE={line:100, alley:116, center:122};
+/** stadium.yml から読んだ球場。dist は -45 度から 1 度刻みで 91 個。 */
+const PARKS=[];
+/** チャートに使う球場の名前。空なら既定の形。 */
+let PARK="";
+/** フェンスを重ねて描く球場の名前。 */
+const OVERLAY=new Set();
+/** 球場オーバーレイの一覧を開いているか。描き直しても畳まれないよう覚えておく。 */
+let OVERLAY_OPEN=false;
+/** 重ねる球場の色。読み込んだ順に振る。 */
+const PARK_COLORS=["#e8552b","#2e8bff","#25a55f","#c14fd6",
+                   "#e0a600","#00b3b3","#ff77a8","#7a5cff"];
+function parkColor(i){ return PARK_COLORS[i%PARK_COLORS.length]; }
+
+/** チャートの上に置く、重ねる球場を選ぶ一覧。 */
+function parkOverlayBox(){
+  if(!PARKS.length) return "";
+  return `<details class="parkbox" id="parkbox"${OVERLAY_OPEN?" open":""}>
+    <summary>球場オーバーレイ<small>${overlayNote()}</small></summary>
+    <div class="parklist">${PARKS.map((p,i)=>`<label>
+      <input type="checkbox" data-park="${esc(p.name)}"${OVERLAY.has(p.name)?" checked":""}>
+      <i style="background:${parkColor(i)}"></i><b>${esc(p.name)}</b>
+      <small>${Math.round(fenceOf(p,-45))}/${Math.round(fenceOf(p,0))}/${Math.round(fenceOf(p,45))}</small>
+    </label>`).join("")}</div>
+  </details>`;
+}
+function overlayNote(){
+  return OVERLAY.size ? OVERLAY.size+" 球場を重ねています" : PARKS.length+" 球場";
+}
+/** 今チャートに重ねる球場。読み込んだ順に色が決まる。 */
+function overlayParks(){
+  return PARKS.map((p,i)=>({park:p, color:parkColor(i)}))
+              .filter(o=>OVERLAY.has(o.park.name));
+}
+function parkOf(name){ return PARKS.find(p=>p.name===name)||null; }
+function activePark(){ return parkOf(PARK); }
+/** その球場の、その方向のフェンスまでの距離。park が null なら既定の形。 */
+function fenceOf(park,deg){
+  if(!park) return fenceAt(deg);
+  const a=Math.max(-45,Math.min(45,deg))+45;
+  const lo=Math.floor(a), hi=Math.min(90,lo+1), t=a-lo;
+  return park.dist[lo]*(1-t)+park.dist[hi]*t;
+}
+/**
+ * 測り損ねた方向をならす。
+ *
+ * <p>フェンスに 1 ブロックでも隙間があると、そこだけレーダーが抜けて
+ * ずっと先の壁まで飛んでしまう。フェンスは 1 度刻みで見れば滑らかなので、
+ * 周りから大きく飛び出た値は測れなかったものとして扱う。
+ *
+ * <p>直し方は「両隣の平均」。2 つ以上続けて測れなかったときは
+ * 平均を取る相手がいないので、近いほうの生きている値をそのまま使う。
+ */
+const SPIKE_MARGIN=15;
+function despike(dist, heights){
+  const median=(a,i,span)=>{
+    const w=a.slice(Math.max(0,i-span), Math.min(a.length,i+span+1)).slice().sort((x,y)=>x-y);
+    return w[w.length>>1];
+  };
+  // 隙間を抜けて遠くを拾った方向も、手前の物を拾った方向も直す
+  const bad=dist.map((v,i)=>Math.abs(v-median(dist,i,3))>SPIKE_MARGIN);
+  const from=dist.slice(), fromH=heights.slice();
+  for(let i=0;i<dist.length;i++){
+    if(!bad[i]) continue;
+    let l=i-1; while(l>=0&&bad[l]) l--;
+    let r=i+1; while(r<dist.length&&bad[r]) r++;
+    const single = !(i>0&&bad[i-1]) && !(i+1<dist.length&&bad[i+1]);
+    const pick=a=>{
+      if(l<0&&r>=a.length) return a[i];
+      if(l<0) return a[r];
+      if(r>=a.length) return a[l];
+      return single ? (a[l]+a[r])/2 : (i-l<=r-i ? a[l] : a[r]);
+    };
+    dist[i]=pick(from);
+    heights[i]=pick(fromH);
+  }
+}
+
+/** その球場のフェンスの高さ。測っていなければ空文字。 */
+function wallOf(park){
+  const seen=(park&&park.heights||[]).filter(v=>v>0);
+  if(!seen.length) return "";
+  return `, 壁${(seen.reduce((a,b)=>a+b,0)/seen.length).toFixed(1)}m`;
+}
+/** 実測のブロックを持っているか。 */
+const measured=park=>!!(park&&park.pts&&park.pts.length);
+
+/**
+ * 登録した球場のうち、その打球が本塁打になる数。
+ * 球場を 1 つも読み込んでいなければ null。
+ */
+/** その打球が本塁打になる球場の名前。球場を読み込んでいなければ null。 */
+function hrParkNames(deg,d){
+  if(!PARKS.length||!(d>0)||!isFinite(deg)||Math.abs(deg)>45) return null;
+  return PARKS.filter(p=>d>=fenceOf(p,deg)).map(p=>p.name);
+}
+/** その方向のフェンスまでの距離。3 点を滑らかに繋ぐ。 */
+function fenceAt(deg){
+  const a=Math.min(45,Math.abs(deg));
+  const ease=(from,to,t)=>from+(to-from)*(1-Math.cos(Math.PI*t))/2;
+  return a<=22.5 ? ease(FENCE.center,FENCE.alley,a/22.5)
+                 : ease(FENCE.alley,FENCE.line,(a-22.5)/22.5);
+}
+
+/**
+ * 飛距離。記録が無い打球は、打球速度と角度から見積もる。
+ * 柵越えのように球を消してしまう打球は、飛距離が 0 で残っていることがある。
+ */
+function distanceOf(r){
+  const d=Number(r.distance);
+  if(d>0) return d;
+  const ev=Number(r.exit_velocity), la=Number(r.launch_angle);
+  if(!isFinite(ev)||!isFinite(la)) return 0;
+  // 斜方投射の到達距離。空気抵抗のぶんを掛けて実測に寄せる
+  const v=ev/3.6, a=Math.max(-45,Math.min(89,la))*Math.PI/180;
+  return Math.max(0, v*v*Math.sin(2*a)/9.8*0.62);
+}
+/**
+ * フェンスをなぞる線。
+ *
+ * <p>ブロックの座標を持っている球場は、測った点をそのまま繋ぐので
+ * 出っ張りや窪みがそのまま出る。持っていなければ 1 度刻みの表から引く。
+ */
+/**
+ * フェンスの点をならす。
+ *
+ * <p>ブロック単位で測っているので、隣り合う点は 1 ブロックぶん飛び飛びに並ぶ。
+ * 前後 2 点ずつの平均を取って、線として見えるようにする。
+ * 出っ張りや窪みは残るくらいの弱さにしてある。
+ */
+function smoothPts(pts){
+  if(pts.length<5) return pts;
+  const span=2;
+  return pts.map((pt,i)=>{
+    let sum=0, n=0;
+    for(let k=Math.max(0,i-span); k<=Math.min(pts.length-1,i+span); k++){ sum+=pts[k].d; n++; }
+    return {ang:pt.ang, d:sum/n, h:pt.h};
+  });
+}
+function fencePath(park,P,cx,cy){
+  let d=`M ${cx} ${cy}`;
+  if(park && park.pts && park.pts.length){
+    // 点はブロックの中心なので、そのまま繋ぐと 1 ブロックぶんの階段になる。
+    // 前後の点と均してから繋ぐと、実際のフェンスの曲がりに見える。
+    const pts=smoothPts(park.pts);
+    pts.forEach(pt=>{
+      const [x,y]=P(pt.ang, pt.d);
+      d+=` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+    });
+    return d;
+  }
+  for(let a=-45;a<=45;a+=(park?1:1.5)){
+    const [x,y]=P(a,fenceOf(park,a));
+    d+=` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }
+  return d;
+}
+function drawSpray(){
+  const svg=document.getElementById("spray"); if(!svg) return;
+  // チャートに載せるのは安打だけ
+  const bip=summarize(pitchOf(PLAYER,"bat")).bip
+    .filter(r=>HIT.has(r.result))
+    .map(r=>({...r, _d:distanceOf(r)}))
+    .filter(r=>r._d>0);
+  const cx=160, cy=278;
+  const park=activePark();
+  const F=deg=>fenceOf(park,deg);
+  const layers=overlayParks();
+  const maxD=Math.max(F(0)+8,
+    ...layers.map(o=>Math.max(...o.park.dist)+8),
+    ...(park?[Math.max(...park.dist)+8]:[]),
+    ...bip.map(r=>r._d));
+  const scale=248/maxD;
+  const P=(deg,d)=>{const a=deg*Math.PI/180;
+    return [cx+Math.sin(a)*d*scale, cy-Math.cos(a)*d*scale];};
+  const arc=d=>{const [x1,y1]=P(-45,d),[x2,y2]=P(45,d);
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${(d*scale).toFixed(1)} ${(d*scale).toFixed(1)} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;};
+
+  // フェンスの形。ブロックを測ってあるならその通りに、無ければ滑らかな曲線で
+  const fence=fencePath(park,P,cx,cy)+" Z";
+  let g=`<path d="${fence}" fill="var(--grass)" stroke="var(--line)" stroke-width="1.5"/>`;
+  // 内野
+  g+=`<path d="M ${cx} ${cy} L ${P(-45,38)[0].toFixed(1)} ${P(-45,38)[1].toFixed(1)}
+      L ${P(0,54)[0].toFixed(1)} ${P(0,54)[1].toFixed(1)}
+      L ${P(45,38)[0].toFixed(1)} ${P(45,38)[1].toFixed(1)} Z"
+      fill="var(--dirt)" stroke="var(--line)" stroke-opacity=".7"/>`;
+  // 距離の目安。フェンスの実寸を書き込む
+  [-45,-22.5,0,22.5,45].map(a=>[a,F(a)])
+    .forEach(([a,d])=>{
+      const [tx,ty]=P(a,d+7);
+      g+=`<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="var(--muted)" font-size="9.5"
+          font-family="Roboto Mono, monospace" text-anchor="middle">${Math.round(d)}</text>`;
+    });
+  [40,80].forEach(d=>{
+    g+=`<path d="${arc(d)}" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>`;
+  });
+  const [lx,ly]=P(-45,F(-45)), [rx,ry]=P(45,F(45));
+  g+=`<line x1="${cx}" y1="${cy}" x2="${lx.toFixed(1)}" y2="${ly.toFixed(1)}" stroke="var(--line)"/>`;
+  g+=`<line x1="${cx}" y1="${cy}" x2="${rx.toFixed(1)}" y2="${ry.toFixed(1)}" stroke="var(--line)"/>`;
+  // 重ねる球場のフェンス。地の球場の上、打球の下に描く
+  layers.forEach(o=>{
+    const path=fencePath(o.park,P,cx,cy)+" Z";
+    g+=`<path d="${path}" fill="none" stroke="${o.color}" stroke-width="1.8"
+        stroke-linejoin="round" opacity="0.9"><title>${esc(o.park.name)}</title></path>`;
+  });
+  // 球場名は線の上に置くと重なるので、空いている左上に並べる
+  layers.forEach((o,i)=>{
+    const y=14+i*13;
+    g+=`<line x1="6" y1="${y-3.5}" x2="21" y2="${y-3.5}" stroke="${o.color}"
+        stroke-width="2.5" stroke-linecap="round"/>`;
+    g+=`<text x="25" y="${y}" fill="var(--text)" font-size="10"
+        font-weight="600">${esc(o.park.name)}</text>`;
+  });
+  bip.forEach(r=>{
+    const [x,y]=P(Number(r.spray_angle)||0, Math.min(r._d,maxD));
+    g+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${sprayColor(r.result)}"
+        fill-opacity="0.88" stroke="var(--panel)" stroke-width="1.2">
+        <title>${JA[r.result]||r.result||"打球"} ${f1(r._d)}m / ${f1(Number(r.exit_velocity))}km/h / ${f1(Number(r.launch_angle))}°</title></circle>`;
+  });
+  g+=`<circle cx="${cx}" cy="${cy}" r="3" fill="var(--text)"/>`;
+  svg.innerHTML=g;
+}
+
+/* ------------------------------------------------------------- 入力 */
+/**
+ * stadium.yml を読む。
+ *
+ * <p>プラグインが書く形だけを相手にするので、汎用の yaml 読みは要らない。
+ * Stadiums の下に球場の名前が並び、その中に Distances(91 個の距離) と
+ * Heights(91 個のフェンスの高さ)が入っている。
+ */
+function ingestYaml(text){
+  const lines=String(text).replace(/\r/g,"").split("\n");
+  let inRoot=false, rootIndent=0, nameIndent=-1;
+  let park=null, target=null, group="", added=0;
+  const blank=()=>({name:"", dist:[], heights:[], fence:[], hx:NaN, hz:NaN, fx:NaN, fz:NaN});
+  const flush=()=>{
+    const built=park && buildPark(park);
+    if(built){
+      const at=PARKS.findIndex(x=>x.name===built.name);
+      if(at>=0) PARKS[at]=built; else PARKS.push(built);
+      added++;
+    }
+    park=null; target=null; group="";
+  };
+  for(const raw of lines){
+    const line=raw.trim();
+    if(!line || line.startsWith("#")) continue;
+    const indent=raw.length-raw.replace(/^ +/,"").length;
+    if(!inRoot){
+      if(/^Stadiums:$/i.test(line)){ inRoot=true; rootIndent=indent; }
+      continue;
+    }
+    // Stadiums の外へ出た
+    if(indent<=rootIndent){ flush(); inRoot=false; continue; }
+    // 一覧の要素。直前に来た見出しの列に足す
+    const item=line.match(/^-\s*['"]?([^'"]+?)['"]?$/);
+    if(item){
+      if(!park||!target) continue;
+      if(target==="fence"){
+        const xyz=item[1].split(",").map(Number);
+        if(xyz.length>=3 && xyz.every(v=>isFinite(v))) park.fence.push(xyz);
+      }else if(isFinite(Number(item[1]))){
+        park[target].push(Number(item[1]));
+      }
+      continue;
+    }
+    const key=line.match(/^['"]?([^'":]+)['"]?:\s*(.*)$/);
+    if(!key) continue;
+    // Stadiums の中で最初に出てくるキーの深さが、球場の名前の深さ
+    if(nameIndent<0) nameIndent=indent;
+    if(indent===nameIndent){
+      flush();
+      park=blank(); park.name=key[1].trim();
+      continue;
+    }
+    if(!park) continue;
+    const k=key[1].trim(), v=key[2].trim();
+    if(v===""){
+      // 値の無い行。一覧の見出しか、入れ子の始まり
+      target = /^Distances$/i.test(k) ? "dist"
+             : /^Heights$/i.test(k) ? "heights"
+             : /^Fence$/i.test(k) ? "fence" : null;
+      group = target ? "" : k;
+      continue;
+    }
+    target=null;
+    if(group==="Home"&&k==="X") park.hx=Number(v);
+    else if(group==="Home"&&k==="Z") park.hz=Number(v);
+    else if(group==="Forward"&&k==="X") park.fx=Number(v);
+    else if(group==="Forward"&&k==="Z") park.fz=Number(v);
+  }
+  flush();
+  return added?"stadium":null;
+}
+/**
+ * 読んだ球場を、描画と判定に使える形にする。
+ *
+ * <p>Fence(ブロックの座標)があればそれが本物。無ければ古い形式の
+ * Distances(1 度刻みの距離)をそのまま使う。
+ */
+function buildPark(park){
+  if(park.fence.length && isFinite(park.hx) && isFinite(park.hz)
+     && isFinite(park.fx) && isFinite(park.fz)){
+    const built=profileFromBlocks(park.fence, park.hx, park.hz, park.fx, park.fz);
+    if(built) return {name:park.name, dist:built.dist, heights:built.heights,
+                      pts:built.pts, blocks:park.fence.length};
+  }
+  if(park.dist.length===91 && park.dist.every(v=>isFinite(v)&&v>0)){
+    const heights = park.heights.length===91 ? park.heights.slice() : new Array(91).fill(0);
+    const dist=park.dist.slice();
+    despike(dist, heights);
+    return {name:park.name, dist, heights, pts:null, blocks:0};
+  }
+  return null;
+}
+/**
+ * フェンスのブロックから、1 度刻みの距離の表と、描画用の点を作る。
+ *
+ * <p>距離は本塁からブロックまでの三平方から 1 引いた値。
+ * 同じ方向に複数あれば手前を採る(本塁から見て最初に当たる壁がフェンス)。
+ */
+function profileFromBlocks(blocks, hx, hz, fx, fz){
+  const dist=new Array(91).fill(0), heights=new Array(91).fill(0), pts=[];
+  blocks.forEach(b=>{
+    const dx=b[0]+0.5-hx, dz=b[1]+0.5-hz;
+    const d=Math.hypot(dx,dz)-1;
+    if(!(d>0)) return;
+    const front=dx*fx+dz*fz, side=dx*(-fz)+dz*fx;
+    const ang=Math.atan2(side,front)*180/Math.PI;
+    if(Math.abs(ang)>45) return;
+    pts.push({ang, d, h:b[2]});
+    const i=Math.max(0,Math.min(90,Math.round(ang+45)));
+    if(dist[i]<=0||d<dist[i]){ dist[i]=d; heights[i]=b[2]; }
+  });
+  if(!pts.length) return null;
+  fillGaps(dist); fillGaps(heights);
+  despike(dist, heights);
+  // ファールラインの先はポールが立っていて高く出る。端は隣と同じ高さに。
+  heights[0]=heights[1]; heights[90]=heights[89];
+  pts.sort((a,b)=>a.ang-b.ang);
+  return {dist, heights, pts};
+}
+/** 測れなかった角度を、両隣の値から埋める。 */
+function fillGaps(values){
+  let first=-1;
+  for(let i=0;i<values.length;i++){ if(values[i]>0){ first=i; break; } }
+  if(first<0) return;
+  for(let i=0;i<first;i++) values[i]=values[first];
+  let last=first;
+  for(let i=first+1;i<values.length;i++){
+    if(values[i]<=0) continue;
+    for(let j=last+1;j<i;j++){
+      const t=(j-last)/(i-last);
+      values[j]=values[last]*(1-t)+values[i]*t;
+    }
+    last=i;
+  }
+  for(let i=last+1;i<values.length;i++) values[i]=values[last];
+}
+function ingest(text,name){
+  if(name&&/\.ya?ml$/i.test(name)) return ingestYaml(text);
+  const {head,rows}=parseCsv(text);
+  if(!rows.length) return null;
+  if(head.includes("game_id")){ DATA.plate.push(...rows); return "result"; }
+  if(head.includes("side")&&head.includes("pitch_no")){ DATA.pitch.push(...rows); return "record"; }
+  // 守備と走塁の記録(record/<名前>_play.csv)
+  if(head.includes("kind")&&head.includes("touchorder")){ DATA.play.push(...rows); return "play"; }
+  return null;
+}
+/**
+ * csv をまとめて読む。何度でも足せる。
+ * result も record も、何ファイルでも混ぜてよい。
+ * 同じ名前のファイルは二重に数えないよう読み飛ばす。
+ */
+/**
+ * data/manifest.json に並んだファイルを読み込む。
+ *
+ * <p>置き場所は index.html と同じところの data/ フォルダ。
+ * manifest.json は {"files": ["result.csv", ...]} の形で、
+ * csv・yml と顔画像(ファイル名 = プレイヤー名)を並べる。
+ *
+ * <p>manifest.json が無ければサンプルのまま表示する。
+ */
+async function bootFromData(){
+  let names=[];
+  try{
+    const res=await fetch("data/manifest.json", {cache:"no-cache"});
+    if(!res.ok) throw new Error(res.status);
+    const body=await res.json();
+    names=Array.isArray(body) ? body : (body.files||[]);
+  }catch(e){
+    render();
+    return;
+  }
+  const pics=names.filter(n=>/\.(png|jpe?g|gif|webp)$/i.test(n));
+  const data=names.filter(n=>/\.(csv|ya?ml)$/i.test(n)).sort((a,b)=>a.localeCompare(b));
+  // 顔は画像そのものを参照する。読み込みを待つ必要は無い。
+  // ファイル名に空白や日本語が入るので、そのまま URL にしない
+  pics.forEach(n=>{
+    FACES[n.replace(/\.[^.]+$/,"")]="data/"+encodeURIComponent(n);
+  });
+  if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[]; SAMPLE=false; }
+  for(const name of data){
+    try{
+      const res=await fetch("data/"+encodeURIComponent(name), {cache:"no-cache"});
+      if(!res.ok) continue;
+      if(ingest(await res.text(), name)) DATA.files.push(name);
+    }catch(e){ /* 1 つ読めなくても残りは出す */ }
+  }
+  render();
+}
+/** 球場を選ぶ欄を、読み込んである球場で作り直す。 */
+function renderParks(){
+  const sel=document.getElementById("parkPick"); if(!sel) return;
+  if(!PARKS.some(p=>p.name===PARK)) PARK="";
+  [...OVERLAY].forEach(name=>{ if(!PARKS.some(p=>p.name===name)) OVERLAY.delete(name); });
+  sel.innerHTML=`<option value="">既定の球場 (100/116/122)</option>`
+    + PARKS.map(p=>`<option value="${esc(p.name)}">${esc(p.name)} `
+        + `(${Math.round(fenceOf(p,-45))}/${Math.round(fenceOf(p,0))}/`
+        + `${Math.round(fenceOf(p,45))}${wallOf(p)})</option>`).join("");
+  sel.value=PARK;
+  sel.hidden=PARKS.length===0;
+}
+function finishLoad(skipped){
+  document.getElementById("sampleNote").hidden=!SAMPLE;
+  const b=document.getElementById("loaded");
+  b.hidden=false;
+  b.textContent=` ファイル / 打席  ・ 投球 `
+    + (skipped ? ` (同名  件は読み飛ばし)` : "");
+  render();
+}
+document.getElementById("viewTabs").addEventListener("click",e=>{
+  const t=e.target.closest(".tab"); if(!t) return;
+  VIEW=t.dataset.view;
+  render();
+});
+document.getElementById("playerRow").addEventListener("click",e=>{
+  const t=e.target.closest(".tab"); if(!t) return;
+  if(t.dataset.style) STYLE=t.dataset.style;
+  else if(t.dataset.side) SIDE=t.dataset.side;
+  else PLAYER=t.dataset.name;
+  render();
+});
+// リーダーボードの切り替えと並べ替え、リザルトの試合選び
+document.getElementById("app").addEventListener("click",e=>{
+  const seg=e.target.closest("[data-lb]");
+  if(seg){ LB[seg.dataset.lb]=seg.dataset.value; render(); return; }
+  const th=e.target.closest("th[data-sort]");
+  if(th){
+    // 同じ列をもう一度押したら逆順。別の列なら降順から
+    if(LB.key===th.dataset.sort) LB.dir=-LB.dir; else { LB.key=th.dataset.sort; LB.dir=-1; }
+    render();
+    return;
+  }
+  const game=e.target.closest("[data-game]");
+  if(game){ GAME=game.dataset.game; render(); }
+});
+document.getElementById("parkPick").addEventListener("change",e=>{ PARK=e.target.value; render(); });
+// 重ねる球場の切り替え。チャートだけ描き直して、一覧の開閉は保つ
+document.getElementById("app").addEventListener("change",e=>{
+  const box=e.target.closest("input[data-park]");
+  if(!box) return;
+  if(box.checked) OVERLAY.add(box.dataset.park); else OVERLAY.delete(box.dataset.park);
+  const note=document.querySelector("#parkbox summary small");
+  if(note) note.textContent=overlayNote();
+  drawSpray();
+});
+// toggle は上がってこないので捕まえる側で拾う
+document.getElementById("app").addEventListener("toggle",e=>{
+  if(e.target.id==="parkbox") OVERLAY_OPEN=e.target.open;
+}, true);
+document.getElementById("theme").addEventListener("click",()=>{
+  const now=document.documentElement.getAttribute("data-theme");
+  document.documentElement.setAttribute("data-theme", now==="dark"?"light":"dark");
+});
+
+/* ------------------------------------------------------------ サンプル */
+const SAMPLE_RESULT=`game_id,inning,half,order,pitcher,batter,result,rbi,runs,outs,base1,base2,base3
+2026090801,1,TOP,1,Nina,Steve,STRIKE_OUT,0,0,1,false,false,false
+2026090801,1,TOP,2,Nina,Ken,SINGLE,0,0,0,false,false,false
+2026090801,2,TOP,1,Nina,Steve,HOME_RUN,2,2,0,true,false,false
+2026090801,3,TOP,2,Nina,Ken,GROUND_OUT,0,0,1,false,false,false
+2026090801,3,TOP,1,Nina,Steve,SINGLE,0,0,0,false,false,false
+2026090801,4,TOP,2,Nina,Ken,WALK,0,0,0,false,false,false
+2026090801,5,TOP,1,Nina,Steve,DOUBLE,1,1,0,false,true,false
+2026090801,5,TOP,2,Nina,Ken,FLY_OUT,0,0,1,false,false,true
+2026090802,1,TOP,1,Nina,Steve,FLY_OUT,0,0,1,false,false,false
+2026090802,2,TOP,1,Nina,Steve,WALK,0,0,0,false,false,false
+2026090802,3,TOP,1,Nina,Steve,TRIPLE,1,1,0,true,false,false
+2026090802,4,TOP,1,Nina,Steve,STRIKE_OUT,0,0,2,false,false,false
+2026090802,5,TOP,2,Nina,Ken,STRIKE_OUT,0,0,1,false,false,false
+2026090802,6,TOP,2,Nina,Ken,HOME_RUN,1,1,0,false,false,false
+`;
+const SAMPLE_RECORD=`side,game,pa,pitch_no,inning,half,count,outs,pitcher,batter,type,velocity,v_break,h_break,zone,in_zone,plate_x,plate_y,swing,whiff,contact,call,exit_velocity,launch_angle,spray_angle,distance,result
+Batting,2026090801,2026090801#1,1,1,TOP,0-0,0,Nina,Steve,Straight,138.4,0.5,-0.2,8,true,-0.1,1.4,false,false,false,CALLED_STRIKE,,,,,
+Batting,2026090801,2026090801#1,2,1,TOP,0-1,0,Nina,Steve,Slider,119.8,-1.1,1.3,20,false,0.9,0.2,true,true,false,SWINGING_STRIKE,,,,,
+Batting,2026090801,2026090801#1,3,1,TOP,0-2,0,Nina,Steve,Curve,104.2,-2.3,0.9,23,false,0.2,0.0,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT
+Batting,2026090801,2026090801#3,1,2,TOP,0-0,0,Nina,Steve,Straight,141.0,0.6,-0.1,13,true,0.0,1.1,true,false,true,IN_PLAY,161.2,27.4,12.0,127.0,HOME_RUN
+Batting,2026090801,2026090801#5,1,3,TOP,0-0,0,Nina,Steve,Shoot,127.9,-0.5,-2.0,17,true,-0.4,0.7,true,false,true,IN_PLAY,138.3,6.7,-24.0,58.0,SINGLE
+Batting,2026090801,2026090801#7,1,5,TOP,0-0,0,Nina,Steve,Slider,121.4,-1.0,1.5,14,true,0.5,0.9,true,false,true,IN_PLAY,151.9,19.4,31.0,96.0,DOUBLE
+Batting,2026090802,2026090802#1,1,1,TOP,0-0,0,Nina,Steve,Curve,105.6,-2.2,1.0,9,true,0.4,1.5,true,false,true,IN_PLAY,124.0,46.5,5.0,61.0,FLY_OUT
+Batting,2026090802,2026090802#3,1,2,TOP,0-0,0,Nina,Steve,Straight,135.2,0.4,0.1,2,false,-0.3,2.2,false,false,false,BALL,,,,,
+Batting,2026090802,2026090802#3,2,2,TOP,1-0,0,Nina,Steve,Curve,101.8,-2.9,1.4,22,false,-0.4,0.1,false,false,false,BALL,,,,,
+Batting,2026090802,2026090802#3,3,2,TOP,2-0,0,Nina,Steve,Shoot,126.5,-0.4,-1.8,11,false,-1.0,1.2,false,false,false,BALL,,,,,
+Batting,2026090802,2026090802#3,4,2,TOP,3-0,0,Nina,Steve,Straight,137.1,0.6,-0.1,4,false,0.8,2.0,false,false,false,BALL,,,,,WALK
+Batting,2026090802,2026090802#5,1,3,TOP,0-0,0,Nina,Steve,Straight,139.6,0.5,0.0,19,true,0.5,0.6,true,false,true,IN_PLAY,156.4,21.9,38.0,112.0,TRIPLE
+Batting,2026090802,2026090802#7,1,4,TOP,0-0,2,Nina,Steve,Slider,118.2,-1.2,1.6,15,false,1.1,0.9,true,true,false,SWINGING_STRIKE,,,,,
+Batting,2026090802,2026090802#7,2,4,TOP,0-1,2,Nina,Steve,Straight,140.2,0.5,-0.1,12,true,-0.5,1.0,false,false,false,CALLED_STRIKE,,,,,
+Batting,2026090802,2026090802#7,3,4,TOP,0-2,2,Nina,Steve,Curve,103.1,-2.6,1.1,18,true,0.1,0.7,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT
+Pitching,2026090801,2026090801#1,1,1,TOP,0-0,0,Nina,Steve,Straight,138.4,0.5,-0.2,8,true,-0.1,1.4,false,false,false,CALLED_STRIKE,,,,,
+Pitching,2026090801,2026090801#1,2,1,TOP,0-1,0,Nina,Steve,Slider,119.8,-1.1,1.3,20,false,0.9,0.2,true,true,false,SWINGING_STRIKE,,,,,
+Pitching,2026090801,2026090801#1,3,1,TOP,0-2,0,Nina,Steve,Curve,104.2,-2.3,0.9,23,false,0.2,0.0,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT
+Pitching,2026090801,2026090801#2,1,1,TOP,0-0,1,Nina,Ken,Straight,136.8,0.4,-0.2,13,true,0.1,1.2,true,false,true,IN_PLAY,142.1,12.0,-15.0,64.0,SINGLE
+Pitching,2026090801,2026090801#3,1,2,TOP,0-0,0,Nina,Steve,Straight,141.0,0.6,-0.1,13,true,0.0,1.1,true,false,true,IN_PLAY,161.2,27.4,12.0,127.0,HOME_RUN
+Pitching,2026090801,2026090801#4,1,3,TOP,0-0,0,Nina,Ken,Slider,120.5,-1.1,1.4,18,true,0.0,0.6,true,false,true,IN_PLAY,119.6,-4.0,-10.0,31.0,GROUND_OUT
+Pitching,2026090801,2026090801#5,1,3,TOP,0-0,1,Nina,Steve,Shoot,127.9,-0.5,-2.0,17,true,-0.4,0.7,true,false,true,IN_PLAY,138.3,6.7,-24.0,58.0,SINGLE
+Pitching,2026090801,2026090801#6,1,4,TOP,0-0,1,Nina,Ken,Slider,118.9,-1.3,1.5,21,false,-0.9,0.2,false,false,false,BALL,,,,,
+Pitching,2026090801,2026090801#6,2,4,TOP,1-0,1,Nina,Ken,Curve,102.4,-2.7,1.2,24,false,0.7,0.1,false,false,false,BALL,,,,,
+Pitching,2026090801,2026090801#6,3,4,TOP,2-0,1,Nina,Ken,Straight,134.5,0.4,0.0,5,false,1.2,1.8,false,false,false,BALL,,,,,
+Pitching,2026090801,2026090801#6,4,4,TOP,3-0,1,Nina,Ken,Shoot,125.7,-0.4,-1.9,1,false,-1.2,2.1,false,false,false,BALL,,,,,WALK
+Pitching,2026090801,2026090801#7,1,5,TOP,0-0,1,Nina,Steve,Slider,121.4,-1.0,1.5,14,true,0.5,0.9,true,false,true,IN_PLAY,151.9,19.4,31.0,96.0,DOUBLE
+Pitching,2026090801,2026090801#8,1,5,TOP,0-0,0,Nina,Ken,Straight,139.1,0.5,-0.1,8,true,-0.2,1.5,true,false,true,IN_PLAY,127.5,42.0,8.0,72.0,FLY_OUT
+Pitching,2026090802,2026090802#1,1,1,TOP,0-0,0,Nina,Steve,Curve,105.6,-2.2,1.0,9,true,0.4,1.5,true,false,true,IN_PLAY,124.0,46.5,5.0,61.0,FLY_OUT
+Pitching,2026090802,2026090802#3,1,2,TOP,0-0,0,Nina,Steve,Straight,135.2,0.4,0.1,2,false,-0.3,2.2,false,false,false,BALL,,,,,
+Pitching,2026090802,2026090802#3,2,2,TOP,1-0,0,Nina,Steve,Curve,101.8,-2.9,1.4,22,false,-0.4,0.1,false,false,false,BALL,,,,,
+Pitching,2026090802,2026090802#3,3,2,TOP,2-0,0,Nina,Steve,Shoot,126.5,-0.4,-1.8,11,false,-1.0,1.2,false,false,false,BALL,,,,,
+Pitching,2026090802,2026090802#3,4,2,TOP,3-0,0,Nina,Steve,Straight,137.1,0.6,-0.1,4,false,0.8,2.0,false,false,false,BALL,,,,,WALK
+Pitching,2026090802,2026090802#5,1,3,TOP,0-0,0,Nina,Steve,Straight,139.6,0.5,0.0,19,true,0.5,0.6,true,false,true,IN_PLAY,156.4,21.9,38.0,112.0,TRIPLE
+Pitching,2026090802,2026090802#8,1,6,TOP,0-0,0,Nina,Ken,Straight,137.7,0.5,-0.2,13,true,0.0,1.2,true,false,true,IN_PLAY,159.8,28.9,-18.0,124.0,HOME_RUN
+`;
+loadFaces();
+ingest(SAMPLE_RESULT);
+ingest(SAMPLE_RECORD);
+bootFromData();
+</script>
+
+</body>
+</html>
