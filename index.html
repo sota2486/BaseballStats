@@ -1077,23 +1077,43 @@ const f1=v=>v===null||!isFinite(v)?"—":v.toFixed(1);
 const pc=v=>v===null||!isFinite(v)?"—":v.toFixed(1);
 const f2=v=>v===null||!isFinite(v)?"—":v.toFixed(2);
 
+/**
+ * 画面を組む。中で落ちても真っ白にはしない。
+ *
+ * <p>csv の列がずれているなど、1 つの記録が壊れているだけで
+ * 何も見えなくなるのを防ぐ。
+ */
+function safely(make, what){
+  try{
+    return make();
+  }catch(e){
+    console.error(what, e);
+    return `<section><div class="empty">${esc(what)}を出せませんでした。<br>
+      記録の中身が想定と違うようです (${esc(String(e && e.message || e))})</div></section>`;
+  }
+}
+
 function render(){
   renderViewTabs();
   const app=document.getElementById("app");
   const playerRow=document.getElementById("playerRow");
   playerRow.hidden = VIEW!=="player";
   app.classList.toggle("wide", VIEW!=="player");
-  if(VIEW==="top"){ renderParks(); app.innerHTML=topView(); return; }
-  if(VIEW==="leaderboard"){ renderParks(); app.innerHTML=leaderboardView(); return; }
-  if(VIEW==="result"){ renderParks(); app.innerHTML=resultView(); return; }
+  if(VIEW==="top"){ renderParks(); app.innerHTML=safely(topView, "TOP"); return; }
+  if(VIEW==="leaderboard"){
+    renderParks();
+    app.innerHTML=safely(leaderboardView, "リーダーボード");
+    return;
+  }
+  if(VIEW==="result"){ renderParks(); app.innerHTML=safely(resultView, "試合結果"); return; }
   renderTabs();
   renderParks();
   if(!PLAYER){ app.innerHTML='<section><div class="empty">csv を読み込むと選手が並びます</div></section>'; return; }
   if(STYLE==="pawa"){
-    app.innerHTML = SIDE==="bat" ? pawaBatter() : pawaPitcher();
+    app.innerHTML = safely(SIDE==="bat" ? pawaBatter : pawaPitcher, PLAYER + " の能力");
     return;
   }
-  app.innerHTML = SIDE==="bat" ? batterView() : pitcherView();
+  app.innerHTML = safely(SIDE==="bat" ? batterView : pitcherView, PLAYER + " の成績");
   if(SIDE==="bat"){ drawSpray(); } else { drawLoc(); drawHeats(); }
   // 試合は古い順のまま。直近が見えるよう、開いた時点で一番下へ送る
   document.querySelectorAll(".gamescroll").forEach(el=>{ el.scrollTop=el.scrollHeight; });
@@ -2434,7 +2454,10 @@ function resultTable(counts,pa){
 function zoneGrid(rows){
   const cell=Array.from({length:26},()=>({ab:0,h:0,hr:0,pa:0,swings:0,whiffs:0}));
   rows.forEach(r=>{
-    const z=Number(r.zone); if(!(z>=1&&z<=25)) return;
+    // 整数の枠だけ。列がずれた古い csv では小数が入ってくることがあり、
+    // そのまま添え字にすると中身が無くて画面ごと落ちる。
+    const z=Number(r.zone);
+    if(!Number.isInteger(z) || z<1 || z>25) return;
     const c=cell[z];
     // 空振り率はその枠へ来た全部の球から。打席を終えた球だけでは足りない。
     if(r.swing===true){ c.swings++; if(r.whiff===true) c.whiffs++; }
