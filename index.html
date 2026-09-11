@@ -1643,28 +1643,28 @@ function lineup(rows, side){
 }
 
 /**
- * その試合の投手。出てきた順に並べる。
+ * その試合の先発投手。
  *
  * <p>打順とは別に書く。投手は打順に入らないことが多く、
  * 入っていても交代が打順の並びと合わないため。
+ * 交代した投手は打順表には出さない。打順表は「誰の枠か」を見るためのもの。
  *
  * @param side 0=先攻 1=後攻。その回に守っていたほうを拾う
  */
-function pitchersOf(rows, side){
-  const seen=[];
-  rows.forEach(r=>{
+function starterOf(rows, side){
+  for(const r of rows){
     // 表の攻撃で投げているのは後攻の投手
-    if((isBottom(r)?1:0)===side || !r.pitcher) return;
-    if(!seen.includes(r.pitcher)) seen.push(r.pitcher);
-  });
-  return seen;
+    if((isBottom(r)?1:0)===side || !r.pitcher) continue;
+    return r.pitcher;
+  }
+  return "";
 }
 
 /** 打順表の 1 チームぶん。 */
 function lineupCard(rows, side, name){
   const order=lineup(rows, side);
-  const arms=pitchersOf(rows, side);
-  if(!order.length && !arms.length) return "";
+  const starter=starterOf(rows, side);
+  if(!order.length && !starter) return "";
   const line=(label, who, where) => `<li>
       <span class="slot">${label}</span>
       <span class="at">${where ? esc(POS_LABEL[where]) : ""}</span>
@@ -1672,8 +1672,7 @@ function lineupCard(rows, side, name){
     </li>`;
   const body=order.map(one =>
     line(one.slot, one.name, positionIn(GAME, one.name))).join("");
-  const arm=arms.map((who, i) =>
-    line(i===0 ? "投" : "投" + (i+1), who, "PITCHER")).join("");
+  const arm=starter ? line("投", starter, "PITCHER") : "";
   return `<div class="card">
     <h4 class="${teamClass(side)}">${esc(name)}</h4>
     <ol class="lineup">${body}${arm}</ol>
