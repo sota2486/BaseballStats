@@ -3388,13 +3388,15 @@ function ingest(text,name){
 async function bootFromData(){
   // manifest はここのどれかにある。上から順に探す。
   const WHERE=["manifest.json", "data/manifest.json", "site/manifest.json"];
-  let names=null, base="", why="";
+  let names=null, maybe=[], base="", why="";
   for(const at of WHERE){
     try{
       const res=await fetch(at, {cache:"no-cache"});
       if(!res.ok){ why=at+" -> HTTP "+res.status; continue; }
       const body=await res.json();
       names=Array.isArray(body) ? body : (body.files||[]);
+      // maybe はまだ無いかもしれないファイル。無くても知らせない。
+      maybe=Array.isArray(body) ? [] : (body.maybe||[]);
       // manifest の中の名前は、その manifest から見た相対のパス
       base=at.slice(0, at.lastIndexOf("/")+1);
       break;
@@ -3455,6 +3457,12 @@ async function bootFromData(){
     if(!got.at){ missing.push(got.why); continue; }
     if(ingest(got.text, name)) DATA.files.push(name);
     else missing.push(got.at+" -> 中身が result / record / play のどれでもない");
+  }
+  // 先回りぶん。まだ置かれていなくても普通のことなので、黙って飛ばす。
+  for(const name of maybe.filter(n=>/.(csv|ya?ml)$/i.test(n))){
+    if(DATA.files.includes(name)) continue;
+    const got=await grab(name);
+    if(got.at && ingest(got.text, name)) DATA.files.push(name);
   }
   if(!DATA.files.length){
     // 1 つも読めなかった。空の画面を出すよりサンプルに戻す。
