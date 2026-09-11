@@ -440,6 +440,9 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .spraylegend span{display:flex; align-items:center; gap:6px; letter-spacing:.04em}
 .dotmark{width:11px; height:11px; border-radius:99px; flex:none}
 .empty{padding:24px 14px; text-align:center; color:var(--muted); font-size:12.5px}
+table.pa2 col.c-o{width:38px}
+table.pa2 td.slot{text-align:center; font-family:"Barlow Condensed",sans-serif;
+  font-size:15px; font-weight:700; color:var(--muted)}
 /* 打順表 */
 .lineup{margin:0; padding:4px 0; display:grid; gap:2px}
 .lineup .row{display:flex; align-items:center; gap:8px; padding:4px 8px;
@@ -1776,9 +1779,24 @@ function scoreBoard(rows){
           <span>${esc(h.batter)}${Number(h.rbi)>1?`(${h.rbi}点)`:""}</span></span>`).join("")}</span>` : ""}
   </div>`;
 }
+/**
+ * その試合の打順表から、選手 → 打順番号を引けるようにする。
+ *
+ * <p>result の order 列は「その回の何人目か」なので打順にならない。
+ * 打順表と同じ作り方(打った順に一巡するまで)で番号を振る。
+ */
+function orderNumbers(rows){
+  const at=new Map();
+  [0,1].forEach(side=>{
+    lineup(rows, side).forEach(one=>at.set(one.name, one.slot));
+  });
+  return at;
+}
+
 function inningTables(rows){
   const index=recordIndex();
   const sides=teamSides(rows);
+  const order=orderNumbers(rows);
   const innings=Math.max(1,...rows.map(r=>Number(r.inning)||1));
   let html="";
   for(let i=1;i<=innings;i++){
@@ -1787,10 +1805,10 @@ function inningTables(rows){
       if(!half.length) continue;
       html+=`<div class="inninghead">${i} 回${side?"裏":"表"}</div>
       <div class="scroll"><table class="pa2">
-      <colgroup><col class="c-p"><col class="c-p"><col class="c-r"><col class="c-s">
+      <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-r"><col class="c-s">
         <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-m"><col class="c-s"></colgroup>
       <thead><tr>
-        <th class="nm">打者</th><th class="nm">投手</th>
+        <th>打順</th><th class="nm">打者</th><th class="nm">投手</th>
         <th class="nm">結果</th><th>打点</th>
         <th>初速</th><th>角度</th><th>距離</th><th>Barrel</th><th>xBA</th>
       </tr></thead><tbody>${half.map(r=>{
@@ -1799,7 +1817,9 @@ function inningTables(rows){
         const hit=rec && rec.contact===true && rec.call==="IN_PLAY" && isFinite(ev) && ev>0;
         const x=hit ? battedExpectation(ev,la).ba : null;
         const rbi=Number(r.rbi)||0;
+        const slot=order.get(r.batter);
         return `<tr>
+          <td class="slot">${slot ? slot : ""}</td>
           <td class="nm">${withTeamFace(r.batter,sides[r.batter],20)}</td>
           <td class="nm">${withTeamFace(r.pitcher,sides[r.pitcher],20)}</td>
           <td class="res"><span class="rtag ${resultClass(r.result)}">${JA[r.result]||r.result||""}</span></td>
