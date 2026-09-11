@@ -2068,15 +2068,24 @@ function batterAbility(name){
   const L=line(pa), S=summarize(ps);
   const has=pa.length>0, hasPitch=ps.length>0;
 
-  // 弾道。打球角度の平均から 1〜4。記録が少なければ 2。
-  let trajectory=2;
-  if(S.n>=3){
-    const avg=S.bip.reduce((n,r)=>n+Number(r.launch_angle),0)/S.n;
-    trajectory = avg<6 ? 1 : avg<13 ? 2 : avg<20 ? 3 : 4;
-  }
   // 投球の記録の多さと、当たった打球の数。少ないほど軽く見る
   const wPitch=hasPitch ? weightOf(ps.length, 60) : 0;
   const wBip=S.n ? weightOf(S.n, 20) : 0;
+  // 長打の割合。弾道とパワーの両方で使う。
+  const xbh=L.ab ? (L.d2+L.d3+L.hr)/L.ab : null;
+  // 弾道。打球角度の平均と長打の多さから 1〜4。
+  //
+  // 角度だけで決めていたころは、打球の記録がある数人しか 3 以上にならなかった。
+  // 長打を打てているかも見て、記録が無い選手にも弾道が付くようにする。
+  const avgAngle=S.n>=3
+    ? S.bip.reduce((n,r)=>n+Number(r.launch_angle),0)/S.n : null;
+  const lift=blend([
+    [avgAngle===null?null:ability(avgAngle, 2, 26), 1.0*Math.max(wBip, 0.3)],
+    [xbh===null?null:ability(xbh, 0.00, 0.30), 1.0]
+  ]);
+  // 1 は「明らかに叩きつける打者」だけ。打球の記録が無い人は 2 のまま。
+  const trajectory = (avgAngle !== null && avgAngle < 6) ? 1
+    : lift>=85 ? 4 : lift>=58 ? 3 : 2;
   // ミート。打率・三振率・空振り率・xBA・弱い打球の少なさ。
   const meet=blend([
     [has ? ability(L.avg, 0.120, 0.480) : null, 1.4],
@@ -2086,16 +2095,18 @@ function batterAbility(name){
     [hasPitch ? ability(weakRate(S), 60, 18) : null, 0.6*wBip]
   ]);
   // パワー。長打・打球速度・xSLG。
-  const xbh=L.ab ? (L.d2+L.d3+L.hr)/L.ab : null;
   const power=blend([
     [has ? ability(xbh, 0.00, 0.35) : null, 1.0],
     [hasPitch ? ability(S.ev, 138, 190) : null, 1.2*wBip],
     [hasPitch ? ability(S.xslg, 0.200, 0.900) : null, 1.0*wBip]
   ]);
-  // 規定打席に届かないうちは、上も下も真ん中へ寄せる
+  // 規定打席に届かないうちは、上も下も真ん中へ寄せる。
+  // ただし本塁打を打った選手のパワーは B より下げない。
+  // 柵を越えせる時点でその力はあるので、打席が少なくても引き下げない。
+  const settled=steady(power, L.pa, QUAL_PA);
   return {L, S, trajectory,
           meet:steady(meet, L.pa, QUAL_PA),
-          power:steady(power, L.pa, QUAL_PA),
+          power:L.hr>=1 ? Math.max(settled, 70) : settled,
           pa, ps};
 }
 /** 加重平均。値の無いものは飛ばす。全部無ければ 55。 */
