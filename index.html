@@ -3412,11 +3412,16 @@ async function bootFromData(){
   const enc=name => name.split("/").map(encodeURIComponent).join("/");
   // 置き場所が変わっても拾えるよう、いくつか当たってみる。
   // 手元では site/ に入れていても、公開先では直下に並べていることがある。
-  const WHERE_FILE=["", "site/", "data/"];
+  // site/ を先に見る。古い写しが直下に残っていると、そちらに引っぱられるため。
+  const WHERE_FILE=["site/", "", "data/"];
+  // 一度どこで見つかったかを覚えておき、次からはそこだけ見る。
+  // 毎回 3 か所当たると、ファイルの数だけ無駄な 404 が積み上がる。
+  let goodDir=null;
   const candidates=name => {
     const only=name.split("/").pop();
-    const list=[base+enc(name)];
-    WHERE_FILE.forEach(dir=>{
+    const dirs=goodDir===null ? WHERE_FILE : [goodDir];
+    const list=name.includes("/") ? [base+enc(name)] : [];
+    dirs.forEach(dir=>{
       const at=base+dir+enc(only);
       if(!list.includes(at)) list.push(at);
     });
@@ -3424,11 +3429,18 @@ async function bootFromData(){
   };
   /** どこかに見つかるまで順に当たる。 */
   const grab=async name => {
+    const only=name.split("/").pop();
     let last="";
     for(const at of candidates(name)){
       try{
         const res=await fetch(at, {cache:"no-cache"});
-        if(res.ok) return {at, text:await res.text()};
+        if(res.ok){
+          // どのフォルダで見つかったかを覚える
+          WHERE_FILE.forEach(dir=>{
+            if(at===base+dir+enc(only)) goodDir=dir;
+          });
+          return {at, text:await res.text()};
+        }
         last=at+" -> HTTP "+res.status;
       }catch(e){
         last=at+" -> "+(e && e.message ? e.message : e);
@@ -3452,18 +3464,31 @@ async function bootFromData(){
   });
   if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[]; SAMPLE=false; }
   const missing=[];
-  for(const name of data){
-    const got=await grab(name);
-    if(!got.at){ missing.push(got.why); continue; }
+  // 置き場所を決めるために 1 つだけ先に取る。
+  // ここで goodDir が決まるので、残りは無駄な 404 を出さずに済む。
+  if(data.length){
+    const first=await grab(data[0]);
+    if(!first.at) missing.push(first.why);
+    else if(ingest(first.text, data[0])) DATA.files.push(data[0]);
+    else missing.push(first.at+" -> 中身が result / record / play のどれでもない");
+  }
+  // 残りはまとめて取ってから、並びどおりに読み込む。
+  // 1 つずつ待っていると、ファイルの数だけ待ち時間が積み上がって画面が出ない。
+  const rest=data.slice(1);
+  const fetched=await Promise.all(rest.map(grab));
+  rest.forEach((name, i)=>{
+    const got=fetched[i];
+    if(!got.at){ missing.push(got.why); return; }
     if(ingest(got.text, name)) DATA.files.push(name);
     else missing.push(got.at+" -> 中身が result / record / play のどれでもない");
-  }
+  });
   // 先回りぶん。まだ置かれていなくても普通のことなので、黙って飛ばす。
-  for(const name of maybe.filter(n=>/.(csv|ya?ml)$/i.test(n))){
-    if(DATA.files.includes(name)) continue;
-    const got=await grab(name);
+  const later=maybe.filter(n=>/.(csv|ya?ml)$/i.test(n) && !DATA.files.includes(n));
+  const extra=await Promise.all(later.map(grab));
+  later.forEach((name, i)=>{
+    const got=extra[i];
     if(got.at && ingest(got.text, name)) DATA.files.push(name);
-  }
+  });
   if(!DATA.files.length){
     // 1 つも読めなかった。空の画面を出すよりサンプルに戻す。
     SAMPLE=true;
