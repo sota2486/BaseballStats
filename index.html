@@ -137,38 +137,48 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
   margin:3px 0; border:1.5px solid #bcd6ea; border-radius:9px;
   background:linear-gradient(#ffffff, #eef6fd);
   box-shadow:inset 0 1px 0 #fff, 0 1px 2px rgba(19,57,95,.10)}
-.abrow .nm{flex:none; width:104px; text-align:center; padding:5px 2px;
-  border:1.5px solid #a9c9e4; border-radius:7px;
+.abrow .nm{flex:none; width:170px; height:52px; display:flex;
+  align-items:center; justify-content:center;
+  border:2px solid #a9c9e4; border-radius:8px;
   background:linear-gradient(#f4fbff, var(--label));
   box-shadow:inset 0 1px 0 #fff;
-  font-weight:800; letter-spacing:.16em; font-size:16px; white-space:nowrap;
-  color:var(--ink)}
-.abrow .rank{flex:none; width:30px; text-align:center; font-weight:800; line-height:1;
-  font-family:"Barlow Condensed",sans-serif; font-size:32px;
+  font-weight:800; letter-spacing:.04em; font-size:30px; line-height:1;
+  white-space:nowrap; color:var(--ink)}
+.abrow .rank{flex:1; text-align:center; font-weight:800; line-height:1;
+  font-family:"Barlow Condensed",sans-serif; font-size:35px;
   text-shadow:0 1px 0 rgba(255,255,255,.9)}
-.abrow .num{flex:1; text-align:right; font-family:"Barlow Condensed",sans-serif;
-  font-variant-numeric:tabular-nums; font-weight:800; font-size:32px; line-height:1;
+.abrow .num{flex:1; text-align:center; font-family:"Barlow Condensed",sans-serif;
+  font-variant-numeric:tabular-nums; font-weight:800; font-size:35px; line-height:1;
   text-shadow:0 1px 0 rgba(255,255,255,.9)}
 .abrow .arrow{color:#e0459a; font-size:20px; line-height:1}
 
 /* 右上の基礎能力 */
 .basics{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px}
-.basic{display:flex; align-items:stretch; background:var(--pale); color:var(--paletext);
-  border-radius:6px; overflow:hidden; font-weight:800; letter-spacing:.04em;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
-.basic i{flex:1; font-style:normal; padding:5px 4px; font-size:13.5px;
-  text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.basic{height:55px}
+.basic{display:flex; align-items:stretch; color:var(--paletext);
+  background:linear-gradient(#f6fbff,#e8f2fa);
+  border:1.5px solid rgba(19,57,95,.16); border-radius:7px; overflow:hidden;
+  font-weight:800; letter-spacing:.02em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),
+             inset 0 -3px 6px rgba(19,57,95,.10),
+             0 1px 2px rgba(19,57,95,.14)}
+.basic i{flex:1; min-width:0; font-style:normal; font-size:25px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 /* 名前と段位のあいだの分け目 */
-.basic b{flex:none; width:22px; padding:5px 0; font-size:14px; text-align:center;
+.basic b{flex:none; width:34px; font-size:25px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
   border-left:1.5px solid rgba(255,255,255,.85);
-  background:rgba(255,255,255,.28)}
-.basic.good{background:#b9daf8; color:#0f4a86}
-.basic.bad{background:#ffd2d2; color:#9b2226}
+  background:rgba(255,255,255,.32)}
+.basic.good{background:linear-gradient(#d7ebff,#a9d0f5); color:#0f4a86}
+.basic.bad{background:linear-gradient(#ffe6e6,#ffc4c4); color:#9b2226}
 
 /* 特殊能力。空き枠も出す */
-.skills{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px}
-.skill{padding:7px 4px; border-radius:6px; font-size:14px; font-weight:800;
-  text-align:center; letter-spacing:.02em; white-space:nowrap;
+.skills{display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-auto-rows:55px; gap:6px}
+.skill{display:flex; align-items:center; justify-content:center; min-width:0;
+  padding:0 4px; border-radius:7px; font-size:25px; line-height:1;
+  font-weight:800; text-align:center; letter-spacing:.02em; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis;
   border:1.5px solid rgba(19,57,95,.16);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.9),
@@ -1735,11 +1745,14 @@ function basicRank(value){
   return r==="S" ? "A" : r;
 }
 
+/** 項目名の字の大きさ。6 文字の「コントロール」だけ枠に収まらないので詰める。 */
+const nameFont=name => [...String(name)].length>=6 ? 28 : 30;
+
 /** 能力の 1 行。名前の枠・段位・数字。 */
 function abrow(name, value){
   const r=rank(value), color=RANK_COLOR[r];
   return `<div class="abrow">
-    <span class="nm">${name}</span>
+    <span class="nm" style="font-size:${nameFont(name)}px">${name}</span>
     <span class="rank" style="color:${color}">${r}</span>
     <span class="num">${value}</span>
   </div>`;
@@ -1747,7 +1760,7 @@ function abrow(name, value){
 /** 段位を出さない行(弾道や球速)。 */
 function abplain(name, text, arrow){
   return `<div class="abrow">
-    <span class="nm">${name}</span>
+    <span class="nm" style="font-size:${nameFont(name)}px">${name}</span>
     <span class="rank arrow">${arrow || ""}</span>
     <span class="num" style="width:auto;white-space:nowrap">${text}</span>
   </div>`;
@@ -1761,10 +1774,11 @@ function trajectoryArrow(level){
   if(tilt===undefined) return "";
   // 弾道が高いほど上の段位の色。1=D 2=C 3=B 4=A
   const color=RANK_COLOR[{1:"D", 2:"C", 3:"B", 4:"A"}[level]];
-  return `<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"
+  return `<svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"
       style="vertical-align:middle;transform:rotate(${tilt}deg)">
-    <path d="M2 10h12M10 5l5 5-5 5" fill="none" stroke="${color}"
-      stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M3 12h11" fill="none" stroke="${color}"
+      stroke-width="5.5" stroke-linecap="round"/>
+    <path d="M22 12 L11 5 L11 19 Z" fill="${color}"/>
   </svg>`;
 }
 /** 守備位置ごとの色。投手と中継ぎは同じ色。 */
@@ -1859,6 +1873,22 @@ function pawaHead(name, badge, stats){
   </div>`;
 }
 /**
+ * 枠に収まる字の大きさ。
+ *
+ * <p>枠の幅は決まっているので、字数が増えたらそのぶん小さくする。
+ * 4 字までは 25px、それより長い 1 字につき 1px ずつ詰める。
+ *
+ * @param text 入れる字
+ * @param room この字数までは大きいまま
+ */
+function fitFont(text, room){
+  const n=[...String(text)].length;
+  const keep=room || 4;
+  if(n<=keep) return 25;
+  return Math.max(12, 25 - (n-keep));
+}
+
+/**
  * 右上の基礎能力。
  *
  * <p>末尾の 1 文字を段位として読み、B 以上は青、F 以下は赤にする。
@@ -1870,7 +1900,9 @@ function basicRow(items){
     const name=whole.slice(0, -1).trim();
     const tone="SAB".indexOf(letter)>=0 ? " good"
       : "FG".indexOf(letter)>=0 ? " bad" : "";
-    return `<span class="basic${tone}"><i>${esc(name)}</i><b>${esc(letter)}</b></span>`;
+    return `<span class="basic${tone}">`
+      + `<i style="font-size:${fitFont(name, 4)}px">${esc(name)}</i>`
+      + `<b>${esc(letter)}</b></span>`;
   }).join("")}</div>`;
 }
 /**
@@ -1882,7 +1914,8 @@ function skillGrid(skills, slots){
   // 水=低い能力 青=高い能力 赤=悪い能力 緑=個性的
   const tone=k => k.bad ? "bad" : k.green ? "green" : k.low ? "low" : "good";
   const cells=skills.map(k=>
-    `<span class="skill ${tone(k)}">${esc(k.name)}</span>`);
+    `<span class="skill ${tone(k)}" style="font-size:${fitFont(k.name, 4)}px">`
+    + `${esc(k.name)}</span>`);
   const least=slots || 8;
   while(cells.length<least || cells.length%4!==0){
     cells.push('<span class="skill empty">&nbsp;</span>');
@@ -2471,7 +2504,7 @@ function breakCompass(types){
       const lx=cx+ux*reach, ly=cy+uy*reach+4;
       const anchor=ux>0.25 ? "start" : ux<-0.25 ? "end" : "middle";
       g+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}"
-          font-size="12.5" font-weight="700" fill="#1d6fb8">${esc(t.name)}</text>`;
+          font-size="9.5" font-weight="700" fill="#1d6fb8">${esc(t.name)}</text>`;
     });
   });
   g+=`<circle cx="${cx}" cy="${cy}" r="12" fill="#fff" stroke="#e02020" stroke-width="2.4"/>
