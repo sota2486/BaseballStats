@@ -440,6 +440,14 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .spraylegend span{display:flex; align-items:center; gap:6px; letter-spacing:.04em}
 .dotmark{width:11px; height:11px; border-radius:99px; flex:none}
 .empty{padding:24px 14px; text-align:center; color:var(--muted); font-size:12.5px}
+/* 打順表 */
+.lineup{list-style:none; margin:0; padding:0; display:grid; gap:2px}
+.lineup li{display:flex; align-items:center; gap:8px; padding:4px 6px;
+  border-radius:6px; background:var(--panel-2)}
+.lineup .slot{width:24px; text-align:center; font-family:"Barlow Condensed",sans-serif;
+  font-size:15px; font-weight:700; color:var(--muted)}
+.lineup .at{width:20px; text-align:center; font-size:12px; font-weight:700;
+  color:var(--rule)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 </style>
 </head>
@@ -503,6 +511,8 @@ const TYPE_COLORS=["#d5455c","#dcb04a","#3fbfe0","#3f9e93","#e88b2e","#d9d13f","
    localStorage に控えるので、次に開いたときは読み込み直さなくてよい。 */
 const FACES={};
 const FACE_KEY="sbg-savant-faces";
+/** 昔の ID → いまの名前。players.yml から作る。 */
+const ALIAS_NAME={};
 function loadFaces(){
   try{ Object.assign(FACES, JSON.parse(localStorage.getItem(FACE_KEY)||"{}")); }
   catch(e){ /* 使えない環境でも困らない */ }
@@ -516,10 +526,25 @@ function nameColor(name){
   for(let i=0;i<String(name).length;i++) h=(h*31+String(name).charCodeAt(i))%360;
   return `hsl(${h} 45% 46%)`;
 }
+/**
+ * その選手の顔の画像。
+ *
+ * <p>いまの名前で見つからなければ、昔の ID のファイル名を探す。
+ * 別名表の読み込みと画像の読み込みはどちらが先になるか決まっていないので、
+ * 出すときに毎回引き直す。
+ */
+function faceSrc(name){
+  const direct=FACES[String(name)];
+  if(direct) return direct;
+  for(const old in ALIAS_NAME){
+    if(ALIAS_NAME[old]===name && FACES[old]) return FACES[old];
+  }
+  return null;
+}
 /** 顔の画像。無ければ頭文字の丸。 */
 function face(name, size){
   size=size||22;
-  const src=FACES[String(name)];
+  const src=faceSrc(name);
   const box=`width:${size}px;height:${size}px`;
   if(src) return `<img class="face" src="${src}" alt="" style="${box}">`;
   const ch=(String(name||"?").trim()[0]||"?").toUpperCase();
@@ -1154,9 +1179,6 @@ function prow(name, sub, key, value, fmt){
 
    読み込んだあと ALIAS_NAME を通して、記録の中の名前を書き換える。 */
 
-/** 昔の ID → いまの名前。 */
-const ALIAS_NAME={};
-
 /**
  * players.yml を読む。
  *
@@ -1285,7 +1307,7 @@ function topView(){
       率の項目は規定打席 ${QUAL_PA} / 規定投球回 ${QUAL_IP} 以上の選手だけを並べています。</p>
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">Best Plays<small>record より 上位 5</small></div>
+    <div class="head">Best Plays<small>上位 5</small></div>
     <div class="cards">
       ${playCard("Top Exit Velocity", topBatted("exit_velocity"), r=>f1(Number(r.exit_velocity))+" km/h")}
       ${playCard("Top Distance", topBatted("distance"), r=>f1(distanceOf(r))+" m")}
@@ -1575,6 +1597,101 @@ function withTeamFace(name, side, size){
   if(!name) return `<span class="none">マネキン</span>`;
   return `<span class="withface ${teamClass(side)}">${face(name,size)}<span>${esc(name)}</span></span>`;
 }
+/**
+ * その試合でその選手が守っていた守備位置。
+ *
+ * <p>play の記録から引く。守備機会の行(field)と、
+ * 回ごとに置かれる spot の行の両方を数え、いちばん多いところを返す。
+ * 記録が無ければ空。
+ */
+function positionIn(game, name){
+  const count={};
+  DATA.play.forEach(r=>{
+    if(String(r.game)!==String(game) || r.player!==name) return;
+    const at=String(r.position||"");
+    if(!POS_LABEL[at]) return;
+    count[at]=(count[at]||0)+1;
+  });
+  let best="", most=0;
+  for(const at in count){
+    if(count[at]>most){ most=count[at]; best=at; }
+  }
+  return best;
+}
+
+/**
+ * その試合の打順。
+ *
+ * <p>同じ打順に何人か入っていたら、最初に打った人を採る。
+ * 途中出場は打順表には出さない。誰の打順かを見るための表なので。
+ *
+ * @param side 0=先攻 1=後攻
+ */
+function lineup(rows, side){
+  const byOrder=new Map();
+  rows.forEach(r=>{
+    if((isBottom(r)?1:0)!==side || !r.batter) return;
+    const slot=Number(r.order);
+    if(!(slot>=1 && slot<=9)) return;
+    if(!byOrder.has(slot)) byOrder.set(slot, r.batter);
+  });
+  const out=[];
+  for(let slot=1; slot<=9; slot++){
+    if(byOrder.has(slot)) out.push({slot, name:byOrder.get(slot)});
+  }
+  return out;
+}
+
+/**
+ * その試合の投手。出てきた順に並べる。
+ *
+ * <p>打順とは別に書く。投手は打順に入らないことが多く、
+ * 入っていても交代が打順の並びと合わないため。
+ *
+ * @param side 0=先攻 1=後攻。その回に守っていたほうを拾う
+ */
+function pitchersOf(rows, side){
+  const seen=[];
+  rows.forEach(r=>{
+    // 表の攻撃で投げているのは後攻の投手
+    if((isBottom(r)?1:0)===side || !r.pitcher) return;
+    if(!seen.includes(r.pitcher)) seen.push(r.pitcher);
+  });
+  return seen;
+}
+
+/** 打順表の 1 チームぶん。 */
+function lineupCard(rows, side, name){
+  const order=lineup(rows, side);
+  const arms=pitchersOf(rows, side);
+  if(!order.length && !arms.length) return "";
+  const line=(label, who, where) => `<li>
+      <span class="slot">${label}</span>
+      <span class="at">${where ? esc(POS_LABEL[where]) : ""}</span>
+      ${withTeamFace(who, side, 20)}
+    </li>`;
+  const body=order.map(one =>
+    line(one.slot, one.name, positionIn(GAME, one.name))).join("");
+  const arm=arms.map((who, i) =>
+    line(i===0 ? "投" : "投" + (i+1), who, "PITCHER")).join("");
+  return `<div class="card">
+    <h4 class="${teamClass(side)}">${esc(name)}</h4>
+    <ol class="lineup">${body}${arm}</ol>
+  </div>`;
+}
+
+function lineupBox(rows){
+  const first=rows.find(r=>r.topteam||r.bottomteam) || {};
+  const names=[String(first.topteam||"").trim()||"先攻",
+               String(first.bottomteam||"").trim()||"後攻"];
+  const cards=[lineupCard(rows,0,names[0]), lineupCard(rows,1,names[1])].join("");
+  if(!cards) return "";
+  return `<section class="span"><div class="pad">
+    <div class="head">打順</div>
+    <div class="cards">${cards}</div>
+  </div></section>`;
+}
+
 function resultView(){
   const games=gameIds();
   if(!games.length) return '<section><div class="empty">result の csv を読み込んでください</div></section>';
@@ -1587,6 +1704,7 @@ function resultView(){
     <div class="gamepick">${pick}</div>
     ${scoreBoard(rows)}
   </div></section>
+  ${lineupBox(rows)}
   <section class="span"><div class="pad">
     <div class="head">打席結果<small>${rows.length} 打席</small></div>
     ${inningTables(rows)}
@@ -2178,16 +2296,11 @@ function batterView(){
       ${pctLegend()}
       ${rows.map(r=>prow(...r)).join("")}
       ${fieldingPanel(PLAYER)}
-      <p class="note">上位何%かではなく、値そのものに 0〜100 の目盛りを割り当てています。右が良い側。
-        xBA / xSLG は打球速度と角度から 1 打球ずつ期待値を出して平均したもの、
-        xBA / xSLG は三振を期待値 0 の打数として分母に入れているので、実際の打率・長打率と比べられます。
-        xwOBA はそれに四死球を足して打席で割った期待出塁率です。
-        目盛りはリーグの実際の成績(打率 .351 / 出塁率 .388 / 長打率 .577)が真ん中に来るよう置いてあります。</p>
       <div style="height:12px"></div>
     </section>
     <section><div class="pad">
-      <div class="head">打席一覧<small>record より</small></div>
-      ${paTable(ps,"pitcher")}
+      <div class="head">打席一覧</div>
+      ${paTable(ps,"pitcher",pa)}
     </div></section>
   </div>
 
@@ -2219,9 +2332,51 @@ function batterView(){
  *
  * @param other 相手の名前を引く列。打者なら pitcher、投手なら batter
  */
-function paTable(rows, other){
+/**
+ * 打席の一覧に使う行を作る。
+ *
+ * <p>record(1 球ごと)に残っている打席を土台にして、
+ * result にしか無い打席を足す。投球の記録を取っていない試合でも
+ * 打席の並びが出るようにするため。
+ *
+ * @param rows  その選手の record の行
+ * @param plate その選手の result の行
+ * @param other 相手を引く列。打者のページなら pitcher
+ */
+function paRows(rows, plate, other){
+  const ended=rows.filter(r=>r.result);
+  // record にある打席を、試合と回と結果で数えておく
+  const seen=new Map();
+  ended.forEach(r=>{
+    const key=[r.game, r.inning, r.half, r.result].join("|");
+    seen.set(key, (seen.get(key)||0)+1);
+  });
+  const extra=[];
+  (plate||[]).forEach(r=>{
+    const half=String(r.half||"").toUpperCase().startsWith("B") ? "BOTTOM" : "TOP";
+    const key=[r.game_id, r.inning, half, r.result].join("|");
+    const left=seen.get(key)||0;
+    if(left>0){ seen.set(key, left-1); return; }
+    // record に無い打席。打球の数字は残っていないので、結果だけ並べる。
+    extra.push({game:r.game_id, inning:r.inning, half:half, result:r.result,
+      pitcher:r.pitcher, batter:r.batter, fromResult:true});
+  });
+  const all=ended.concat(extra);
+  // 試合と回の順に並べ、新しい打席を上にする
+  all.sort((a,b)=>{
+    const g=String(a.game).localeCompare(String(b.game));
+    if(g) return g;
+    const ia=Number(a.inning)||0, ib=Number(b.inning)||0;
+    if(ia!==ib) return ia-ib;
+    const ha=a.half==="BOTTOM" ? 1 : 0, hb=b.half==="BOTTOM" ? 1 : 0;
+    return ha-hb;
+  });
+  return all.reverse();
+}
+
+function paTable(rows, other, plate){
   // 新しい打席を上に
-  const ended=rows.filter(r=>r.result).slice().reverse();
+  const ended=paRows(rows, plate, other);
   if(!ended.length) return '<div class="empty">打席の記録がありません</div>';
   return `<div class="palist"><table class="pafix">
     <colgroup><col class="c-game"><col class="c-name"><col class="c-res">
@@ -2640,13 +2795,11 @@ function pitcherView(){
       </div>
       ${pctLegend()}
       ${rows.map(r=>prow(...r)).join("")}
-      <p class="note">上位何%かではなく、値そのものに 0〜100 の目盛りを割り当てています。右が良い側。
-        xERA は被打球の期待値と与四球から出しています。</p>
       <div style="height:12px"></div>
     </section>
     <section><div class="pad">
-      <div class="head">被打席一覧<small>record より</small></div>
-      ${paTable(ps,"batter")}
+      <div class="head">被打席一覧</div>
+      ${paTable(ps,"batter",pa)}
     </div></section>
   </div>
 
