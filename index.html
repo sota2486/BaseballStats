@@ -3266,12 +3266,25 @@ async function bootFromData(){
     FACES[n.split("/").pop().replace(/\.[^.]+$/,"")]=url(n);
   });
   if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[]; SAMPLE=false; }
+  const missing=[];
   for(const name of data){
     try{
       const res=await fetch(url(name), {cache:"no-cache"});
-      if(!res.ok) continue;
+      if(!res.ok){ missing.push(url(name)+" -> HTTP "+res.status); continue; }
       if(ingest(await res.text(), name)) DATA.files.push(name);
-    }catch(e){ /* 1 つ読めなくても残りは出す */ }
+      else missing.push(url(name)+" -> 中身が result / record / play のどれでもない");
+    }catch(e){
+      missing.push(url(name)+" -> "+(e && e.message ? e.message : e));
+    }
+  }
+  if(!DATA.files.length){
+    // 1 つも読めなかった。空の画面を出すよりサンプルに戻す。
+    SAMPLE=true;
+    ingest(SAMPLE_RESULT);
+    ingest(SAMPLE_RECORD);
+    bootFailed("manifest は読めたが、中のファイルを 1 つも読めなかった", missing);
+  }else if(missing.length){
+    bootFailed(DATA.files.length+" 件は読めたが、読めなかったものがある", missing);
   }
   applyAliases();
   render();
@@ -3283,18 +3296,24 @@ async function bootFromData(){
  * <p>黙ってサンプルに戻ると、置き場所を間違えたのか
  * そもそも読みに行っていないのかが分からない。
  */
-function bootFailed(why){
+function bootFailed(why, missing){
   const bar=document.createElement("div");
   bar.style.cssText="padding:10px 14px; background:#fff4d6; color:#7a4f05;"
-    + "border-bottom:1px solid #e8c98a; font-size:13px";
-  const local=location.protocol==="file:";
-  bar.textContent=local
-    ? "manifest.json を読めないため、サンプルを表示しています。"
+    + "border-bottom:1px solid #e8c98a; font-size:13px; line-height:1.7";
+  if(location.protocol==="file:"){
+    bar.textContent="ファイルを読めないため、サンプルを表示しています。"
       + "ブラウザは file:// で開いたページからファイルを読めません。"
-      + "GitHub Pages に置くか、このフォルダで簡易サーバを立てて開いてください。"
-    : "manifest.json を読めないため、サンプルを表示しています。"
-      + " 試した場所: manifest.json / data/manifest.json / site/manifest.json"
-      + (why ? "  (" + why + ")" : "");
+      + "GitHub Pages に置くか、このフォルダで簡易サーバを立てて開いてください。";
+  }else{
+    const NL=String.fromCharCode(10);
+    const list=(missing||[]).slice(0,6).map(one=>"・"+one).join(NL);
+    const more=(missing||[]).length>6
+      ? NL+"ほか "+((missing||[]).length-6)+" 件" : "";
+    bar.style.whiteSpace="pre-wrap";
+    bar.textContent=why
+      + (list ? NL+list+more : "")
+      + NL+"読みに来た場所: "+location.href;
+  }
   document.body.insertBefore(bar, document.getElementById("app"));
 }
 /** 球場を選ぶ欄を、読み込んである球場で作り直す。 */
