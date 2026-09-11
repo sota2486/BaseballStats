@@ -99,7 +99,7 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .who .facebig{margin-bottom:6px}
 
 /* ------------------------------------------------- パワプロ風の能力画面 */
-.abwrap{display:grid; grid-template-columns:minmax(230px,340px) minmax(0,1fr); gap:12px}
+.abwrap{display:grid; grid-template-columns:minmax(250px,380px) minmax(0,1fr); gap:12px}
 @media (max-width:820px){.abwrap{grid-template-columns:1fr}}
 /* ---- 能力画面。ここだけはサイトのテーマに乗らず、独自の配色で描く ---- */
 .pawa{
@@ -132,36 +132,55 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .abhead .stat b{background:#e3ecf3; color:#6d8aa6; border-radius:5px;
   padding:3px 9px; font-size:12px; font-weight:700}
 
-/* 能力の 1 行。項目名は水色の箱、段位と数字は大きく */
-.abrow{display:flex; align-items:center; gap:10px; padding:3px 0}
-.abrow .nm{width:92px; text-align:center; padding:5px 2px; border-radius:7px;
-  background:var(--label); font-weight:700; letter-spacing:.12em; font-size:13.5px;
+/* 能力の 1 行。行そのものを枠で囲み、項目名にも枠を付ける */
+.abrow{display:flex; align-items:center; gap:8px; padding:4px 8px 4px 4px;
+  margin:3px 0; border:1.5px solid #bcd6ea; border-radius:9px;
+  background:linear-gradient(#ffffff, #eef6fd);
+  box-shadow:inset 0 1px 0 #fff, 0 1px 2px rgba(19,57,95,.10)}
+.abrow .nm{flex:none; width:104px; text-align:center; padding:5px 2px;
+  border:1.5px solid #a9c9e4; border-radius:7px;
+  background:linear-gradient(#f4fbff, var(--label));
+  box-shadow:inset 0 1px 0 #fff;
+  font-weight:800; letter-spacing:.16em; font-size:16px; white-space:nowrap;
   color:var(--ink)}
-.abrow .rank{width:24px; text-align:center; font-weight:800; line-height:1;
-  font-family:"Barlow Condensed",sans-serif; font-size:26px}
-.abrow .num{width:54px; text-align:right; font-family:"Barlow Condensed",sans-serif;
-  font-variant-numeric:tabular-nums; font-weight:800; font-size:26px; line-height:1}
+.abrow .rank{flex:none; width:30px; text-align:center; font-weight:800; line-height:1;
+  font-family:"Barlow Condensed",sans-serif; font-size:32px;
+  text-shadow:0 1px 0 rgba(255,255,255,.9)}
+.abrow .num{flex:1; text-align:right; font-family:"Barlow Condensed",sans-serif;
+  font-variant-numeric:tabular-nums; font-weight:800; font-size:32px; line-height:1;
+  text-shadow:0 1px 0 rgba(255,255,255,.9)}
 .abrow .arrow{color:#e0459a; font-size:20px; line-height:1}
 
 /* 右上の基礎能力 */
 .basics{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px}
+.basic{display:flex; align-items:stretch; background:var(--pale); color:var(--paletext);
+  border-radius:6px; overflow:hidden; font-weight:800; letter-spacing:.04em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.basic i{flex:1; font-style:normal; padding:5px 4px; font-size:13.5px;
+  text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* 名前と段位のあいだの分け目 */
+.basic b{flex:none; width:22px; padding:5px 0; font-size:14px; text-align:center;
+  border-left:1.5px solid rgba(255,255,255,.85);
+  background:rgba(255,255,255,.28)}
 .basic.good{background:#b9daf8; color:#0f4a86}
 .basic.bad{background:#ffd2d2; color:#9b2226}
-.basic{background:var(--pale); color:var(--paletext); border-radius:5px; padding:6px 4px;
-  font-size:12px; text-align:center; letter-spacing:.06em; white-space:nowrap;
-  overflow:hidden; text-overflow:ellipsis; font-weight:700}
 
 /* 特殊能力。空き枠も出す */
-.skills{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px}
-.skill{padding:6px 4px; border-radius:5px; font-size:12.5px; font-weight:700;
-  text-align:center; letter-spacing:.04em; white-space:nowrap;
-  overflow:hidden; text-overflow:ellipsis}
-/* 水=低い能力 青=高い能力 赤=悪い能力 緑=個性的 金=青より良い */
-.skill.low{background:#d9eefb; color:#3d7ea8}
-.skill.good{background:#b9daf8; color:#0f4a86}
-.skill.bad{background:#ffd2d2; color:#9b2226}
-.skill.green{background:#cdeed6; color:#1d6b32}
-.skill.empty{background:var(--pale)}
+.skills{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px}
+.skill{padding:7px 4px; border-radius:6px; font-size:14px; font-weight:800;
+  text-align:center; letter-spacing:.02em; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;
+  border:1.5px solid rgba(19,57,95,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),
+             inset 0 -3px 6px rgba(19,57,95,.10),
+             0 1px 2px rgba(19,57,95,.14)}
+/* 水=低い能力 青=高い能力 赤=悪い能力 緑=個性的 */
+.skill.low{background:linear-gradient(#eaf7ff,#cfe8f8); color:#3d7ea8}
+.skill.good{background:linear-gradient(#d7ebff,#a9d0f5); color:#0f4a86}
+.skill.bad{background:linear-gradient(#ffe6e6,#ffc4c4); color:#9b2226}
+.skill.green{background:linear-gradient(#e2f7e8,#bfe8cb); color:#1d6b32}
+.skill.empty{background:linear-gradient(#f6fbff,#e8f2fa); border-color:rgba(19,57,95,.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
 .pawa .note{color:#6d8aa6}
 /* 変化球の方向 */
 .breaks{display:grid; grid-template-columns:repeat(3,1fr); gap:3px; width:150px;
@@ -1113,6 +1132,88 @@ function prow(name, sub, key, value, fmt){
   </div>`;
 }
 
+/* ------------------------------------------------- 選手の別名
+
+   プレイヤー ID を変えた人を、同じ選手としてまとめるための表。
+   players.yml に、まとめ先の名前とそのときの ID を並べて書く。
+
+     Players:
+       sota2486:
+         - sota_old
+         - sota2486_2
+
+   読み込んだあと ALIAS_NAME を通して、記録の中の名前を書き換える。 */
+
+/** 昔の ID → いまの名前。 */
+const ALIAS_NAME={};
+
+/**
+ * players.yml を読む。
+ *
+ * <p>入れ子は 2 段だけなので、行頭の空白の数で見る。
+ * 見出しの行がまとめ先の名前、その下の「- 」で始まる行が昔の ID。
+ */
+function ingestPlayers(text){
+  const lines=String(text).replace(/\r/g,"").split("\n");
+  let inRoot=false, rootIndent=0, current="", added=0;
+  for(const raw of lines){
+    const line=raw.trim();
+    if(!line || line.startsWith("#")) continue;
+    const indent=raw.length-raw.replace(/^ +/,"").length;
+    if(!inRoot){
+      if(/^Players\s*:$/i.test(line)){ inRoot=true; rootIndent=indent; }
+      continue;
+    }
+    if(indent<=rootIndent) break;
+    const item=line.match(/^-\s*['"]?([^'"]+?)['"]?$/);
+    if(item){
+      if(current){ ALIAS_NAME[item[1].trim()]=current; added++; }
+      continue;
+    }
+    const head=line.match(/^['"]?([^'":]+?)['"]?\s*:(.*)$/);
+    if(head){
+      current=head[1].trim();
+      // 1 行で書いた場合 (name: [a, b]) にも付き合う
+      const inline=head[2].trim().replace(/^\[|\]$/g,"");
+      if(inline){
+        inline.split(",").forEach(one=>{
+          const id=one.trim().replace(/^['"]|['"]$/g,"");
+          if(id){ ALIAS_NAME[id]=current; added++; }
+        });
+      }
+    }
+  }
+  return added ? "players" : null;
+}
+
+/** 別名を今の名前に直す。 */
+const canon=name => ALIAS_NAME[name] || name;
+
+/**
+ * 読み込んだ記録の名前を、まとめ先の名前に置き換える。
+ *
+ * <p>別名表があとから読まれることもあるので、読み込みが済んでから 1 度だけ通す。
+ */
+function applyAliases(){
+  if(!Object.keys(ALIAS_NAME).length) return;
+  DATA.plate.forEach(r=>{
+    if(r.batter) r.batter=canon(r.batter);
+    if(r.pitcher) r.pitcher=canon(r.pitcher);
+  });
+  DATA.pitch.forEach(r=>{
+    if(r.batter) r.batter=canon(r.batter);
+    if(r.pitcher) r.pitcher=canon(r.pitcher);
+  });
+  DATA.play.forEach(r=>{
+    if(r.player) r.player=canon(r.player);
+  });
+  // 顔も付け替える。昔の ID のファイル名で置いてあることがある。
+  Object.keys(ALIAS_NAME).forEach(old=>{
+    const now=ALIAS_NAME[old];
+    if(FACES[old] && !FACES[now]) FACES[now]=FACES[old];
+  });
+}
+
 /** 試合ごとの成績表。最後に通算行。 */
 function gameTable(rows, cols, calc){
   calc = calc || line;
@@ -1764,10 +1865,12 @@ function pawaHead(name, badge, stats){
  */
 function basicRow(items){
   return `<div class="basics">${items.map(text => {
-    const letter=String(text).trim().slice(-1);
+    const whole=String(text).trim();
+    const letter=whole.slice(-1);
+    const name=whole.slice(0, -1).trim();
     const tone="SAB".indexOf(letter)>=0 ? " good"
       : "FG".indexOf(letter)>=0 ? " bad" : "";
-    return `<span class="basic${tone}">${esc(text)}</span>`;
+    return `<span class="basic${tone}"><i>${esc(name)}</i><b>${esc(letter)}</b></span>`;
   }).join("")}</div>`;
 }
 /**
@@ -2333,7 +2436,7 @@ function slowStarter(rows){
  * 球種の名前は段の先に書く。
  */
 function breakCompass(types){
-  const W=320, H=230, cx=W/2, cy=H/2;
+  const W=280, H=210, cx=W/2, cy=H/2;
   // 向きごとの角度(度。0 が右、下が正)
   const DEG={up:-90, upRight:-45, right:0, lowRight:45,
              down:90, lowLeft:135, left:180, upLeft:-135};
@@ -2352,29 +2455,29 @@ function breakCompass(types){
       const deg=base + (i - (list.length-1)/2) * spread;
       const rad=deg*Math.PI/180, ux=Math.cos(rad), uy=Math.sin(rad);
       for(let k=1;k<t.amount;k++){
-        const x=cx+ux*(10+k*9), y=cy+uy*(10+k*9);
-        g+=`<rect x="${(x-4.5).toFixed(1)}" y="${(y-4).toFixed(1)}" width="9" height="8"
+        const x=cx+ux*(12+k*11), y=cy+uy*(12+k*11);
+        g+=`<rect x="${(x-5.5).toFixed(1)}" y="${(y-5).toFixed(1)}" width="11" height="10"
             rx="1" fill="${STEP[Math.min(k, STEP.length)-1]}"
             stroke="#1d6fb8" stroke-width="1.2"
             transform="rotate(${deg.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
       }
       // 先は矢じり。変化量が無い球は中心のすぐ外に置く
-      const tipAt=t.amount ? 10+t.amount*9 : 15;
+      const tipAt=t.amount ? 12+t.amount*11 : 18;
       const tx=cx+ux*tipAt, ty=cy+uy*tipAt;
-      g+=`<path d="M7,0 L-4,-5.5 L-4,5.5 Z" fill="${TIP}"
+      g+=`<path d="M9,0 L-5,-7 L-5,7 Z" fill="${TIP}"
           transform="translate(${tx.toFixed(1)} ${ty.toFixed(1)}) rotate(${deg.toFixed(0)})"/>`;
       // 名前。同じ向きが並ぶときは一本ごとに遠さを変えて重なりを避ける
-      const reach=tipAt + 13 + (list.length>1 ? (i%2)*13 : 0);
+      const reach=tipAt + 15 + (list.length>1 ? (i%2)*15 : 0);
       const lx=cx+ux*reach, ly=cy+uy*reach+4;
       const anchor=ux>0.25 ? "start" : ux<-0.25 ? "end" : "middle";
       g+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}"
-          font-size="10.5" font-weight="700" fill="#1d6fb8">${esc(t.name)}</text>`;
+          font-size="12.5" font-weight="700" fill="#1d6fb8">${esc(t.name)}</text>`;
     });
   });
-  g+=`<circle cx="${cx}" cy="${cy}" r="10" fill="#fff" stroke="#e02020" stroke-width="2"/>
-      <path d="M${cx-6} ${cy-7} A 12 12 0 0 1 ${cx-6} ${cy+7}
-        M${cx+6} ${cy-7} A 12 12 0 0 0 ${cx+6} ${cy+7}"
-        fill="none" stroke="#e02020" stroke-width="1.4"/>`;
+  g+=`<circle cx="${cx}" cy="${cy}" r="12" fill="#fff" stroke="#e02020" stroke-width="2.4"/>
+      <path d="M${cx-7} ${cy-8.5} A 14 14 0 0 1 ${cx-7} ${cy+8.5}
+        M${cx+7} ${cy-8.5} A 14 14 0 0 0 ${cx+7} ${cy+8.5}"
+        fill="none" stroke="#e02020" stroke-width="1.6"/>`;
   if(!types.length){
     g+=`<text x="${cx}" y="${cy+36}" text-anchor="middle" font-size="11"
         fill="#8aa7bd">変化球の記録がありません</text>`;
@@ -3068,7 +3171,10 @@ function fillGaps(values){
   for(let i=last+1;i<values.length;i++) values[i]=values[last];
 }
 function ingest(text,name){
-  if(name&&/\.ya?ml$/i.test(name)) return ingestYaml(text);
+  if(name&&/\.ya?ml$/i.test(name)){
+    // 同じ yml でも、選手の別名表と球場は中身で見分ける
+    return /^\s*Players\s*:/m.test(text) ? ingestPlayers(text) : ingestYaml(text);
+  }
   const {head,rows}=parseCsv(text);
   if(!rows.length) return null;
   if(head.includes("game_id")){ DATA.plate.push(...rows); return "result"; }
@@ -3083,18 +3189,19 @@ function ingest(text,name){
  * 同じ名前のファイルは二重に数えないよう読み飛ばす。
  */
 /**
- * data/manifest.json に並んだファイルを読み込む。
+ * manifest.json に並んだファイルを読み込む。
  *
- * <p>置き場所は index.html と同じところの data/ フォルダ。
- * manifest.json は {"files": ["result.csv", ...]} の形で、
+ * <p>置き場所は index.html と同じところ。名前は index.html から見た相対のパスで、
  * csv・yml と顔画像(ファイル名 = プレイヤー名)を並べる。
+ *
+ *   {"files": ["2026090801.csv", "sota2486.png", "players.yml"]}
  *
  * <p>manifest.json が無ければサンプルのまま表示する。
  */
 async function bootFromData(){
   let names=[];
   try{
-    const res=await fetch("data/manifest.json", {cache:"no-cache"});
+    const res=await fetch("manifest.json", {cache:"no-cache"});
     if(!res.ok) throw new Error(res.status);
     const body=await res.json();
     names=Array.isArray(body) ? body : (body.files||[]);
@@ -3102,21 +3209,27 @@ async function bootFromData(){
     render();
     return;
   }
+  const url=name => name.split("/").map(encodeURIComponent).join("/");
   const pics=names.filter(n=>/\.(png|jpe?g|gif|webp)$/i.test(n));
-  const data=names.filter(n=>/\.(csv|ya?ml)$/i.test(n)).sort((a,b)=>a.localeCompare(b));
+  // 別名表を先に読みたいので、yml を前に出す
+  const data=names.filter(n=>/\.(csv|ya?ml)$/i.test(n))
+    .sort((a,b)=>{
+      const ya=/\.ya?ml$/i.test(a) ? 0 : 1, yb=/\.ya?ml$/i.test(b) ? 0 : 1;
+      return ya!==yb ? ya-yb : a.localeCompare(b);
+    });
   // 顔は画像そのものを参照する。読み込みを待つ必要は無い。
-  // ファイル名に空白や日本語が入るので、そのまま URL にしない
   pics.forEach(n=>{
-    FACES[n.replace(/\.[^.]+$/,"")]="data/"+encodeURIComponent(n);
+    FACES[n.split("/").pop().replace(/\.[^.]+$/,"")]=url(n);
   });
   if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[]; SAMPLE=false; }
   for(const name of data){
     try{
-      const res=await fetch("data/"+encodeURIComponent(name), {cache:"no-cache"});
+      const res=await fetch(url(name), {cache:"no-cache"});
       if(!res.ok) continue;
       if(ingest(await res.text(), name)) DATA.files.push(name);
     }catch(e){ /* 1 つ読めなくても残りは出す */ }
   }
+  applyAliases();
   render();
 }
 /** 球場を選ぶ欄を、読み込んである球場で作り直す。 */
@@ -3132,6 +3245,7 @@ function renderParks(){
   sel.hidden=PARKS.length===0;
 }
 function finishLoad(skipped){
+  applyAliases();
   document.getElementById("sampleNote").hidden=!SAMPLE;
   const b=document.getElementById("loaded");
   b.hidden=false;
