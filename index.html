@@ -3232,17 +3232,28 @@ function ingest(text,name){
  * <p>manifest.json が無ければサンプルのまま表示する。
  */
 async function bootFromData(){
-  let names=[];
-  try{
-    const res=await fetch("manifest.json", {cache:"no-cache"});
-    if(!res.ok) throw new Error(res.status);
-    const body=await res.json();
-    names=Array.isArray(body) ? body : (body.files||[]);
-  }catch(e){
+  // manifest はここのどれかにある。上から順に探す。
+  const WHERE=["manifest.json", "data/manifest.json", "site/manifest.json"];
+  let names=null, base="", why="";
+  for(const at of WHERE){
+    try{
+      const res=await fetch(at, {cache:"no-cache"});
+      if(!res.ok){ why=at+" -> HTTP "+res.status; continue; }
+      const body=await res.json();
+      names=Array.isArray(body) ? body : (body.files||[]);
+      // manifest の中の名前は、その manifest から見た相対のパス
+      base=at.slice(0, at.lastIndexOf("/")+1);
+      break;
+    }catch(e){
+      why=at+" -> "+(e && e.message ? e.message : e);
+    }
+  }
+  if(!names){
+    bootFailed(why);
     render();
     return;
   }
-  const url=name => name.split("/").map(encodeURIComponent).join("/");
+  const url=name => base + name.split("/").map(encodeURIComponent).join("/");
   const pics=names.filter(n=>/\.(png|jpe?g|gif|webp)$/i.test(n));
   // 別名表を先に読みたいので、yml を前に出す
   const data=names.filter(n=>/\.(csv|ya?ml)$/i.test(n))
@@ -3264,6 +3275,27 @@ async function bootFromData(){
   }
   applyAliases();
   render();
+}
+
+/**
+ * manifest が読めなかったことを画面に出す。
+ *
+ * <p>黙ってサンプルに戻ると、置き場所を間違えたのか
+ * そもそも読みに行っていないのかが分からない。
+ */
+function bootFailed(why){
+  const bar=document.createElement("div");
+  bar.style.cssText="padding:10px 14px; background:#fff4d6; color:#7a4f05;"
+    + "border-bottom:1px solid #e8c98a; font-size:13px";
+  const local=location.protocol==="file:";
+  bar.textContent=local
+    ? "manifest.json を読めないため、サンプルを表示しています。"
+      + "ブラウザは file:// で開いたページからファイルを読めません。"
+      + "GitHub Pages に置くか、このフォルダで簡易サーバを立てて開いてください。"
+    : "manifest.json を読めないため、サンプルを表示しています。"
+      + " 試した場所: manifest.json / data/manifest.json / site/manifest.json"
+      + (why ? "  (" + why + ")" : "");
+  document.body.insertBefore(bar, document.getElementById("app"));
 }
 /** 球場を選ぶ欄を、読み込んである球場で作り直す。 */
 function renderParks(){
