@@ -3253,7 +3253,33 @@ async function bootFromData(){
     render();
     return;
   }
-  const url=name => base + name.split("/").map(encodeURIComponent).join("/");
+  const enc=name => name.split("/").map(encodeURIComponent).join("/");
+  // 置き場所が変わっても拾えるよう、いくつか当たってみる。
+  // 手元では site/ に入れていても、公開先では直下に並べていることがある。
+  const WHERE_FILE=["", "site/", "data/"];
+  const candidates=name => {
+    const only=name.split("/").pop();
+    const list=[base+enc(name)];
+    WHERE_FILE.forEach(dir=>{
+      const at=base+dir+enc(only);
+      if(!list.includes(at)) list.push(at);
+    });
+    return list;
+  };
+  /** どこかに見つかるまで順に当たる。 */
+  const grab=async name => {
+    let last="";
+    for(const at of candidates(name)){
+      try{
+        const res=await fetch(at, {cache:"no-cache"});
+        if(res.ok) return {at, text:await res.text()};
+        last=at+" -> HTTP "+res.status;
+      }catch(e){
+        last=at+" -> "+(e && e.message ? e.message : e);
+      }
+    }
+    return {at:null, why:last};
+  };
   const pics=names.filter(n=>/\.(png|jpe?g|gif|webp)$/i.test(n));
   // 別名表を先に読みたいので、yml を前に出す
   const data=names.filter(n=>/\.(csv|ya?ml)$/i.test(n))
@@ -3262,20 +3288,19 @@ async function bootFromData(){
       return ya!==yb ? ya-yb : a.localeCompare(b);
     });
   // 顔は画像そのものを参照する。読み込みを待つ必要は無い。
+  // 置き場所が違っていても出るよう、img が出せなければ次の候補へ移る。
   pics.forEach(n=>{
-    FACES[n.split("/").pop().replace(/\.[^.]+$/,"")]=url(n);
+    const where=candidates(n);
+    FACES[n.split("/").pop().replace(/\.[^.]+$/,"")]=where[0];
+    FACE_ALT[where[0]]=where.slice(1);
   });
   if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[]; SAMPLE=false; }
   const missing=[];
   for(const name of data){
-    try{
-      const res=await fetch(url(name), {cache:"no-cache"});
-      if(!res.ok){ missing.push(url(name)+" -> HTTP "+res.status); continue; }
-      if(ingest(await res.text(), name)) DATA.files.push(name);
-      else missing.push(url(name)+" -> 中身が result / record / play のどれでもない");
-    }catch(e){
-      missing.push(url(name)+" -> "+(e && e.message ? e.message : e));
-    }
+    const got=await grab(name);
+    if(!got.at){ missing.push(got.why); continue; }
+    if(ingest(got.text, name)) DATA.files.push(name);
+    else missing.push(got.at+" -> 中身が result / record / play のどれでもない");
   }
   if(!DATA.files.length){
     // 1 つも読めなかった。空の画面を出すよりサンプルに戻す。
@@ -3289,6 +3314,20 @@ async function bootFromData(){
   applyAliases();
   render();
 }
+
+/**
+ * 顔画像の代わりの置き場所。最初の場所で出なければ次を試す。
+ */
+const FACE_ALT={};
+document.addEventListener("error", event => {
+  const img=event.target;
+  if(!img || img.tagName!=="IMG") return;
+  const next=(FACE_ALT[img.getAttribute("src")]||[]).slice();
+  if(!next.length) return;
+  const now=next.shift();
+  FACE_ALT[now]=next;
+  img.src=now;
+}, true);
 
 /**
  * manifest が読めなかったことを画面に出す。
