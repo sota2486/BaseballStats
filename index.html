@@ -441,6 +441,14 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .dotmark{width:11px; height:11px; border-radius:99px; flex:none}
 .empty{padding:24px 14px; text-align:center; color:var(--muted); font-size:12.5px}
 table.pa2 col.c-o{width:40px}
+table.pa2 col.c-b{width:44px}
+table.pa2 td.bases{text-align:center}
+/* 塁状況。上が二塁、下の左右が三塁と一塁 */
+.diamond{display:inline-flex; flex-direction:column; align-items:center; gap:1px}
+.diamond .row{display:flex; gap:9px}
+.diamond i{display:block; width:7px; height:7px; transform:rotate(45deg);
+  border:1.2px solid var(--line); background:transparent}
+.diamond i.on{background:var(--hot); border-color:var(--hot)}
 table.pa2 td.slot{text-align:center}
 /* 打順は四角で囲う */
 table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:center;
@@ -464,7 +472,6 @@ table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:cen
 <header>
   <div class="top">
     <div class="wordmark">SBG <b>Savant</b></div>
-    <div class="sub">result / record の csv から打者・投手を見る</div>
     <div class="io">
       <button id="theme">テーマ</button>
       <select id="parkPick" title="チャートに使う球場" hidden><option value="">既定の球場</option></select>
@@ -1798,6 +1805,21 @@ function orderNumbers(rows){
   return at;
 }
 
+/**
+ * 打席の始まりの塁状況。ひし形 3 つで表す。
+ *
+ * <p>並びはサイドバーと同じで、上が二塁、下の左右が三塁と一塁。
+ * 走者がいれば塗りつぶし、いなければ白抜き。
+ */
+function baseMark(row){
+  const on=at => row[at]===true;
+  const mark=full => `<i class="${full ? "on" : ""}"></i>`;
+  return `<span class="diamond">
+    <span class="top">${mark(on("base2"))}</span>
+    <span class="row">${mark(on("base3"))}${mark(on("base1"))}</span>
+  </span>`;
+}
+
 function inningTables(rows){
   const index=recordIndex();
   const sides=teamSides(rows);
@@ -1810,10 +1832,10 @@ function inningTables(rows){
       if(!half.length) continue;
       html+=`<div class="inninghead">${i} 回${side?"裏":"表"}</div>
       <div class="scroll"><table class="pa2">
-      <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-r"><col class="c-s">
+      <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-b"><col class="c-r"><col class="c-s">
         <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-m"><col class="c-s"></colgroup>
       <thead><tr>
-        <th>打順</th><th class="nm">打者</th><th class="nm">投手</th>
+        <th>打順</th><th class="nm">打者</th><th class="nm">投手</th><th>塁</th>
         <th class="nm">結果</th><th>打点</th>
         <th>初速</th><th>角度</th><th>距離</th><th>Barrel</th><th>xBA</th>
       </tr></thead><tbody>${half.map(r=>{
@@ -1827,6 +1849,7 @@ function inningTables(rows){
           <td class="slot">${slot ? `<i>${slot}</i>` : ""}</td>
           <td class="nm">${withTeamFace(r.batter,sides[r.batter],20)}</td>
           <td class="nm">${withTeamFace(r.pitcher,sides[r.pitcher],20)}</td>
+          <td class="bases">${baseMark(r)}</td>
           <td class="res"><span class="rtag ${resultClass(r.result)}">${JA[r.result]||r.result||""}</span></td>
           <td class="${rbi?"rbi":""}">${rbi||""}</td>
           <td>${hit?f1(ev):"–"}</td>
