@@ -441,9 +441,9 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .dotmark{width:11px; height:11px; border-radius:99px; flex:none}
 .empty{padding:24px 14px; text-align:center; color:var(--muted); font-size:12.5px}
 /* 打順表 */
-.lineup{list-style:none; margin:0; padding:0; display:grid; gap:2px}
-.lineup li{display:flex; align-items:center; gap:8px; padding:4px 6px;
-  border-radius:6px; background:var(--panel-2)}
+.lineup{margin:0; padding:4px 0; display:grid; gap:2px}
+.lineup .row{display:flex; align-items:center; gap:8px; padding:4px 8px;
+  border-radius:6px; background:var(--panel-2); font-size:12.5px}
 .lineup .slot{width:24px; text-align:center; font-family:"Barlow Condensed",sans-serif;
   font-size:15px; font-weight:700; color:var(--muted)}
 .lineup .at{width:20px; text-align:center; font-size:12px; font-weight:700;
@@ -1635,9 +1635,15 @@ function lineup(rows, side){
     if(!(slot>=1 && slot<=9)) return;
     if(!byOrder.has(slot)) byOrder.set(slot, r.batter);
   });
-  const out=[];
+  // 同じ人が別の枠でも打っていることがある。
+  // (打順が一巡しないまま人が足りず、番号が回ってしまった試合など)
+  // 打順表は「誰の枠か」を見るものなので、先に出てきた枠だけ残す。
+  const out=[], used=new Set();
   for(let slot=1; slot<=9; slot++){
-    if(byOrder.has(slot)) out.push({slot, name:byOrder.get(slot)});
+    const who=byOrder.get(slot);
+    if(!who || used.has(who)) continue;
+    used.add(who);
+    out.push({slot, name:who});
   }
   return out;
 }
@@ -1665,17 +1671,18 @@ function lineupCard(rows, side, name){
   const order=lineup(rows, side);
   const starter=starterOf(rows, side);
   if(!order.length && !starter) return "";
-  const line=(label, who, where) => `<li>
+  // ol を使うと card の連番が重なって出るので、素の div で組む
+  const line=(label, who, where) => `<div class="row">
       <span class="slot">${label}</span>
       <span class="at">${where ? esc(POS_LABEL[where]) : ""}</span>
       ${withTeamFace(who, side, 20)}
-    </li>`;
+    </div>`;
   const body=order.map(one =>
     line(one.slot, one.name, positionIn(GAME, one.name))).join("");
   const arm=starter ? line("投", starter, "PITCHER") : "";
   return `<div class="card">
     <h4 class="${teamClass(side)}">${esc(name)}</h4>
-    <ol class="lineup">${body}${arm}</ol>
+    <div class="lineup">${body}${arm}</div>
   </div>`;
 }
 
