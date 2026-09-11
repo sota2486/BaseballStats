@@ -1622,28 +1622,23 @@ function positionIn(game, name){
 /**
  * その試合の打順。
  *
- * <p>同じ打順に何人か入っていたら、最初に打った人を採る。
- * 途中出場は打順表には出さない。誰の打順かを見るための表なので。
+ * <p>result の order 列は打順の枠ではなく「その回の何人目か」なので使えない。
+ * 打った順に名前を並べ、一巡して先頭に戻るまでを打順とする。
+ *
+ * <p>一巡の中で代わった人はその枠の人として出る。
+ * 二巡目以降に入ってきた代打・代走は出さない。誰の枠かを見るための表なので。
  *
  * @param side 0=先攻 1=後攻
  */
 function lineup(rows, side){
-  const byOrder=new Map();
-  rows.forEach(r=>{
-    if((isBottom(r)?1:0)!==side || !r.batter) return;
-    const slot=Number(r.order);
-    if(!(slot>=1 && slot<=9)) return;
-    if(!byOrder.has(slot)) byOrder.set(slot, r.batter);
-  });
-  // 同じ人が別の枠でも打っていることがある。
-  // (打順が一巡しないまま人が足りず、番号が回ってしまった試合など)
-  // 打順表は「誰の枠か」を見るものなので、先に出てきた枠だけ残す。
   const out=[], used=new Set();
-  for(let slot=1; slot<=9; slot++){
-    const who=byOrder.get(slot);
-    if(!who || used.has(who)) continue;
-    used.add(who);
-    out.push({slot, name:who});
+  for(const r of rows){
+    if((isBottom(r)?1:0)!==side || !r.batter) continue;
+    // 一巡して先頭に戻った
+    if(used.has(r.batter)) break;
+    used.add(r.batter);
+    out.push({slot:out.length+1, name:r.batter});
+    if(out.length>=9) break;
   }
   return out;
 }

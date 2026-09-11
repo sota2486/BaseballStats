@@ -1,0 +1,4 @@
+game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind
+2026091101,1,TOP,2026091101#1,run,Rosario20,54,145,146.9,22.9,78.3,15-30/125-150,0,1,false,0.87,,,,,,,,,,,,,,,false,,,
+2026091101,1,TOP,2026091101#4,run,Rosario20,6,26,196.2,-2.7,14.4,LT0/175-200,0,0,false,0.00,,,,,,,,,,,,,,,false,,,
+2026091101,1,BOTTOM,2026091101#6,field,Rosario20,5,30,213.2,-6.3,11.4,LT0/200+,,,,,THIRD_BASEMAN,,430.8,1000.2,439.3,1002.4,false,false,false,false,false,0,-1,,false,false,false,false,
