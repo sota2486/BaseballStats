@@ -440,9 +440,14 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .spraylegend span{display:flex; align-items:center; gap:6px; letter-spacing:.04em}
 .dotmark{width:11px; height:11px; border-radius:99px; flex:none}
 .empty{padding:24px 14px; text-align:center; color:var(--muted); font-size:12.5px}
-table.pa2 col.c-o{width:38px}
-table.pa2 td.slot{text-align:center; font-family:"Barlow Condensed",sans-serif;
-  font-size:15px; font-weight:700; color:var(--muted)}
+table.pa2 col.c-o{width:40px}
+table.pa2 td.slot{text-align:center}
+/* 打順は四角で囲う */
+table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:center;
+  width:22px; height:22px; font-style:normal;
+  border:1.5px solid var(--line); border-radius:4px; background:var(--panel-2);
+  font-family:"Barlow Condensed",sans-serif; font-size:15px; font-weight:700;
+  color:var(--text)}
 /* 打順表 */
 .lineup{margin:0; padding:4px 0; display:grid; gap:2px}
 .lineup .row{display:flex; align-items:center; gap:8px; padding:4px 8px;
@@ -1819,7 +1824,7 @@ function inningTables(rows){
         const rbi=Number(r.rbi)||0;
         const slot=order.get(r.batter);
         return `<tr>
-          <td class="slot">${slot ? slot : ""}</td>
+          <td class="slot">${slot ? `<i>${slot}</i>` : ""}</td>
           <td class="nm">${withTeamFace(r.batter,sides[r.batter],20)}</td>
           <td class="nm">${withTeamFace(r.pitcher,sides[r.pitcher],20)}</td>
           <td class="res"><span class="rtag ${resultClass(r.result)}">${JA[r.result]||r.result||""}</span></td>
