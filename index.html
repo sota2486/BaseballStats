@@ -1588,6 +1588,54 @@ function pitcherColumns(mode){
     {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc}
   ];
 }
+/** xERA の目盛りを覚えておく。読み込んだ記録が変われば作り直す。 */
+let XERA_SCALE=null;
+
+/**
+ * xERA を出すための、このリーグの目盛り。
+ *
+ * <p>xERA は「打たれ方から見て、本来どれだけ点を取られる投手か」。
+ * 大リーグ向けの決まった式をそのまま当てると、球場も打力も違うので
+ * まるで合わない(実際 xERA がリーグ平均 1.9、実際の防御率は 6.9 になっていた)。
+ * そこで読み込んだ記録そのものから目盛りを作る。
+ *
+ * <ul>
+ *   <li>中心 … リーグの xwOBA と、そのときの失点率(9 回あたり)</li>
+ *   <li>傾き … 9 回あたりの打者数 ÷ 1.15。
+ *       wOBA が 1 上がると 1 打席あたり約 1.15 点ぶん、という目安から</li>
+ * </ul>
+ */
+function xeraScale(){
+  const key=DATA.plate.length+"/"+DATA.pitch.length;
+  if(XERA_SCALE && XERA_SCALE.key===key) return XERA_SCALE;
+  let pa=0, outs=0, runs=0;
+  DATA.plate.forEach(r=>{
+    pa++;
+    outs+=Number(r.outs)||0;
+    runs+=Number(r.runs)||0;
+  });
+  // リーグの xwOBA は 1 球ごとの記録から。投手側の行を全部まとめる。
+  const S=summarize(DATA.pitch.filter(r=>r.side==="Pitching"||!r.side));
+  const xwoba=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
+  if(!outs || !pa || xwoba===null){
+    XERA_SCALE={key, ok:false};
+    return XERA_SCALE;
+  }
+  XERA_SCALE={key, ok:true,
+    xwoba,
+    era: 27*runs/outs,
+    tilt: (pa/outs*27)/1.15};
+  return XERA_SCALE;
+}
+
+/** その xwOBA なら、9 回あたり何点取られる投手か。 */
+function xeraOf(xwoba){
+  if(xwoba===null) return null;
+  const lg=xeraScale();
+  if(!lg.ok) return null;
+  return Math.max(0, lg.era + (xwoba - lg.xwoba) * lg.tilt);
+}
+
 /** 一覧に並べる選手ぶんの数字をまとめて作る。 */
 function leaderRows(side){
   const key=side==="bat"?"batter":"pitcher";
@@ -1601,7 +1649,7 @@ function leaderRows(side){
     return {name, L, S, xwoba,
       games:new Set(pa.map(r=>String(r.game_id))).size,
       wrc: side==="bat" ? wrcPlus(L) : null,
-      xera: xwoba===null?null:Math.max(0,(xwoba-0.300)*30.0),
+      xera: xeraOf(xwoba),
       w:(dec[name]||{}).w||0, l:(dec[name]||{}).l||0,
       sv:(dec[name]||{}).sv||0, hld:(dec[name]||{}).hld||0};
   });
@@ -2890,7 +2938,7 @@ function pitcherView(){
   const pa=plateOf(PLAYER,"pit"), ps=pitchOf(PLAYER,"pit");
   const L=pitcherLine(pa), S=summarize(ps);
   const xw=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
-  const xera=xw===null?null:Math.max(0,(xw-0.300)*30.0);
+  const xera=xeraOf(xw);
   const rows=[
     ["xERA","期待防御率","xera",xera,f1],
     ["xBA","被期待打率","xba_p",S.xba,f3],
