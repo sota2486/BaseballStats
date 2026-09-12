@@ -1679,18 +1679,19 @@ function withTeamFace(name, side, size){
  * 記録が無ければ空。
  */
 function positionIn(game, name){
-  const count={};
+  // 初めて守備についた回の位置を採る。
+  // 途中で替わっても、打順表に出すのは最初に守っていたところ。
+  let best=null;
   DATA.play.forEach(r=>{
     if(String(r.game)!==String(game) || r.player!==name) return;
     const at=String(r.position||"");
     if(!POS_LABEL[at]) return;
-    count[at]=(count[at]||0)+1;
+    const when=(Number(r.inning)||0)*2
+      + (String(r.half||"").toUpperCase().startsWith("B") ? 1 : 0);
+    // 同じ回なら先に出てきたものを使う
+    if(best===null || when<best.when) best={when, at};
   });
-  let best="", most=0;
-  for(const at in count){
-    if(count[at]>most){ most=count[at]; best=at; }
-  }
-  return best;
+  return best ? best.at : "";
 }
 
 /**
@@ -1746,8 +1747,13 @@ function lineupCard(rows, side, name){
       <span class="at">${where ? esc(POS_LABEL[where]) : ""}</span>
       ${withTeamFace(who, side, 20)}
     </div>`;
-  const body=order.map(one =>
-    line(one.slot, one.name, positionIn(GAME, one.name))).join("");
+  const body=order.map(one => {
+    let where=positionIn(GAME, one.name);
+    // 「投手」と書くのは先発だけ。救援した人や、マウンド付近にいて
+    // 投手の位置として記録された人には付けない。
+    if(where==="PITCHER" && one.name!==starter) where="";
+    return line(one.slot, one.name, where);
+  }).join("");
   const arm=starter ? line("投", starter, "PITCHER") : "";
   return `<div class="card">
     <h4 class="${teamClass(side)}">${esc(name)}</h4>
