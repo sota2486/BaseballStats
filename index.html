@@ -99,6 +99,9 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .face.ph img{position:absolute; left:0; top:0; width:100%; height:100%;
   image-rendering:pixelated; object-fit:cover}
 .withface{display:inline-flex; align-items:center; gap:6px; min-width:0}
+/* 名前を押すとその選手の画面へ */
+.plink{cursor:pointer}
+.plink:hover span{text-decoration:underline}
 .withface span{overflow:hidden; text-overflow:ellipsis}
 .who .facebig{margin-bottom:6px}
 
@@ -283,9 +286,9 @@ table.pa2{font-size:12px; table-layout:fixed; width:auto; min-width:720px}
 table.pa2 th,table.pa2 td{padding:3px 6px; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap}
 table.pa2 td.nm,table.pa2 th.nm{font-family:"Source Sans 3",sans-serif; text-align:left}
-table.pa2 td.res{text-align:left}
+table.pa2 td.res{text-align:center}
 table.pa2 col.c-p{width:158px} table.pa2 col.c-r{width:104px}
-table.pa2 col.c-s{width:52px} table.pa2 col.c-m{width:62px}
+table.pa2 col.c-s{width:52px} table.pa2 col.c-m{width:62px} table.pa2 col.c-k{width:74px}
 .rbi{color:var(--hot); font-weight:700}
 
 /* ------------------------------------------------------------ layout */
@@ -306,9 +309,10 @@ section{background:var(--panel); border:1px solid var(--line); border-radius:5px
   border-bottom:3px solid var(--rule); margin-bottom:9px}
 .head small{font-family:"Source Sans 3",sans-serif; font-size:11.5px; color:var(--muted);
   font-weight:400; margin-left:auto}
-/* 試合会場。見出しの中に小さく添える */
-.head .venue{font-family:"Source Sans 3",sans-serif; font-size:11.5px; font-weight:600;
-  color:var(--rule); border:1px solid var(--line); border-radius:3px; padding:1px 7px}
+/* 試合会場。イニングの並びの左に小さく添える */
+.venue{font-family:"Source Sans 3",sans-serif; font-size:11px; font-weight:600;
+  color:var(--rule); border:1px solid var(--line); border-radius:3px; padding:1px 6px;
+  white-space:nowrap}
 .title{text-align:center; font-family:"Barlow Condensed",sans-serif; font-size:22px;
   padding:11px 12px 9px}
 .title b{color:var(--hot)}
@@ -471,6 +475,47 @@ table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:cen
   font-size:15px; font-weight:700; color:var(--muted)}
 .lineup .at{width:20px; text-align:center; font-size:12px; font-weight:700;
   color:var(--rule)}
+/* ---------------------------------------------------------- スタジアム */
+/* 球場の紹介。1 行 2 つ */
+.parkcards{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+@media (max-width:760px){.parkcards{grid-template-columns:1fr}}
+.parkcard{border:1px solid var(--line); border-radius:8px; overflow:hidden;
+  background:var(--panel-2)}
+.parkcard .shot{width:100%; aspect-ratio:16/9; object-fit:cover; display:block;
+  background:var(--panel); border-bottom:1px solid var(--line)}
+.parkcard .noshot{width:100%; aspect-ratio:16/9; display:flex; align-items:center;
+  justify-content:center; color:var(--muted); font-size:11.5px;
+  background:var(--panel); border-bottom:1px solid var(--line)}
+.parkcard .body{padding:9px 11px 11px}
+.parkcard h4{margin:0 0 6px; font-family:"Barlow Condensed",sans-serif; font-size:19px;
+  letter-spacing:.02em}
+.parkcard .facts{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px}
+.parkcard .facts div{background:var(--panel); border-radius:5px; padding:5px 7px}
+.parkcard .facts b{display:block; font-family:"Barlow Condensed",sans-serif;
+  font-size:17px; line-height:1.1}
+.parkcard .facts span{font-size:10px; color:var(--muted); letter-spacing:.04em}
+.parkcard .shape{margin-top:6px; font-size:11px; color:var(--muted)}
+/* 広さの一覧。表計算のように詰めて出す */
+table.sheet{border-collapse:collapse; font-size:12px; width:100%;
+  font-family:"Barlow Condensed",sans-serif}
+table.sheet th,table.sheet td{border:1px solid var(--line); padding:3px 8px;
+  text-align:right; white-space:nowrap}
+table.sheet th{background:var(--panel-2); color:var(--muted); font-weight:600;
+  letter-spacing:.03em}
+table.sheet td.nm,table.sheet th.nm{text-align:left;
+  font-family:"Source Sans 3",sans-serif}
+table.sheet tr:nth-child(even) td{background:var(--panel-2)}
+/* 広さ比べ。左が平面、右が立体 */
+.compare{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+@media (max-width:860px){.compare{grid-template-columns:1fr}}
+.pickrow{display:flex; flex-wrap:wrap; gap:6px 12px; padding:2px 0 8px; font-size:12px}
+.pickrow label{display:inline-flex; align-items:center; gap:5px; cursor:pointer}
+.pickrow i{width:10px; height:10px; border-radius:2px; display:inline-block}
+.solidwrap{position:relative}
+.solidwrap canvas{width:100%; height:300px; display:block; border-radius:6px;
+  background:var(--panel-2); cursor:grab; touch-action:none}
+.solidwrap canvas:active{cursor:grabbing}
+.solidnote{font-size:11px; color:var(--muted); padding-top:5px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
 </style>
 </head>
@@ -632,10 +677,10 @@ function face(name, size){
     : "";
   return `<span class="face ph" style="${box};background:${nameColor(name)};font-size:${Math.round(size*0.52)}px">${esc(ch)}${skin}</span>`;
 }
-/** 顔と名前を並べたもの。表のセルに入れる。 */
+/** 顔と名前を並べたもの。表のセルに入れる。名前を押すとその選手の画面へ。 */
 function withFace(name, size){
   if(!name) return '<span class="none">マネキン</span>';
-  return `<span class="withface">${face(name,size)}<span>${esc(name)}</span></span>`;
+  return `<span class="withface plink" data-who="${esc(name)}" title="${esc(name)} の成績を見る">${face(name,size)}<span>${esc(name)}</span></span>`;
 }
 
 /* ------------------------------------------------------------------ csv */
@@ -775,12 +820,25 @@ function softLow(value){
   return value>=50 ? value : 50-(50-value)*SOFT_LOW;
 }
 
+/**
+ * 目盛りの下へ外れた値を 1〜20 に散らす。
+ *
+ * <p>目盛りの端で切ると、下のほうの人が全員 20 で並んでしまう。
+ * どれだけ外れているかで 20 から 1 まで下げる。
+ * 目盛りちょうど(0%)が 20、目盛り 1 つぶん外れたら 1。
+ */
+function belowScale(raw){
+  const under=Math.min(1, -raw/100);
+  return Math.max(1, 20*(1-under));
+}
+
 function score(key,value){
   const s=SCALE[key];
   if(!s||value===null||!isFinite(value)) return null;
   const [lo,hi]=s;
-  const raw=Math.max(0,Math.min(100,(value-lo)/(hi-lo)*100));
-  return Math.round(softLow(raw));
+  const raw=(value-lo)/(hi-lo)*100;
+  if(raw<0) return Math.round(belowScale(raw));
+  return Math.round(softLow(Math.min(100,raw)));
 }
 function scoreColor(v){
   if(v===null) return "var(--mid)";
@@ -1207,6 +1265,12 @@ function render(){
     return;
   }
   if(VIEW==="result"){ renderParks(); app.innerHTML=safely(resultView, "試合結果"); return; }
+  if(VIEW==="stadium"){
+    renderParks();
+    app.innerHTML=safely(stadiumView, "スタジアム");
+    drawParkSolid();
+    return;
+  }
   renderTabs();
   renderParks();
   if(!PLAYER){ app.innerHTML='<section><div class="empty">csv を読み込むと選手が並びます</div></section>'; return; }
@@ -1219,7 +1283,8 @@ function render(){
   // 試合は古い順のまま。直近が見えるよう、開いた時点で一番下へ送る
   document.querySelectorAll(".gamescroll").forEach(el=>{ el.scrollTop=el.scrollHeight; });
 }
-const VIEWS=[["top","Top"],["player","Player"],["leaderboard","Leaderboard"],["result","Result"]];
+const VIEWS=[["top","トップ"],["player","選手"],["leaderboard","ランキング"],
+  ["result","試合"],["stadium","スタジアム"]];
 function renderViewTabs(){
   document.getElementById("viewTabs").innerHTML=VIEWS.map(([k,label])=>
     `<div class="tab" data-view="${k}" aria-selected="${k===VIEW}">${label}</div>`).join("");
@@ -1271,7 +1336,7 @@ function fieldingPanel(name){
     ["Baserunning","走塁の値打ち","baserun", per(B.runs,B.plays), v=>v.toFixed(3)]
   ];
   return `<div class="pad" style="padding-top:10px">
-      <div class="head">Fielding &amp; Baserunning<small>守備 ${F.chances} 機会 / 走塁 ${B.plays} 回</small></div>
+      <div class="head">守備と走塁<small>守備 ${F.chances} 機会 / 走塁 ${B.plays} 回</small></div>
     </div>
     ${rows.map(r=>prow(...r)).join("")}`;
 }
@@ -1420,23 +1485,23 @@ function topView(){
     card("WHIP", pit, qp, d=>d.L.whip, f2, false)
   ].join("");
   return `<section class="span"><div class="pad">
-    <div class="head">Batting Leaders<small>上位 3 人</small></div>
+    <div class="head">打撃ランキング<small>上位 3 人</small></div>
     <div class="cards">${batCards}</div>
-    <div class="head" style="margin-top:14px">Pitching Leaders<small>上位 3 人</small></div>
+    <div class="head" style="margin-top:14px">投手ランキング<small>上位 3 人</small></div>
     <div class="cards">${pitCards}</div>
     <p class="note" style="padding:8px 0 0">
       率の項目は規定打席 ${QUAL_PA} / 規定投球回 ${QUAL_IP} 以上の選手だけを並べています。</p>
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">Best Plays<small>上位 5</small></div>
+    <div class="head">この試合のベストプレー<small>上位 5</small></div>
     <div class="cards">
-      ${playCard("Top Exit Velocity", topBatted("exit_velocity"), r=>f1(Number(r.exit_velocity))+" km/h")}
-      ${playCard("Top Distance", topBatted("distance"), r=>f1(distanceOf(r))+" m")}
+      ${playCard("打球速度", topBatted("exit_velocity"), r=>f1(Number(r.exit_velocity))+" km/h")}
+      ${playCard("飛距離", topBatted("distance"), r=>f1(distanceOf(r))+" m")}
       ${whiffCard()}
     </div>
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">Best Order<small>規定打席到達者の wRC+ 上位 9 人</small></div>
+    <div class="head">ベストオーダー<small>規定打席到達者の wRC+ 上位 9 人</small></div>
     ${bestOrder(bat, pit)}
   </div></section>`;
 }
@@ -1704,7 +1769,7 @@ function leaderboardView(){
     `<button data-lb="${group}" data-value="${value}"
       aria-selected="${LB[group]===value}">${label}</button>`;
   return `<section class="span"><div class="pad">
-    <div class="head">Leaderboard<small>${rows.length} 選手</small></div>
+    <div class="head">ランキング<small>${rows.length} 選手</small></div>
     <div class="lbbar">
       <div class="seg">${seg("side","bat","打者")}${seg("side","pit","投手")}</div>
       <div class="seg">${seg("mode","std","Standard")}${seg("mode","adv","Advanced")}</div>
@@ -1764,7 +1829,8 @@ function teamClass(side){
 /** 顔と名前。チームの色を付ける。 */
 function withTeamFace(name, side, size){
   if(!name) return `<span class="none">マネキン</span>`;
-  return `<span class="withface ${teamClass(side)}">${face(name,size)}<span>${esc(name)}</span></span>`;
+  return `<span class="withface plink ${teamClass(side)}" data-who="${esc(name)}"
+    title="${esc(name)} の成績を見る">${face(name,size)}<span>${esc(name)}</span></span>`;
 }
 /**
  * その試合でその選手が守っていた守備位置。
@@ -1876,9 +1942,8 @@ function resultView(){
   const rows=DATA.plate.filter(r=>String(r.game_id)===GAME);
   const pick=games.map(g=>
     `<button data-game="${esc(g)}" aria-selected="${g===GAME}">${esc(gameLabel(g))}</button>`).join("");
-  const venue=venueOf(GAME);
   return `<section class="span"><div class="pad">
-    <div class="head">Result${venue ? `<span class="venue">${esc(venue)}</span>` : ""}<small>${games.length} 試合</small></div>
+    <div class="head">試合<small>${games.length} 試合</small></div>
     <div class="gamepick">${pick}</div>
     ${scoreBoard(rows)}
   </div></section>
@@ -1915,8 +1980,9 @@ function scoreBoard(rows){
     <td class="big">${total(side)}</td><td class="big">${totalH(side)}</td>
   </tr>`;
   const homers=rows.filter(r=>r.result==="HOME_RUN");
+  const venue=venueOf(rows.length ? rows[0].game_id : GAME);
   return `<div class="scroll"><table class="board">
-    <thead><tr><th class="team"></th>
+    <thead><tr><th class="team">${venue ? `<span class="venue">${esc(venue)}</span>` : ""}</th>
       ${Array.from({length:innings},(_,k)=>`<th>${k+1}</th>`).join("")}
       <th class="big">R</th><th class="big">H</th></tr></thead>
     <tbody>${row(0)}${row(1)}</tbody>
@@ -1972,11 +2038,11 @@ function inningTables(rows){
       html+=`<div class="inninghead">${i} 回${side?"裏":"表"}</div>
       <div class="scroll"><table class="pa2">
       <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-b"><col class="c-r"><col class="c-s">
-        <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-m"><col class="c-s"></colgroup>
+        <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-k"><col class="c-s"></colgroup>
       <thead><tr>
         <th>打順</th><th class="nm">打者</th><th class="nm">投手</th><th>塁</th>
         <th class="nm">結果</th><th>打点</th>
-        <th>初速</th><th>角度</th><th>距離</th><th>Barrel</th><th>xBA</th>
+        <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th>
       </tr></thead><tbody>${half.map(r=>{
         const rec=index.get([GAME,r.inning,side?"B":"T",r.batter,r.result].join("|"));
         const ev=rec?Number(rec.exit_velocity):NaN, la=rec?Number(rec.launch_angle):NaN;
@@ -1994,7 +2060,7 @@ function inningTables(rows){
           <td>${hit?f1(ev):"–"}</td>
           <td>${hit?f1(la)+"°":"–"}</td>
           <td>${hit?f1(distanceOf(rec)):"–"}</td>
-          <td>${hit?(isBarrel(ev,la)?"true":"false"):"–"}</td>
+          <td>${hit?esc(battedKind(ev,la)):"–"}</td>
           <td>${x===null?"–":f3(x)}</td>
         </tr>`;
       }).join("")}</tbody></table></div>`;
@@ -2018,10 +2084,12 @@ const ABILITY_DEFAULT=55;
  */
 function ability(value, lo, hi){
   if(value===null || value===undefined || !isFinite(value)) return ABILITY_DEFAULT;
-  const t=Math.max(0, Math.min(1, (value-lo)/(hi-lo)));
+  const t=(value-lo)/(hi-lo);
+  // 目盛りより下は 1〜20 に散らす。全員 20 で並ぶのを避ける。
+  if(t<0) return Math.round(belowScale(t*100));
   // 50 より下は差を縮める。下振れがそのまま出ると見るのが嫌になる。
   // 順番は変わらないので、上手い下手の並びはそのまま。
-  return Math.round(softLow(20+75*t));
+  return Math.round(softLow(20+75*Math.min(1,t)));
 }
 /**
  * 記録の量から、その項目をどれだけ重く見るか。
@@ -2536,7 +2604,7 @@ function batterView(){
     <section>
       <div class="title">SBG <b>Percentile</b> Rankings</div>
       <div class="pad" style="padding-top:0">
-        <div class="head">Batting<small>${S.ab} 打数 (打球 ${S.n}) / ${S.pitches} 球</small></div>
+        <div class="head">打撃<small>${S.ab} 打数 (打球 ${S.n}) / ${S.pitches} 球</small></div>
       </div>
       ${pctLegend()}
       ${rows.map(r=>prow(...r)).join("")}
@@ -2551,7 +2619,7 @@ function batterView(){
 
   <div class="col">
     <section><div class="pad">
-      <div class="head">Hits Spray Chart<small>${S.bip.length} 打球</small></div>
+      <div class="head">打球方向<small>${S.bip.length} 打球</small></div>
       ${parkOverlayBox()}
       <div class="spraywrap">
         <svg id="spray" viewBox="0 0 320 306" role="img" aria-label="打球の落下地点" style="flex:1"></svg>
@@ -3017,7 +3085,7 @@ function pitcherView(){
       </div>
     </section>
     <section><div class="pad">
-      <div class="head">Pitch Usage<small>${S.pitches} 球</small></div>
+      <div class="head">球種の割合<small>${S.pitches} 球</small></div>
       ${types.length? `<table class="usage"><tbody>
         ${types.map((t,i)=>`<tr>
           <td class="pillcell"><span class="ptype">
@@ -3039,7 +3107,7 @@ function pitcherView(){
     <section>
       <div class="title">SBG <b>Percentile</b> Rankings</div>
       <div class="pad" style="padding-top:0">
-        <div class="head">Pitching<small>${S.ab} 被打数 (被打球 ${S.n}) / ${S.pitches} 球</small></div>
+        <div class="head">投球<small>${S.ab} 被打数 (被打球 ${S.n}) / ${S.pitches} 球</small></div>
       </div>
       ${pctLegend()}
       ${rows.map(r=>prow(...r)).join("")}
@@ -3159,6 +3227,260 @@ function drawHeats(){
         ${esc(t.name)}</span><span>${rows.length} 球</span></h3>
       ${densityChart(rows, "h"+i)}</div>`;
   }).join("");
+}
+
+/* ======================================================== スタジアム
+   球場の形は stadium.yml から読んだ dist(-45〜45 度の 1 度刻み)で持っている。
+   そこから広さの数字を出し、平面と立体で見比べられるようにする。 */
+
+/** 比べる球場。平面はいくつでも、立体は 2 つまで。 */
+const PARK_PICK={flat:new Set(), solid:[], turn:-28, tilt:26};
+
+/** 角度(度)での距離。-45 が左翼線、0 が中堅、45 が右翼線。 */
+function distAt(park, deg){
+  const i=Math.round(deg)+45;
+  return park.dist[Math.max(0,Math.min(90,i))]||0;
+}
+/** フェンスの高さ。記録が無ければ 0。 */
+function heightAt(park, deg){
+  const i=Math.round(deg)+45;
+  return (park.heights && park.heights[Math.max(0,Math.min(90,i))])||0;
+}
+
+/** その球場の主な寸法。 */
+function parkFacts(park){
+  const d=park.dist;
+  const left=distAt(park,-45), right=distAt(park,45), center=distAt(park,0);
+  const alley=(distAt(park,-22)+distAt(park,22))/2;
+  const max=Math.max(...d), min=Math.min(...d);
+  const avg=d.reduce((a,b)=>a+b,0)/d.length;
+  // 面積。本塁を中心にした扇形を 1 度ずつ足す
+  const area=d.reduce((sum,v)=>sum+0.5*v*v*(Math.PI/180),0);
+  const h=park.heights && park.heights.some(v=>v>0)
+    ? park.heights.reduce((a,b)=>a+b,0)/park.heights.length : null;
+  return {left, right, center, alley, max, min, avg, area, height:h,
+    lean:right-left};
+}
+
+/** 形の説明。左右の差と、中堅の深さから言葉にする。 */
+function parkShape(park){
+  const f=parkFacts(park);
+  const words=[];
+  if(Math.abs(f.lean)<3) words.push("左右対称");
+  else words.push(f.lean>0 ? "右翼が深い" : "左翼が深い");
+  const bulge=f.center-(f.left+f.right)/2;
+  if(bulge>18) words.push("中堅が深い");
+  else if(bulge<8) words.push("丸い");
+  else words.push("標準的な広さ");
+  if(f.height!==null){
+    if(f.height>=6) words.push("フェンスが高い");
+    else if(f.height<=2.5) words.push("フェンスが低い");
+  }
+  return words.join(" / ");
+}
+
+/** 収容人数。yml に書いてあれば出す。 */
+function parkSeats(park){
+  return isFinite(park.seats) && park.seats>0 ? park.seats : null;
+}
+
+function stadiumView(){
+  if(!PARKS.length){
+    return '<section><div class="empty">stadium.yml を読み込むと球場が並びます</div></section>';
+  }
+  return `<section class="span"><div class="pad">
+    <div class="head">球場<small>${PARKS.length} 球場</small></div>
+    <div class="parkcards">${PARKS.map(parkCard).join("")}</div>
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">広さのデータ<small>本塁からフェンスまで (m)</small></div>
+    <div class="scroll">${parkSheet()}</div>
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">広さ比べ<small>左が平面 / 右が立体</small></div>
+    <div class="compare">
+      <div>
+        <div class="pickrow">${PARKS.map((p,i)=>`<label>
+          <input type="checkbox" data-flat="${esc(p.name)}" ${PARK_PICK.flat.has(p.name)?"checked":""}>
+          <i style="background:${parkColor(i)}"></i>${esc(p.name)}</label>`).join("")}</div>
+        ${parkFlat()}
+      </div>
+      <div>
+        <div class="pickrow">${PARKS.map(p=>`<label>
+          <input type="checkbox" data-solid="${esc(p.name)}" ${PARK_PICK.solid.includes(p.name)?"checked":""}>
+          ${esc(p.name)}</label>`).join("")}</div>
+        <div class="solidwrap"><canvas id="parkSolid"></canvas></div>
+        <div class="solidnote">2 つまで選べます。ドラッグで回せます。</div>
+      </div>
+    </div>
+  </div></section>`;
+}
+
+/** 球場 1 つの紹介。写真は「球場名.png」を読み込んでおくと出る。 */
+function parkCard(park){
+  const f=parkFacts(park);
+  const seats=parkSeats(park);
+  const shot=FACES[park.name];
+  return `<div class="parkcard">
+    ${shot ? `<img class="shot" src="${shot}" alt="">`
+           : '<div class="noshot">写真なし (球場名.png を読み込むと出ます)</div>'}
+    <div class="body">
+      <h4>${esc(park.name)}</h4>
+      <div class="facts">
+        <div><b>${f.center.toFixed(0)}<small style="font-size:10px"> m</small></b><span>中堅</span></div>
+        <div><b>${f.left.toFixed(0)} / ${f.right.toFixed(0)}</b><span>両翼</span></div>
+        <div><b>${seats===null ? "—" : seats.toLocaleString()}</b><span>収容人数</span></div>
+      </div>
+      <div class="shape">${esc(parkShape(park))}</div>
+    </div>
+  </div>`;
+}
+
+/** 広さの一覧。表計算のように並べる。 */
+function parkSheet(){
+  const cols=[["左翼",-45],["左中間",-22],["中堅",0],["右中間",22],["右翼",45]];
+  const head=cols.map(c=>`<th>${c[0]}</th>`).join("");
+  const rows=PARKS.map(park=>{
+    const f=parkFacts(park);
+    return `<tr><td class="nm">${esc(park.name)}</td>
+      ${cols.map(c=>`<td>${distAt(park,c[1]).toFixed(1)}</td>`).join("")}
+      <td>${f.max.toFixed(1)}</td><td>${f.min.toFixed(1)}</td>
+      <td>${f.avg.toFixed(1)}</td>
+      <td>${f.height===null ? "—" : f.height.toFixed(1)}</td>
+      <td>${Math.round(f.area).toLocaleString()}</td></tr>`;
+  }).join("");
+  return `<table class="sheet">
+    <thead><tr><th class="nm">球場</th>${head}
+      <th>最大</th><th>最小</th><th>平均</th><th>柵の高さ</th><th>面積 m²</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+/** 平面での比べ。選んだ球場の形を重ねる。 */
+function parkFlat(){
+  const picked=PARKS.filter(p=>PARK_PICK.flat.has(p.name));
+  const show=picked.length ? picked : PARKS.slice(0,2);
+  const W=320, H=300, cx=W/2, cy=H-26;
+  const maxD=Math.max(...show.map(p=>Math.max(...p.dist)))*1.06;
+  const k=Math.min((H-46)/maxD, (W/2-12)/(maxD*Math.sin(Math.PI/4)));
+  const line=park=>{
+    let d="";
+    for(let a=-45;a<=45;a++){
+      const r=distAt(park,a)*k, t=(a-90)*Math.PI/180;
+      const x=cx+r*Math.cos(t), y=cy+r*Math.sin(t);
+      d+=(a===-45?"M":"L")+x.toFixed(1)+" "+y.toFixed(1);
+    }
+    return d;
+  };
+  const paths=show.map(park=>{
+    const at=PARKS.findIndex(x=>x.name===park.name);
+    return `<path d="${line(park)}" fill="${parkColor(at)}" fill-opacity="0.10"
+      stroke="${parkColor(at)}" stroke-width="1.8"/>`;
+  }).join("");
+  // 塁線と、50m ごとの目安
+  const rings=[50,100,150].filter(r=>r*k<H).map(r=>
+    `<path d="M${(cx-r*k*Math.sin(Math.PI/4)).toFixed(1)} ${(cy-r*k*Math.cos(Math.PI/4)).toFixed(1)}
+      A${(r*k).toFixed(1)} ${(r*k).toFixed(1)} 0 0 1
+      ${(cx+r*k*Math.sin(Math.PI/4)).toFixed(1)} ${(cy-r*k*Math.cos(Math.PI/4)).toFixed(1)}"
+      fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+     <text x="${cx+3}" y="${(cy-r*k-3).toFixed(1)}" fill="var(--muted)" font-size="9">${r}m</text>`).join("");
+  const foul=[-45,45].map(a=>{
+    const t=(a-90)*Math.PI/180, r=maxD*k;
+    return `<line x1="${cx}" y1="${cy}" x2="${(cx+r*Math.cos(t)).toFixed(1)}"
+      y2="${(cy+r*Math.sin(t)).toFixed(1)}" stroke="var(--line)"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">
+    ${rings}${foul}${paths}
+    <circle cx="${cx}" cy="${cy}" r="3" fill="var(--text)"/>
+  </svg>`;
+}
+
+/**
+ * 立体での比べ。選んだ 2 球場のフェンスを起こして描く。
+ *
+ * <p>外から持ってくるものは無く、canvas に自前で投影する。
+ * 奥行きは「遠いものほど小さく」の一点透視。ドラッグで回る。
+ */
+function drawParkSolid(){
+  const canvas=document.getElementById("parkSolid");
+  if(!canvas) return;
+  const names=PARK_PICK.solid.length ? PARK_PICK.solid : PARKS.slice(0,2).map(p=>p.name);
+  const show=names.map(n=>PARKS.find(p=>p.name===n)).filter(Boolean).slice(0,2);
+  const ratio=window.devicePixelRatio||1;
+  const w=canvas.clientWidth||320, h=canvas.clientHeight||300;
+  canvas.width=w*ratio; canvas.height=h*ratio;
+  const g=canvas.getContext("2d");
+  g.setTransform(ratio,0,0,ratio,0,0);
+  g.clearRect(0,0,w,h);
+  if(!show.length) return;
+
+  const maxD=Math.max(...show.map(p=>Math.max(...p.dist)));
+  const css=getComputedStyle(document.documentElement);
+  const colors=show.map(p=>parkColor(PARKS.findIndex(x=>x.name===p.name)));
+  const turn=PARK_PICK.turn*Math.PI/180, tilt=PARK_PICK.tilt*Math.PI/180;
+  const zoom=Math.min(w,h)*0.78/maxD;
+  // 本塁を原点に、x が右、z が中堅方向、y が高さ
+  const project=(x,y,z)=>{
+    const sx=x*Math.cos(turn)-z*Math.sin(turn);
+    const sz=x*Math.sin(turn)+z*Math.cos(turn);
+    return [w/2+sx*zoom,
+            h*0.62-(y*zoom*Math.cos(tilt)) + sz*zoom*Math.sin(tilt)*-1];
+  };
+  const at=(park,a,y)=>{
+    const r=distAt(park,a), t=a*Math.PI/180;
+    return project(r*Math.sin(t), y, r*Math.cos(t));
+  };
+  // 地面の目安(50m ごとの円弧)
+  g.strokeStyle=css.getPropertyValue("--line").trim()||"#333";
+  g.lineWidth=1;
+  [50,100,150].filter(r=>r<=maxD).forEach(r=>{
+    g.beginPath();
+    for(let a=-45;a<=45;a++){
+      const t=a*Math.PI/180;
+      const [px,py]=project(r*Math.sin(t),0,r*Math.cos(t));
+      a===-45 ? g.moveTo(px,py) : g.lineTo(px,py);
+    }
+    g.stroke();
+  });
+  // ファールライン
+  [-45,45].forEach(a=>{
+    const t=a*Math.PI/180;
+    const [x0,y0]=project(0,0,0);
+    const [x1,y1]=project(maxD*Math.sin(t),0,maxD*Math.cos(t));
+    g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke();
+  });
+  show.forEach((park,i)=>{
+    const color=colors[i];
+    // フェンスの壁
+    g.beginPath();
+    for(let a=-45;a<=45;a++){
+      const [px,py]=at(park,a,0);
+      a===-45 ? g.moveTo(px,py) : g.lineTo(px,py);
+    }
+    for(let a=45;a>=-45;a--){
+      const [px,py]=at(park,a,Math.max(1,heightAt(park,a)));
+      g.lineTo(px,py);
+    }
+    g.closePath();
+    g.fillStyle=color; g.globalAlpha=0.22; g.fill();
+    g.globalAlpha=1; g.strokeStyle=color; g.lineWidth=1.6; g.stroke();
+    // 上辺をもう一度なぞって輪郭をはっきりさせる
+    g.beginPath();
+    for(let a=-45;a<=45;a++){
+      const [px,py]=at(park,a,Math.max(1,heightAt(park,a)));
+      a===-45 ? g.moveTo(px,py) : g.lineTo(px,py);
+    }
+    g.stroke();
+    // 名前
+    const [lx,ly]=at(park,0,Math.max(1,heightAt(park,0))+6);
+    g.fillStyle=color;
+    g.font="600 12px 'Source Sans 3',sans-serif";
+    g.textAlign="center";
+    g.fillText(park.name, lx, ly);
+  });
+  // 本塁
+  const [hx,hy]=project(0,0,0);
+  g.fillStyle=css.getPropertyValue("--text").trim()||"#fff";
+  g.beginPath(); g.arc(hx,hy,3,0,Math.PI*2); g.fill();
 }
 
 /* ------------------------------------------------------ コースの分布図
@@ -3479,7 +3801,8 @@ function ingestYaml(text){
   const lines=String(text).replace(/\r/g,"").split("\n");
   let inRoot=false, rootIndent=0, nameIndent=-1;
   let park=null, target=null, group="", added=0;
-  const blank=()=>({name:"", dist:[], heights:[], fence:[], hx:NaN, hz:NaN, fx:NaN, fz:NaN});
+  const blank=()=>({name:"", dist:[], heights:[], fence:[],
+    hx:NaN, hz:NaN, fx:NaN, fz:NaN, seats:NaN});
   const flush=()=>{
     const built=park && buildPark(park);
     if(built){
@@ -3531,7 +3854,9 @@ function ingestYaml(text){
       continue;
     }
     target=null;
-    if(group==="Home"&&k==="X") park.hx=Number(v);
+    // 収容人数。プラグインは書かないので、手で足したときだけ入る
+    if(/^Seats$/i.test(k) && isFinite(Number(v))) park.seats=Number(v);
+    else if(group==="Home"&&k==="X") park.hx=Number(v);
     else if(group==="Home"&&k==="Z") park.hz=Number(v);
     else if(group==="Forward"&&k==="X") park.fx=Number(v);
     else if(group==="Forward"&&k==="Z") park.fz=Number(v);
@@ -3550,13 +3875,13 @@ function buildPark(park){
      && isFinite(park.fx) && isFinite(park.fz)){
     const built=profileFromBlocks(park.fence, park.hx, park.hz, park.fx, park.fz);
     if(built) return {name:park.name, dist:built.dist, heights:built.heights,
-                      pts:built.pts, blocks:park.fence.length};
+                      pts:built.pts, blocks:park.fence.length, seats:park.seats};
   }
   if(park.dist.length===91 && park.dist.every(v=>isFinite(v)&&v>0)){
     const heights = park.heights.length===91 ? park.heights.slice() : new Array(91).fill(0);
     const dist=park.dist.slice();
     despike(dist, heights);
-    return {name:park.name, dist, heights, pts:null, blocks:0};
+    return {name:park.name, dist, heights, pts:null, blocks:0, seats:park.seats};
   }
   return null;
 }
@@ -3889,9 +4214,57 @@ document.getElementById("app").addEventListener("click",e=>{
     return;
   }
   const game=e.target.closest("[data-game]");
-  if(game){ GAME=game.dataset.game; render(); }
+  if(game){ GAME=game.dataset.game; render(); return; }
+  // 名前を押したらその選手の画面へ
+  const who=e.target.closest("[data-who]");
+  if(who && who.dataset.who){
+    PLAYER=canon(who.dataset.who);
+    VIEW="player";
+    render();
+  }
 });
 document.getElementById("parkPick").addEventListener("change",e=>{ PARK=e.target.value; render(); });
+// スタジアムの比べる相手を選ぶ
+document.getElementById("app").addEventListener("change",e=>{
+  const flat=e.target.closest("input[data-flat]");
+  if(flat){
+    if(flat.checked) PARK_PICK.flat.add(flat.dataset.flat);
+    else PARK_PICK.flat.delete(flat.dataset.flat);
+    render();
+    return;
+  }
+  const solid=e.target.closest("input[data-solid]");
+  if(solid){
+    const name=solid.dataset.solid;
+    if(solid.checked){
+      PARK_PICK.solid.push(name);
+      // 立体は 2 つまで。古いほうから外す。
+      while(PARK_PICK.solid.length>2) PARK_PICK.solid.shift();
+    }else{
+      PARK_PICK.solid=PARK_PICK.solid.filter(n=>n!==name);
+    }
+    render();
+  }
+});
+// 立体はドラッグで回す
+(function(){
+  let dragging=false, lastX=0, lastY=0;
+  const app=document.getElementById("app");
+  app.addEventListener("pointerdown",e=>{
+    if(!e.target.closest("#parkSolid")) return;
+    dragging=true; lastX=e.clientX; lastY=e.clientY;
+    e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+  });
+  app.addEventListener("pointermove",e=>{
+    if(!dragging) return;
+    PARK_PICK.turn+=(e.clientX-lastX)*0.4;
+    PARK_PICK.tilt=Math.max(4, Math.min(80, PARK_PICK.tilt+(e.clientY-lastY)*0.3));
+    lastX=e.clientX; lastY=e.clientY;
+    drawParkSolid();
+  });
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>
+    app.addEventListener(ev,()=>{ dragging=false; }));
+})();
 // 重ねる球場の切り替え。チャートだけ描き直して、一覧の開閉は保つ
 document.getElementById("app").addEventListener("change",e=>{
   const box=e.target.closest("input[data-park]");
