@@ -1351,7 +1351,9 @@ function render(){
     // ここだけ選んでいる人が別なので、描いている間だけ差し替える。
     const keep=PLAYER;
     PLAYER=PAWA_PLAYER;
-    const body=safely(SIDE==="bat" ? pawaBatter : pawaPitcher, PLAYER + " の能力");
+    const make=PAWA_TAB==="def" ? pawaDefence
+      : PAWA_TAB==="pit" ? pawaPitcher : pawaBatter;
+    const body=safely(make, PLAYER + " の能力");
     const list=nameList(PLAYER);
     PLAYER=keep;
     app.innerHTML=`<div class="withlist">${list}<div class="listmain">${body}</div></div>`;
@@ -1382,6 +1384,8 @@ function renderTabs(){
 
 /** 能力画面で選んでいる選手。Savant とは別に覚える。 */
 let PAWA_PLAYER="";
+/** 能力画面のどの面を見ているか。打者 / 投手 / 守備。 */
+let PAWA_TAB="bat";
 
 /**
  * 選手の名札を縦に並べた一覧。画面の横に置く。
@@ -2369,8 +2373,9 @@ function pawaHead(name, badge, stats){
     <span class="facebox">${face(name,40)}</span>
     <span class="stat"><b>成績</b>${stats}</span>
     <span class="sidepick">
-      <b data-side="bat" class="${SIDE==="bat"?"on":""}">打者</b>
-      <b data-side="pit" class="${SIDE==="pit"?"on":""}">投手</b>
+      <b data-pawa="bat" class="${PAWA_TAB==="bat"?"on":""}">打者</b>
+      <b data-pawa="pit" class="${PAWA_TAB==="pit"?"on":""}">投手</b>
+      <b data-pawa="def" class="${PAWA_TAB==="def"?"on":""}">守備</b>
     </span>
     ${aptitudeBox(name)}
   </div>`;
@@ -2625,11 +2630,13 @@ function stanceOf(name){
 function positionSkill(name, glove, position){
   const one=aptitude(name).find(a=>a.position===position);
   if(!one) return null;
+  // 投手の守備は測らない。守ったことがあれば一律 D55。
+  if(position==="PITCHER") return 55;
   return steady(glove, one.n, QUAL_CHANCE);
 }
 
-/** 守備の枠。守備位置ごとの数字と捕球を並べる。 */
-function defencePanel(name, G){
+/** 守備位置ごとの数字。守ったことのない位置は「—」。 */
+function positionGrid(name, G){
   const cells=Object.keys(POS_LABEL).map(at=>{
     const value=positionSkill(name, G.glove, at);
     const r=value===null ? "" : rank(value);
@@ -2638,12 +2645,7 @@ function defencePanel(name, G){
       <b style="color:${value===null?"inherit":RANK_COLOR[r]}">${value===null?"—":r}</b>
       <u>${value===null?"—":value}</u></span>`;
   }).join("");
-  return `<div class="card defence">
-    <div class="dhead">守備力</div>
-    <div class="posgrid">${cells}</div>
-    ${abrow("捕球", G.hands)}
-    ${abrow("送球", G.control)}
-  </div>`;
+  return `<div class="posgrid">${cells}</div>`;
 }
 
 /**
@@ -2702,6 +2704,35 @@ function stylePanel(name, side){
   </div>`;
 }
 
+/**
+ * 守備の面。走力と肩力、守備位置ごとの守備力、最後に捕球。
+ *
+ * <p>投手を守ったことがある人の「投」は一律 D55。
+ * 投手の守備は打球が飛んでくる回数が少なく、記録から測っても
+ * たまたまの 1 球で大きく振れてしまうため。
+ */
+function pawaDefence(){
+  const G=gloveAbility(PLAYER);
+  const A=batterAbility(PLAYER);
+  const L=A.L;
+  return `<section class="span"><div class="pad">
+    <div class="pawa">
+      ${pawaHead(PLAYER, L.pa + "打席",
+        `率 ${f3(L.avg)}　${L.hr}本${L.rbi}点`)}
+      <div class="abwrap">
+        <div class="card">
+          ${abrow("走力", G.speed)}
+          ${abrow("肩力", G.arm)}
+          <div class="dhead" style="padding-top:8px">守備位置</div>
+          ${positionGrid(PLAYER, G)}
+          ${abrow("捕球", G.hands)}
+        </div>
+        ${stylePanel(PLAYER, "bat")}
+      </div>
+    </div>
+  </div></section>`;
+}
+
 function pawaBatter(){
   const A=batterAbility(PLAYER);
   const skills=batterSkills(PLAYER, A);
@@ -2730,7 +2761,6 @@ function pawaBatter(){
         </div>
       </div>
       <div class="abwrap" style="margin-top:10px">
-        ${defencePanel(PLAYER, G)}
         ${stylePanel(PLAYER, "bat")}
       </div>
     </div>
@@ -2995,40 +3025,75 @@ function breakDirection(name, rows){
   if(hx>0) return vy<-0.4 ? "lowRight" : "right";
   return vy<-0.4 ? "lowLeft" : "left";
 }
+/** 打数に数えない結果。被打率を出すときに分母から外す。 */
+const NO_AB=new Set(["WALK","HIT_BY_PITCH","SACRIFICE_FLY","SACRIFICE_BUNT"]);
+
 function avgOf(rows, key){
   const values=rows.map(r=>Number(r[key])).filter(v=>isFinite(v));
   return values.length ? values.reduce((a,b)=>a+b,0)/values.length : null;
 }
 
 /**
- * 変化量の段階(1〜7)。実際に測った曲がり幅から出す。
+ * 変化量の段階(1〜7)。その球がどれだけ打ちづらいかで決める。
  *
- * <p>1 球ごとの記録には、無回転で投げた場合との差が
- * v_break / h_break(ブロック)で入っている。その大きさをそのまま段階にする。
- * 空振りの多さから組み立てていたころは、どの球種も 2〜4 に固まっていた。
+ * <p>曲がり幅そのものは見ない。大きく曲がっても打たれる球はあるし、
+ * わずかな変化でも空振りを取れる球はある。ここでは 4 つを合わせて見る。
  *
- * <p>目盛りは実測に合わせてある。このリーグの曲がり幅は
- * 中央 1.1、上位 25% が 2.0、最大 4.4 ブロック。
- * SFF が 0.6、スライダーが 1.8、カーブが 3.5 あたり。
+ * <ul>
+ *   <li>空振り率 … 振らせて当てさせない力。いちばん重く見る</li>
+ *   <li>被打率 … その球で終わった打席の打率</li>
+ *   <li>被打球の質 … 打たれたときの打球速度。速いほど捉えられている</li>
+ *   <li>ストライク率 … 狙って投げられているか。ボールばかりでは使えない</li>
+ * </ul>
+ *
+ * <p>目盛りは実測に合わせてある。空振り率 25〜70%、被打率 .600〜.200、
+ * 打球速度 185〜130km/h、ストライク率 45〜85%。
+ * 球数が少ないうちは真ん中(4)へ寄せる。
  *
  * <p>速球系と、上へ向かう球には付けない。
  * 落ちない球はパワプロでも変化量を持たないため。
  */
-const BREAK_STEPS=[0.70, 1.00, 1.35, 1.80, 2.30, 3.00];
-
 function breakAmount(name, rows, dir){
   if(STRAIGHT.some(x=>x===name)) return 0;
   if(dir==="up" || dir==="upLeft" || dir==="upRight") return 0;
-  const v=avgOf(rows,"v_break"), h=avgOf(rows,"h_break");
-  if(v===null && h===null) return 3;
-  const size=Math.hypot(v||0, h||0);
-  let value=1;
-  BREAK_STEPS.forEach(step=>{ if(size>=step) value++; });
-  // 同じ曲がり幅でも、空振りを多く奪える球は 1 つ上に見る
+  const clamp01=v => Math.max(0, Math.min(1, v));
+  const parts=[];
+
   const swings=rows.filter(r=>r.swing===true).length;
   const whiffs=rows.filter(r=>r.whiff===true).length;
-  if(swings>=6 && 100*whiffs/swings>=45) value++;
-  return Math.max(1, Math.min(7, value));
+  if(swings>=3){
+    parts.push([clamp01((100*whiffs/swings - 25)/45), 1.3]);
+  }
+  // 被打率。その球で決着した打席だけを数える。
+  const ended=rows.filter(r=>r.result);
+  const ab=ended.filter(r=>!NO_AB.has(r.result)).length;
+  const hits=ended.filter(r=>HIT.has(r.result)).length;
+  if(ab>=3){
+    parts.push([clamp01((0.600 - hits/ab)/0.400), 0.9]);
+  }
+  // 被打球の質。打たれたときの打球速度。
+  const bip=rows.filter(r=>r.contact===true && r.call==="IN_PLAY"
+    && Number(r.exit_velocity)>0);
+  if(bip.length>=3){
+    const ev=bip.reduce((a,r)=>a+Number(r.exit_velocity),0)/bip.length;
+    parts.push([clamp01((185-ev)/55), 0.8]);
+  }
+  // ストライク率。ボールと数えられなかった球の割合。
+  if(rows.length>=6){
+    const strike=100*rows.filter(r=>r.call!=="BALL").length/rows.length;
+    parts.push([clamp01((strike-45)/40), 0.6]);
+  }
+  if(!parts.length) return 4;
+
+  const weight=parts.reduce((a,x)=>a+x[1],0);
+  const score=parts.reduce((a,x)=>a+x[0]*x[1],0)/weight;
+  // 球数が少ないうちは真ん中へ寄せる。
+  // 1 球種 12 球も投げれば持ち味は出るので、そこで満点の信用にする。
+  const trust=Math.max(0, Math.min(1, rows.length/12));
+  // 4 つを平均すると真ん中に寄りやすい。差を 1.6 倍に開いて段階を散らす。
+  const spread=0.5+(score-0.5)*trust*1.6;
+  const settled=Math.max(0, Math.min(1, spread));
+  return Math.max(1, Math.min(7, 1+Math.round(settled*6)));
 }
 
 function pitcherAbility(name){
@@ -3225,7 +3290,6 @@ function pawaPitcher(){
         </div>
       </div>
       <div class="abwrap" style="margin-top:10px">
-        ${defencePanel(PLAYER, gloveAbility(PLAYER))}
         ${stylePanel(PLAYER, "pit")}
       </div>
     </div>
@@ -4452,9 +4516,9 @@ document.getElementById("playerRow").addEventListener("click",e=>{
 document.getElementById("app").addEventListener("click",e=>{
   const plate=e.target.closest(".nameplate");
   if(plate){ PAWA_PLAYER=plate.dataset.name; render(); return; }
-  // 能力画面の中に置いた打者/投手の切り替え
-  const side=e.target.closest(".sidepick [data-side]");
-  if(side){ SIDE=side.dataset.side; render(); }
+  // 能力画面の中に置いた 打者/投手/守備 の切り替え
+  const tab=e.target.closest(".sidepick [data-pawa]");
+  if(tab){ PAWA_TAB=tab.dataset.pawa; render(); }
 });
 // リーダーボードの切り替えと並べ替え、リザルトの試合選び
 document.getElementById("app").addEventListener("click",e=>{
