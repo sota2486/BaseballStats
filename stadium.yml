@@ -5,6 +5,7 @@
 Stadiums:
   甲子園:
     World: world_cworld_baseball
+    Seats: 43000
     Home:
       X: 285.5
       Y: 17.0
@@ -104,8 +105,9 @@ Stadiums:
     - 352,-139,4
     - 352,-136,4
     - 352,-134,4
-  メジャー風スタジアム:
+  エッヂフィールド:
     World: world_cworld_baseball
+    Seats: 35000
     Home:
       X: 100.5
       Y: 17.0
@@ -294,6 +296,7 @@ Stadiums:
     - 197,480,2
   三層スタジアム:
     World: world_cworld_baseball
+    Seats: 45000
     Home:
       X: 700.5
       Y: 17.0
@@ -481,6 +484,7 @@ Stadiums:
     - 810,743,2
   なんUドーム:
     World: world_cworld_baseball
+    Seats: 68000
     Home:
       X: 960.5
       Y: 17.0
@@ -641,6 +645,7 @@ Stadiums:
     - 1085,1008,7
   ローンデポ・パーク:
     World: world_cworld_baseball
+    Seats: 32000
     Home:
       X: 1300.5
       Y: 17.0
@@ -832,6 +837,7 @@ Stadiums:
     - 1410,1336,3
   河川敷球場:
     World: world_cworld_baseball
+    Seats: 200
     Home:
       X: 500.5
       Y: 17.0
@@ -1017,6 +1023,7 @@ Stadiums:
     - 609,1542,3
   鷹急西江球場:
     World: world_cworld_baseball
+    Seats: 30000
     Home:
       X: 994.5
       Y: 17.0
@@ -1175,6 +1182,7 @@ Stadiums:
     - 1065,-594,3
   新穏勢スタジアム:
     World: world_cworld_baseball
+    Seats: 35000
     Home:
       X: 319.5
       Y: 17.0
@@ -1355,6 +1363,7 @@ Stadiums:
     - 415,-416,5
   宍戸球場:
     World: world_cworld_baseball
+    Seats: 12000
     Home:
       X: 1535.5
       Y: 17.0
