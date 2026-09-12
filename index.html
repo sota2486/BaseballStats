@@ -93,7 +93,11 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .face{display:inline-block; border-radius:3px; vertical-align:middle; flex:none;
   image-rendering:pixelated; object-fit:cover; background:var(--panel-2)}
 .face.ph{display:inline-flex; align-items:center; justify-content:center; color:#fff;
-  font-family:"Barlow Condensed",sans-serif; font-weight:700; line-height:1}
+  font-family:"Barlow Condensed",sans-serif; font-weight:700; line-height:1;
+  position:relative; overflow:hidden}
+/* 頭文字の上にスキンの顔を重ねる。読めなければ img が消えて頭文字が残る */
+.face.ph img{position:absolute; left:0; top:0; width:100%; height:100%;
+  image-rendering:pixelated; object-fit:cover}
 .withface{display:inline-flex; align-items:center; gap:6px; min-width:0}
 .withface span{overflow:hidden; text-overflow:ellipsis}
 .who .facebig{margin-bottom:6px}
@@ -595,14 +599,30 @@ function faceSrc(name){
   }
   return null;
 }
-/** 顔の画像。無ければ頭文字の丸。 */
+/**
+ * 手元に画像が無いときに当たってみるスキンの顔。
+ *
+ * <p>プレイヤー名をそのまま渡せる。Mojang の API は
+ * 「名前 → UUID → スキンの URL」と 2 回叩いたうえに
+ * ブラウザから直接読めない(CORS)ので、名前で画像を返してくれる
+ * こちらを img の src に置くだけにする。
+ *
+ * <p>読めなければ img ごと消えて、頭文字の四角が残る。
+ */
+const SKIN_FACE=name => "https://mc-heads.net/avatar/"
+  + encodeURIComponent(String(name)) + "/64.png";
+
+/** 顔の画像。手元に無ければスキンの顔、それも駄目なら頭文字。 */
 function face(name, size){
   size=size||22;
   const src=faceSrc(name);
   const box=`width:${size}px;height:${size}px`;
   if(src) return `<img class="face" src="${src}" alt="" style="${box}">`;
   const ch=(String(name||"?").trim()[0]||"?").toUpperCase();
-  return `<span class="face ph" style="${box};background:${nameColor(name)};font-size:${Math.round(size*0.52)}px">${esc(ch)}</span>`;
+  const skin=name
+    ? `<img alt="" src="${esc(SKIN_FACE(name))}" onerror="this.remove()">`
+    : "";
+  return `<span class="face ph" style="${box};background:${nameColor(name)};font-size:${Math.round(size*0.52)}px">${esc(ch)}${skin}</span>`;
 }
 /** 顔と名前を並べたもの。表のセルに入れる。 */
 function withFace(name, size){
@@ -1709,8 +1729,11 @@ function lineup(rows, side){
   const out=[], used=new Set();
   for(const r of rows){
     if((isBottom(r)?1:0)!==side || !r.batter) continue;
-    // 一巡して先頭に戻った
-    if(used.has(r.batter)) break;
+    // 先頭打者にもう一度回ってきた = 一巡した
+    if(out.length && r.batter===out[0].name) break;
+    // 同じ人が続けて出てきただけ。打順が止まった記録でも
+    // ここで打ち切ると、後ろの打順がまるごと抜ける。飛ばして先へ進む。
+    if(used.has(r.batter)) continue;
     used.add(r.batter);
     out.push({slot:out.length+1, name:r.batter});
     if(out.length>=9) break;
@@ -2034,11 +2057,17 @@ function aptitude(name){
     if(!POS_LABEL[at]) return;
     count[at]=(count[at]||0)+1;
   });
+  // 投球の記録も投手としての回数に足す。
+  // 守備の記録にも投手として出てくるので、別の項目として足すと
+  // 「投」が二つ並んでしまう。
   const pitched=plateOf(name,"pit").length;
+  if(pitched) count.PITCHER=(count.PITCHER||0)+pitched;
   const list=Object.keys(count)
     .map(at=>({position:at, n:count[at]}))
     .sort((a,b)=>b.n-a.n);
-  if(pitched) list.unshift({position:"PITCHER", n:pitched});
+  // 投手をやっているなら先頭に置く
+  const at=list.findIndex(one=>one.position==="PITCHER");
+  if(pitched && at>0) list.unshift(list.splice(at,1)[0]);
   return list;
 }
 
@@ -2318,10 +2347,27 @@ function sprayLean(S, name){
   if(oppo>=hard.length*0.32 && oppo>=pull*0.8) return "oppo";
   return "";
 }
-/** その打者の打席の左右。記録が無ければ空。 */
+/**
+ * その打者の打席の左右。1 球ごとの記録に入っている stance を数える。
+ *
+ * <p>1 行目だけを見ると、たまたま記録が欠けていたり、
+ * 打席を変えた 1 打席だけを拾ったりする。多いほうを採る。
+ * 少ないほうもそれなりにあれば両打ちとして S。
+ *
+ * @return "R" 右打ち / "L" 左打ち / "S" 両打ち / "" 記録なし
+ */
 function stanceOf(name){
-  const row=DATA.pitch.find(r=>r.batter===name && r.stance);
-  return row ? row.stance : "";
+  let right=0, left=0;
+  DATA.pitch.forEach(r=>{
+    if(r.batter!==name) return;
+    const s=String(r.stance||"").toUpperCase();
+    if(s==="R") right++;
+    else if(s==="L") left++;
+  });
+  if(!right && !left) return "";
+  const few=Math.min(right,left), many=Math.max(right,left);
+  if(few>=5 && few>=many*0.25) return "S";
+  return right>=left ? "R" : "L";
 }
 
 function pawaBatter(){
@@ -2330,7 +2376,8 @@ function pawaBatter(){
   const G=gloveAbility(PLAYER);
   const L=A.L;
   const arrow=trajectoryArrow(A.trajectory);
-  const hand=stanceOf(PLAYER)==="L" ? "左打" : stanceOf(PLAYER)==="R" ? "右打" : "—";
+  const stance=stanceOf(PLAYER);
+  const hand=stance==="L" ? "左打" : stance==="R" ? "右打" : stance==="S" ? "両打" : "—";
   return `<section class="span"><div class="pad">
     <div class="pawa">
       ${pawaHead(PLAYER, L.pa + "打席",
