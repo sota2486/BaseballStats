@@ -31,7 +31,7 @@ Batting,2026091202,2026091202#18,3,2,BOTTOM,2-0,1,sota2486,gaifukaisei,R,超高�
 Batting,2026091202,2026091202#18,4,2,BOTTOM,3-0,1,sota2486,gaifukaisei,R,ライズボール,117.3,2.0,0.0,18,true,0.0,0.7,false,false,false,CALLED_STRIKE,,,,,
 Batting,2026091202,2026091202#18,5,2,BOTTOM,3-1,1,sota2486,gaifukaisei,R,高速スライダー,113.2,0.0,1.2,22,false,-0.5,0.4,true,true,false,SWINGING_STRIKE,,,,,
 Batting,2026091202,2026091202#18,6,2,BOTTOM,3-2,1,sota2486,gaifukaisei,R,サークルチェンジ,108.2,0.3,-0.9,16,false,-0.9,0.7,true,false,true,FOUL,45.6,7.9,-120.1,6.9,
-Batting,2026091202,2026091202#18,7,2,BOTTOM,3-2,1,sota2486,gaifukaisei,R,ライズボール,116.1,2.0,0.0,8,true,0.1,1.4,true,false,true,IN_PLAY,183.6,30.4,20.4,119.3,HOME_RUN
+Batting,2026091202,2026091202#18,7,2,BOTTOM,3-2,1,sota2486,gaifukaisei,R,ライズボール,116.1,2.0,0.0,8,true,0.1,1.4,true,false,true,IN_PLAY,183.6,30.4,20.4,130.2,HOME_RUN
 Pitching,2026091202,2026091202#20,3,3,TOP,0-0,0,gaifukaisei,Pen4,L,スライダー,110.2,-0.4,-1.8,11,false,-1.1,1.0,true,true,false,SWINGING_STRIKE,,,,,
 Pitching,2026091202,2026091202#20,4,3,TOP,0-1,0,gaifukaisei,Pen4,L,シンカー,98.6,-2.1,2.4,24,false,0.6,0.4,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT
 Pitching,2026091202,2026091202#21,1,3,TOP,0-2,0,gaifukaisei,Pen4,L,ファストボール,125.0,0.8,0.0,3,false,-0.1,1.8,true,true,false,SWINGING_STRIKE,,,,,
@@ -74,7 +74,7 @@ Pitching,2026091202,2026091202#39,4,5,TOP,1-1,1,gaifukaisei,M0nJ,R,カーブ,98.
 Pitching,2026091202,2026091202#39,5,5,TOP,1-2,1,gaifukaisei,M0nJ,R,シンカー,98.5,-2.7,2.4,25,false,1.0,-0.2,true,false,true,IN_PLAY,92.6,-27.2,31.6,30.0,SINGLE
 Pitching,2026091202,2026091202#40,1,5,TOP,0-0,2,gaifukaisei,TYPE_NOOB,R,カーブ,98.6,-2.5,-2.3,11,false,-0.6,1.1,true,false,true,IN_PLAY,158.5,37.0,-13.5,113.8,DOUBLE
 Pitching,2026091202,2026091202#41,1,5,TOP,0-0,2,gaifukaisei,sota2486,R,シンカー,97.5,-0.4,2.0,15,false,1.4,1.0,false,false,false,BALL,,,,,
-Pitching,2026091202,2026091202#41,2,5,TOP,1-0,2,gaifukaisei,sota2486,R,スライダー,107.4,-0.3,-1.8,13,true,-0.1,1.2,true,false,true,IN_PLAY,189.2,38.1,-36.9,105.4,HOME_RUN
+Pitching,2026091202,2026091202#41,2,5,TOP,1-0,2,gaifukaisei,sota2486,R,スライダー,107.4,-0.3,-1.8,13,true,-0.1,1.2,true,false,true,IN_PLAY,189.2,38.1,-36.9,138.2,HOME_RUN
 Pitching,2026091202,2026091202#42,1,5,TOP,0-0,2,gaifukaisei,Pen4,L,カーブ,97.9,-1.7,-2.3,16,false,-1.6,0.6,false,false,false,BALL,,,,,
 Pitching,2026091202,2026091202#42,2,5,TOP,1-0,2,gaifukaisei,Pen4,L,ファストボール,124.3,0.9,0.0,18,true,0.2,0.8,true,false,true,IN_PLAY,188.3,7.7,22.9,96.8,DOUBLE
 Pitching,2026091202,2026091202#43,1,5,TOP,0-0,2,gaifukaisei,hachi_18,R,シンカー,98.2,-1.5,2.2,20,false,0.9,0.6,true,true,false,SWINGING_STRIKE,,,,,

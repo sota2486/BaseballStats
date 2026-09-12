@@ -22,7 +22,7 @@ Batting,2026091201,2026091201#38,3,5,TOP,0-1,1,syobonnkun,TYPE_NOOB,R,サーク�
 Batting,2026091202,2026091202#5,1,1,TOP,0-0,2,syobonnkun,TYPE_NOOB,R,ツーシームファスト,121.2,1.2,-0.6,23,false,0.2,0.1,false,false,false,BALL,,,,,
 Batting,2026091202,2026091202#5,2,1,TOP,1-0,2,syobonnkun,TYPE_NOOB,R,SFF,108.9,-0.6,0.0,4,false,0.3,2.6,false,false,false,BALL,,,,,
 Batting,2026091202,2026091202#5,3,1,TOP,2-0,2,syobonnkun,TYPE_NOOB,R,サークルチェンジ,107.5,0.3,-0.9,8,true,0.1,1.5,true,true,false,SWINGING_STRIKE,,,,,
-Batting,2026091202,2026091202#5,4,1,TOP,2-1,2,syobonnkun,TYPE_NOOB,R,高速スラーブ,109.0,-1.2,1.7,18,true,0.1,0.5,true,false,true,IN_PLAY,204.8,28.3,-14.9,118.9,HOME_RUN
+Batting,2026091202,2026091202#5,4,1,TOP,2-1,2,syobonnkun,TYPE_NOOB,R,高速スラーブ,109.0,-1.2,1.7,18,true,0.1,0.5,true,false,true,IN_PLAY,204.8,28.3,-14.9,151.8,HOME_RUN
 Batting,2026091202,2026091202#14,1,2,TOP,0-0,1,gaifukaisei,TYPE_NOOB,R,ファストボール,125.0,0.8,0.0,3,false,-0.1,1.9,false,false,false,BALL,,,,,
 Batting,2026091202,2026091202#14,2,2,TOP,1-0,1,gaifukaisei,TYPE_NOOB,R,シンカー,96.6,0.4,1.7,15,false,0.7,1.1,false,false,false,BALL,,,,,
 Batting,2026091202,2026091202#14,3,2,TOP,2-0,1,gaifukaisei,TYPE_NOOB,R,スライダー,108.9,-0.4,-1.7,21,false,-0.7,0.1,false,false,false,BALL,,,,,
