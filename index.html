@@ -494,14 +494,15 @@ table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:cen
 .parkcard .facts b{display:block; font-family:"Barlow Condensed",sans-serif;
   font-size:17px; line-height:1.1}
 .parkcard .facts span{font-size:10px; color:var(--muted); letter-spacing:.04em}
-.parkcard .shape{margin-top:6px; font-size:11px; color:var(--muted)}
+.parkcard .facts div b small{font-weight:400}
 /* 広さの一覧。表計算のように詰めて出す */
 table.sheet{border-collapse:collapse; font-size:12px; width:100%;
   font-family:"Barlow Condensed",sans-serif}
 table.sheet th,table.sheet td{border:1px solid var(--line); padding:3px 8px;
   text-align:right; white-space:nowrap}
 table.sheet th{background:var(--panel-2); color:var(--muted); font-weight:600;
-  letter-spacing:.03em}
+  letter-spacing:.03em; cursor:pointer; user-select:none}
+table.sheet th:hover{color:var(--text)}
 table.sheet td.nm,table.sheet th.nm{text-align:left;
   font-family:"Source Sans 3",sans-serif}
 table.sheet tr:nth-child(even) td{background:var(--panel-2)}
@@ -647,8 +648,20 @@ function nameColor(name){
 function faceSrc(name){
   const direct=FACES[String(name)];
   if(direct) return direct;
+  // 昔の ID のファイル名しか無い人。別名表を逆に引く。
   for(const old in ALIAS_NAME){
     if(ALIAS_NAME[old]===name && FACES[old]) return FACES[old];
+  }
+  // 大文字小文字だけ違うファイル名も拾う
+  const key=String(name).toLowerCase();
+  for(const has in FACES){
+    if(has.toLowerCase()===key) return FACES[has];
+  }
+  for(const old in ALIAS_NAME){
+    if(String(ALIAS_NAME[old]).toLowerCase()!==key) continue;
+    for(const has in FACES){
+      if(has.toLowerCase()===old.toLowerCase()) return FACES[has];
+    }
   }
   return null;
 }
@@ -1493,7 +1506,7 @@ function topView(){
       率の項目は規定打席 ${QUAL_PA} / 規定投球回 ${QUAL_IP} 以上の選手だけを並べています。</p>
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">この試合のベストプレー<small>上位 5</small></div>
+    <div class="head">ベストプレー<small>上位 5</small></div>
     <div class="cards">
       ${playCard("打球速度", topBatted("exit_velocity"), r=>f1(Number(r.exit_velocity))+" km/h")}
       ${playCard("飛距離", topBatted("distance"), r=>f1(distanceOf(r))+" m")}
@@ -1518,7 +1531,7 @@ function card(title, rows, filter, get, fmt, high){
     const v=get(d);
     return v!==null && v!==undefined && isFinite(v);
   }).sort((a,b)=>high ? get(b)-get(a) : get(a)-get(b)).slice(0,3);
-  const body=list.length ? `<ol>${list.map(d=>`<li>${face(d.name,20)}
+  const body=list.length ? `<ol>${list.map(d=>`<li class="plink" data-who="${esc(d.name)}">${face(d.name,20)}
       <span>${esc(d.name)}</span><b>${fmt(get(d))}</b></li>`).join("")}</ol>`
     : '<div class="empty">記録がありません</div>';
   return `<div class="card"><h4>${title}</h4>${body}</div>`;
@@ -1540,7 +1553,7 @@ function sameBatted(a,b){
       && a.pitch_no===b.pitch_no && a.batter===b.batter;
 }
 function playCard(title, rows, fmt){
-  const body=rows.length ? `<ol>${rows.map(r=>`<li>${face(r.batter,20)}
+  const body=rows.length ? `<ol>${rows.map(r=>`<li class="plink" data-who="${esc(r.batter||"")}">${face(r.batter,20)}
       <span>${esc(r.batter||"?")}<small style="color:var(--muted)"> ${esc(gameLabel(r.game))}</small></span>
       <b>${fmt(r)}</b></li>`).join("")}</ol>`
     : '<div class="empty">打球の記録がありません</div>';
@@ -1619,23 +1632,23 @@ function bestPitcher(pit){
 /** 打者の一覧に出す列。key は並べ替えに使う。 */
 function batterColumns(mode){
   if(mode==="std") return [
-    {key:"g",   head:"G",   get:d=>d.games,      fmt:v=>v},
-    {key:"pa",  head:"PA",  get:d=>d.L.pa,       fmt:v=>v},
-    {key:"ab",  head:"AB",  get:d=>d.L.ab,       fmt:v=>v},
-    {key:"h",   head:"H",   get:d=>d.L.h,        fmt:v=>v},
-    {key:"d2",  head:"2B",  get:d=>d.L.d2,       fmt:v=>v},
-    {key:"d3",  head:"3B",  get:d=>d.L.d3,       fmt:v=>v},
-    {key:"hr",  head:"HR",  get:d=>d.L.hr,       fmt:v=>v},
-    {key:"rbi", head:"RBI", get:d=>d.L.rbi,      fmt:v=>v},
-    {key:"bb",  head:"BB",  get:d=>d.L.bb,       fmt:v=>v},
-    {key:"so",  head:"SO",  get:d=>d.L.so,       fmt:v=>v},
-    {key:"avg", head:"AVG", get:d=>d.L.avg,      fmt:f3, rate:true},
-    {key:"obp", head:"OBP", get:d=>d.L.obp,      fmt:f3, rate:true},
-    {key:"slg", head:"SLG", get:d=>d.L.slg,      fmt:f3, rate:true},
+    {key:"g",   head:"試合",   get:d=>d.games,      fmt:v=>v},
+    {key:"pa",  head:"打席",  get:d=>d.L.pa,       fmt:v=>v},
+    {key:"ab",  head:"打数",  get:d=>d.L.ab,       fmt:v=>v},
+    {key:"h",   head:"安打",   get:d=>d.L.h,        fmt:v=>v},
+    {key:"d2",  head:"二塁打",  get:d=>d.L.d2,       fmt:v=>v},
+    {key:"d3",  head:"三塁打",  get:d=>d.L.d3,       fmt:v=>v},
+    {key:"hr",  head:"本塁打",  get:d=>d.L.hr,       fmt:v=>v},
+    {key:"rbi", head:"打点", get:d=>d.L.rbi,      fmt:v=>v},
+    {key:"bb",  head:"四球",  get:d=>d.L.bb,       fmt:v=>v},
+    {key:"so",  head:"三振",  get:d=>d.L.so,       fmt:v=>v},
+    {key:"avg", head:"打率", get:d=>d.L.avg,      fmt:f3, rate:true},
+    {key:"obp", head:"出塁率", get:d=>d.L.obp,      fmt:f3, rate:true},
+    {key:"slg", head:"長打率", get:d=>d.L.slg,      fmt:f3, rate:true},
     {key:"ops", head:"OPS", get:d=>d.L.ops,      fmt:f3, rate:true}
   ];
   return [
-    {key:"pa",    head:"PA",     get:d=>d.L.pa,     fmt:v=>v},
+    {key:"pa",    head:"打席",     get:d=>d.L.pa,     fmt:v=>v},
     {key:"wrc",   head:"wRC+",   get:d=>d.wrc,      fmt:v=>Math.round(v), rate:true},
     {key:"xwoba", head:"xwOBA",  get:d=>d.xwoba,    fmt:f3, rate:true},
     {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, rate:true},
@@ -1652,20 +1665,20 @@ function batterColumns(mode){
 }
 function pitcherColumns(mode){
   if(mode==="std") return [
-    {key:"g",   head:"G",    get:d=>d.games,   fmt:v=>v},
-    {key:"w",   head:"W",    get:d=>d.w,       fmt:v=>v},
-    {key:"l",   head:"L",    get:d=>d.l,       fmt:v=>v},
-    {key:"ip",  head:"IP",   get:d=>d.L.outs,  fmt:ipText},
-    {key:"so",  head:"SO",   get:d=>d.L.so,    fmt:v=>v},
-    {key:"bb",  head:"BB",   get:d=>d.L.bb,    fmt:v=>v},
-    {key:"r",   head:"R",    get:d=>d.L.runs,  fmt:v=>v, low:true},
-    {key:"sv",  head:"SV",   get:d=>d.sv,      fmt:v=>v},
-    {key:"hld", head:"HLD",  get:d=>d.hld,     fmt:v=>v},
+    {key:"g",   head:"試合",    get:d=>d.games,   fmt:v=>v},
+    {key:"w",   head:"勝",    get:d=>d.w,       fmt:v=>v},
+    {key:"l",   head:"敗",    get:d=>d.l,       fmt:v=>v},
+    {key:"ip",  head:"投球回",   get:d=>d.L.outs,  fmt:ipText},
+    {key:"so",  head:"奪三振",   get:d=>d.L.so,    fmt:v=>v},
+    {key:"bb",  head:"与四球",   get:d=>d.L.bb,    fmt:v=>v},
+    {key:"r",   head:"失点",    get:d=>d.L.runs,  fmt:v=>v, low:true},
+    {key:"sv",  head:"セーブ",   get:d=>d.sv,      fmt:v=>v},
+    {key:"hld", head:"ホールド",  get:d=>d.hld,     fmt:v=>v},
     {key:"era", head:"ERA(5回)",  get:d=>d.L.era,   fmt:f2, low:true},
     {key:"whip",head:"WHIP", get:d=>d.L.whip,  fmt:f2, low:true}
   ];
   return [
-    {key:"ip",    head:"IP",     get:d=>d.L.outs,   fmt:ipText},
+    {key:"ip",    head:"投球回",     get:d=>d.L.outs,   fmt:ipText},
     {key:"kp",    head:"K%",     get:d=>d.L.kRate,  fmt:pc},
     {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, low:true},
     {key:"whip",  head:"WHIP",   get:d=>d.L.whip,   fmt:f2, low:true},
@@ -2567,14 +2580,14 @@ function batterView(){
     ["wRC+","得点創出力","wrc",wrcPlus(L),v=>String(Math.round(v))]
   ];
   const std=[
-    {head:"PA",get:L=>L.pa},{head:"AB",get:L=>L.ab},{head:"AVG",get:L=>f3(L.avg)},
-    {head:"HR",get:L=>L.hr},{head:"RBI",get:L=>L.rbi},{head:"H",get:L=>L.h},
-    {head:"BB",get:L=>L.bb},{head:"SO",get:L=>L.so}
+    {head:"打席",get:L=>L.pa},{head:"打数",get:L=>L.ab},{head:"打率",get:L=>f3(L.avg)},
+    {head:"本塁打",get:L=>L.hr},{head:"打点",get:L=>L.rbi},{head:"安打",get:L=>L.h},
+    {head:"四球",get:L=>L.bb},{head:"三振",get:L=>L.so}
   ];
   const adv=[
-    {head:"2B",get:L=>L.d2},{head:"3B",get:L=>L.d3},
+    {head:"二塁打",get:L=>L.d2},{head:"三塁打",get:L=>L.d3},
     {head:"K%",get:L=>pc(L.kRate)},{head:"BB%",get:L=>pc(L.bbRate)},
-    {head:"OBP",get:L=>f3(L.obp)},{head:"SLG",get:L=>f3(L.slg)},{head:"OPS",get:L=>f3(L.ops)}
+    {head:"出塁率",get:L=>f3(L.obp)},{head:"長打率",get:L=>f3(L.slg)},{head:"OPS",get:L=>f3(L.ops)}
   ];
   return `
   <div class="col">
@@ -3049,14 +3062,14 @@ function pitcherView(){
     ["GB %","ゴロ率","gb",S.gb,pc]
   ];
   const std=[
-    {head:"IP",  get:L=>ipText(L.outs)},
-    {head:"W",   get:(L,g)=>g?decisionFor(g,PLAYER,"win"):decisionTotal(PLAYER,"win")},
-    {head:"L",   get:(L,g)=>g?decisionFor(g,PLAYER,"lose"):decisionTotal(PLAYER,"lose")},
-    {head:"SV",  get:(L,g)=>g?reliefFor(g,PLAYER,"save"):reliefTotal(PLAYER,"save")},
-    {head:"HLD", get:(L,g)=>g?reliefFor(g,PLAYER,"hold"):reliefTotal(PLAYER,"hold")},
-    {head:"SO",  get:L=>L.so},
-    {head:"BB",  get:L=>L.bb},
-    {head:"R",   get:L=>L.runs},
+    {head:"投球回",  get:L=>ipText(L.outs)},
+    {head:"勝",   get:(L,g)=>g?decisionFor(g,PLAYER,"win"):decisionTotal(PLAYER,"win")},
+    {head:"敗",   get:(L,g)=>g?decisionFor(g,PLAYER,"lose"):decisionTotal(PLAYER,"lose")},
+    {head:"セーブ",  get:(L,g)=>g?reliefFor(g,PLAYER,"save"):reliefTotal(PLAYER,"save")},
+    {head:"ホールド", get:(L,g)=>g?reliefFor(g,PLAYER,"hold"):reliefTotal(PLAYER,"hold")},
+    {head:"奪三振",  get:L=>L.so},
+    {head:"与四球",  get:L=>L.bb},
+    {head:"失点",   get:L=>L.runs},
     {head:"ERA(5回)", get:L=>f2(L.era)}
   ];
   const adv=[
@@ -3064,9 +3077,9 @@ function pitcherView(){
     {head:"BB%",  get:L=>pc(L.bbRate)},
     {head:"WHIP", get:L=>f2(L.whip)},
     {head:"OPS",  get:L=>f3(L.ops)},
-    {head:"TBF",  get:L=>L.pa},
-    {head:"H",    get:L=>L.h},
-    {head:"HR",   get:L=>L.hr}
+    {head:"打者",  get:L=>L.pa},
+    {head:"被安打",    get:L=>L.h},
+    {head:"被本塁打",   get:L=>L.hr}
   ];
   const types=typeUsage(ps);
   return `
@@ -3234,7 +3247,7 @@ function drawHeats(){
    そこから広さの数字を出し、平面と立体で見比べられるようにする。 */
 
 /** 比べる球場。平面はいくつでも、立体は 2 つまで。 */
-const PARK_PICK={flat:new Set(), solid:[], turn:-28, tilt:26};
+const PARK_PICK={flat:new Set(), solid:[], turn:-28, tilt:26, zoom:1, panX:0, panY:0};
 
 /** 角度(度)での距離。-45 が左翼線、0 が中堅、45 が右翼線。 */
 function distAt(park, deg){
@@ -3251,32 +3264,20 @@ function heightAt(park, deg){
 function parkFacts(park){
   const d=park.dist;
   const left=distAt(park,-45), right=distAt(park,45), center=distAt(park,0);
-  const alley=(distAt(park,-22)+distAt(park,22))/2;
+  const leftAlley=distAt(park,-22), rightAlley=distAt(park,22);
+  const alley=(leftAlley+rightAlley)/2;
   const max=Math.max(...d), min=Math.min(...d);
   const avg=d.reduce((a,b)=>a+b,0)/d.length;
   // 面積。本塁を中心にした扇形を 1 度ずつ足す
   const area=d.reduce((sum,v)=>sum+0.5*v*v*(Math.PI/180),0);
-  const h=park.heights && park.heights.some(v=>v>0)
-    ? park.heights.reduce((a,b)=>a+b,0)/park.heights.length : null;
-  return {left, right, center, alley, max, min, avg, area, height:h,
-    lean:right-left};
-}
-
-/** 形の説明。左右の差と、中堅の深さから言葉にする。 */
-function parkShape(park){
-  const f=parkFacts(park);
-  const words=[];
-  if(Math.abs(f.lean)<3) words.push("左右対称");
-  else words.push(f.lean>0 ? "右翼が深い" : "左翼が深い");
-  const bulge=f.center-(f.left+f.right)/2;
-  if(bulge>18) words.push("中堅が深い");
-  else if(bulge<8) words.push("丸い");
-  else words.push("標準的な広さ");
-  if(f.height!==null){
-    if(f.height>=6) words.push("フェンスが高い");
-    else if(f.height<=2.5) words.push("フェンスが低い");
-  }
-  return words.join(" / ");
+  // フェンスの高さ。測れていないところ(0)は数に入れない
+  const hs=(park.heights||[]).filter(v=>v>0);
+  const h=hs.length ? {
+    max:Math.max(...hs), min:Math.min(...hs),
+    avg:hs.reduce((a,b)=>a+b,0)/hs.length
+  } : null;
+  return {left, right, center, alley, leftAlley, rightAlley,
+    max, min, avg, area, height:h, lean:right-left};
 }
 
 /** 収容人数。yml に書いてあれば出す。 */
@@ -3297,7 +3298,7 @@ function stadiumView(){
     <div class="scroll">${parkSheet()}</div>
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">広さ比べ<small>左が平面 / 右が立体</small></div>
+    <div class="head">広さ比較<small>左が平面 / 右が立体</small></div>
     <div class="compare">
       <div>
         <div class="pickrow">${PARKS.map((p,i)=>`<label>
@@ -3310,7 +3311,8 @@ function stadiumView(){
           <input type="checkbox" data-solid="${esc(p.name)}" ${PARK_PICK.solid.includes(p.name)?"checked":""}>
           ${esc(p.name)}</label>`).join("")}</div>
         <div class="solidwrap"><canvas id="parkSolid"></canvas></div>
-        <div class="solidnote">2 つまで選べます。ドラッグで回せます。</div>
+        <div class="solidnote">ドラッグで回転 / 右ドラッグ(または Shift + ドラッグ)で移動 /
+          ホイールで拡大縮小 / ダブルクリックで元に戻す</div>
       </div>
     </div>
   </div></section>`;
@@ -3320,7 +3322,8 @@ function stadiumView(){
 function parkCard(park){
   const f=parkFacts(park);
   const seats=parkSeats(park);
-  const shot=FACES[park.name];
+  const shot=faceSrc(park.name);
+  const h=f.height;
   return `<div class="parkcard">
     ${shot ? `<img class="shot" src="${shot}" alt="">`
            : '<div class="noshot">写真なし (球場名.png を読み込むと出ます)</div>'}
@@ -3329,30 +3332,60 @@ function parkCard(park){
       <div class="facts">
         <div><b>${f.center.toFixed(0)}<small style="font-size:10px"> m</small></b><span>中堅</span></div>
         <div><b>${f.left.toFixed(0)} / ${f.right.toFixed(0)}</b><span>両翼</span></div>
+        <div><b>${f.leftAlley.toFixed(0)} / ${f.rightAlley.toFixed(0)}</b><span>左右中間</span></div>
         <div><b>${seats===null ? "—" : seats.toLocaleString()}</b><span>収容人数</span></div>
+        <div><b>${h===null ? "—" : h.avg.toFixed(1)}</b><span>フェンス平均</span></div>
+        <div><b>${h===null ? "—" : h.min.toFixed(0)+"〜"+h.max.toFixed(0)}</b><span>フェンス最小〜最大</span></div>
       </div>
-      <div class="shape">${esc(parkShape(park))}</div>
     </div>
   </div>`;
 }
 
-/** 広さの一覧。表計算のように並べる。 */
+/** 一覧の並べ替え。押した項目で降順、もう一度押すと昇順。 */
+const PARK_SORT={key:"", dir:-1};
+
+/**
+ * 広さの一覧。表計算のように並べる。
+ *
+ * <p>見出しを押すとその項目で並べ替える。最初は降順(大きい順)。
+ */
 function parkSheet(){
-  const cols=[["左翼",-45],["左中間",-22],["中堅",0],["右中間",22],["右翼",45]];
-  const head=cols.map(c=>`<th>${c[0]}</th>`).join("");
-  const rows=PARKS.map(park=>{
-    const f=parkFacts(park);
-    return `<tr><td class="nm">${esc(park.name)}</td>
-      ${cols.map(c=>`<td>${distAt(park,c[1]).toFixed(1)}</td>`).join("")}
-      <td>${f.max.toFixed(1)}</td><td>${f.min.toFixed(1)}</td>
-      <td>${f.avg.toFixed(1)}</td>
-      <td>${f.height===null ? "—" : f.height.toFixed(1)}</td>
-      <td>${Math.round(f.area).toLocaleString()}</td></tr>`;
-  }).join("");
-  return `<table class="sheet">
-    <thead><tr><th class="nm">球場</th>${head}
-      <th>最大</th><th>最小</th><th>平均</th><th>柵の高さ</th><th>面積 m²</th></tr></thead>
-    <tbody>${rows}</tbody></table>`;
+  const cols=[
+    {key:"name",   head:"球場",     nm:true, get:p=>p.name},
+    {key:"left",   head:"左翼",     get:p=>distAt(p,-45)},
+    {key:"lalley", head:"左中間",   get:p=>distAt(p,-22)},
+    {key:"center", head:"中堅",     get:p=>distAt(p,0)},
+    {key:"ralley", head:"右中間",   get:p=>distAt(p,22)},
+    {key:"right",  head:"右翼",     get:p=>distAt(p,45)},
+    {key:"max",    head:"最大",     get:p=>parkFacts(p).max},
+    {key:"min",    head:"最小",     get:p=>parkFacts(p).min},
+    {key:"avg",    head:"平均",     get:p=>parkFacts(p).avg},
+    {key:"hmax",   head:"フェンス最大", get:p=>(parkFacts(p).height||{}).max},
+    {key:"hmin",   head:"フェンス最小", get:p=>(parkFacts(p).height||{}).min},
+    {key:"havg",   head:"フェンス平均", get:p=>(parkFacts(p).height||{}).avg},
+    {key:"area",   head:"面積 m²",  get:p=>parkFacts(p).area}
+  ];
+  const list=PARKS.slice();
+  const by=cols.find(c=>c.key===PARK_SORT.key);
+  if(by){
+    list.sort((a,b)=>{
+      const x=by.get(a), y=by.get(b);
+      if(by.nm) return String(x).localeCompare(String(y))*(PARK_SORT.dir<0?-1:1);
+      const nx=isFinite(x)?x:-Infinity, ny=isFinite(y)?y:-Infinity;
+      return (ny-nx)*(PARK_SORT.dir<0?1:-1);
+    });
+  }
+  const show=(c,park)=>{
+    const v=c.get(park);
+    if(c.nm) return esc(String(v));
+    if(!isFinite(v)) return "—";
+    return c.key==="area" ? Math.round(v).toLocaleString() : v.toFixed(1);
+  };
+  const head=cols.map(c=>`<th${c.nm?' class="nm"':""} data-park-sort="${c.key}"
+    title="押すと並べ替え">${c.head}${PARK_SORT.key===c.key ? (PARK_SORT.dir<0?" ▼":" ▲") : ""}</th>`).join("");
+  const rows=list.map(park=>`<tr>${cols.map(c=>
+    `<td${c.nm?' class="nm"':""}>${show(c,park)}</td>`).join("")}</tr>`).join("");
+  return `<table class="sheet"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 /** 平面での比べ。選んだ球場の形を重ねる。 */
@@ -3404,7 +3437,7 @@ function drawParkSolid(){
   const canvas=document.getElementById("parkSolid");
   if(!canvas) return;
   const names=PARK_PICK.solid.length ? PARK_PICK.solid : PARKS.slice(0,2).map(p=>p.name);
-  const show=names.map(n=>PARKS.find(p=>p.name===n)).filter(Boolean).slice(0,2);
+  const show=names.map(n=>PARKS.find(p=>p.name===n)).filter(Boolean);
   const ratio=window.devicePixelRatio||1;
   const w=canvas.clientWidth||320, h=canvas.clientHeight||300;
   canvas.width=w*ratio; canvas.height=h*ratio;
@@ -3417,13 +3450,13 @@ function drawParkSolid(){
   const css=getComputedStyle(document.documentElement);
   const colors=show.map(p=>parkColor(PARKS.findIndex(x=>x.name===p.name)));
   const turn=PARK_PICK.turn*Math.PI/180, tilt=PARK_PICK.tilt*Math.PI/180;
-  const zoom=Math.min(w,h)*0.78/maxD;
+  const zoom=Math.min(w,h)*0.78/maxD*PARK_PICK.zoom;
   // 本塁を原点に、x が右、z が中堅方向、y が高さ
   const project=(x,y,z)=>{
     const sx=x*Math.cos(turn)-z*Math.sin(turn);
     const sz=x*Math.sin(turn)+z*Math.cos(turn);
-    return [w/2+sx*zoom,
-            h*0.62-(y*zoom*Math.cos(tilt)) + sz*zoom*Math.sin(tilt)*-1];
+    return [w/2+PARK_PICK.panX+sx*zoom,
+            h*0.62+PARK_PICK.panY-(y*zoom*Math.cos(tilt)) + sz*zoom*Math.sin(tilt)*-1];
   };
   const at=(park,a,y)=>{
     const r=distAt(park,a), t=a*Math.PI/180;
@@ -3470,12 +3503,12 @@ function drawParkSolid(){
       a===-45 ? g.moveTo(px,py) : g.lineTo(px,py);
     }
     g.stroke();
-    // 名前
-    const [lx,ly]=at(park,0,Math.max(1,heightAt(park,0))+6);
+    // 名前は左上に並べる。球場の上に置くと重なって読めない。
     g.fillStyle=color;
     g.font="600 12px 'Source Sans 3',sans-serif";
-    g.textAlign="center";
-    g.fillText(park.name, lx, ly);
+    g.textAlign="left";
+    g.fillRect(10, 12+i*16-8, 12, 3);
+    g.fillText(park.name, 27, 12+i*16);
   });
   // 本塁
   const [hx,hy]=project(0,0,0);
@@ -4215,6 +4248,15 @@ document.getElementById("app").addEventListener("click",e=>{
   }
   const game=e.target.closest("[data-game]");
   if(game){ GAME=game.dataset.game; render(); return; }
+  // 広さの一覧の並べ替え
+  const ps=e.target.closest("th[data-park-sort]");
+  if(ps){
+    const key=ps.dataset.parkSort;
+    if(PARK_SORT.key===key) PARK_SORT.dir=-PARK_SORT.dir;
+    else { PARK_SORT.key=key; PARK_SORT.dir=-1; }
+    render();
+    return;
+  }
   // 名前を押したらその選手の画面へ
   const who=e.target.closest("[data-who]");
   if(who && who.dataset.who){
@@ -4238,32 +4280,56 @@ document.getElementById("app").addEventListener("change",e=>{
     const name=solid.dataset.solid;
     if(solid.checked){
       PARK_PICK.solid.push(name);
-      // 立体は 2 つまで。古いほうから外す。
-      while(PARK_PICK.solid.length>2) PARK_PICK.solid.shift();
     }else{
       PARK_PICK.solid=PARK_PICK.solid.filter(n=>n!==name);
     }
     render();
   }
 });
-// 立体はドラッグで回す
+// 立体の操作。ドラッグで回転、右ドラッグ(や Shift)で移動、ホイールで拡大縮小
 (function(){
-  let dragging=false, lastX=0, lastY=0;
+  let mode="", lastX=0, lastY=0;
   const app=document.getElementById("app");
   app.addEventListener("pointerdown",e=>{
     if(!e.target.closest("#parkSolid")) return;
-    dragging=true; lastX=e.clientX; lastY=e.clientY;
+    mode = (e.button===2 || e.shiftKey) ? "pan" : "turn";
+    lastX=e.clientX; lastY=e.clientY;
     e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+    e.preventDefault();
   });
   app.addEventListener("pointermove",e=>{
-    if(!dragging) return;
-    PARK_PICK.turn+=(e.clientX-lastX)*0.4;
-    PARK_PICK.tilt=Math.max(4, Math.min(80, PARK_PICK.tilt+(e.clientY-lastY)*0.3));
+    if(!mode) return;
+    const dx=e.clientX-lastX, dy=e.clientY-lastY;
+    if(mode==="pan"){
+      PARK_PICK.panX+=dx;
+      PARK_PICK.panY+=dy;
+    }else{
+      PARK_PICK.turn+=dx*0.4;
+      PARK_PICK.tilt=Math.max(4, Math.min(80, PARK_PICK.tilt+dy*0.3));
+    }
     lastX=e.clientX; lastY=e.clientY;
     drawParkSolid();
   });
   ["pointerup","pointercancel","pointerleave"].forEach(ev=>
-    app.addEventListener(ev,()=>{ dragging=false; }));
+    app.addEventListener(ev,()=>{ mode=""; }));
+  // 右ドラッグで移動できるよう、右クリックのメニューは出さない
+  app.addEventListener("contextmenu",e=>{
+    if(e.target.closest("#parkSolid")) e.preventDefault();
+  });
+  app.addEventListener("wheel",e=>{
+    if(!e.target.closest("#parkSolid")) return;
+    e.preventDefault();
+    const k=Math.exp(-e.deltaY*0.0012);
+    PARK_PICK.zoom=Math.max(0.3, Math.min(6, PARK_PICK.zoom*k));
+    drawParkSolid();
+  }, {passive:false});
+  // 二度押しで元に戻す
+  app.addEventListener("dblclick",e=>{
+    if(!e.target.closest("#parkSolid")) return;
+    PARK_PICK.turn=-28; PARK_PICK.tilt=26;
+    PARK_PICK.zoom=1; PARK_PICK.panX=0; PARK_PICK.panY=0;
+    drawParkSolid();
+  });
 })();
 // 重ねる球場の切り替え。チャートだけ描き直して、一覧の開閉は保つ
 document.getElementById("app").addEventListener("change",e=>{
