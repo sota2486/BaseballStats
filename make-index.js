@@ -130,13 +130,6 @@ async function bootFromData(){
       const ya=/\\.ya?ml$/i.test(a) ? 0 : 1, yb=/\\.ya?ml$/i.test(b) ? 0 : 1;
       return ya!==yb ? ya-yb : a.localeCompare(b);
     });
-  // 顔は画像そのものを参照する。読み込みを待つ必要は無い。
-  // 置き場所が違っていても出るよう、img が出せなければ次の候補へ移る。
-  pics.forEach(n=>{
-    const where=candidates(n);
-    FACES[n.split("/").pop().replace(/\\.[^.]+$/,"")]=where[0];
-    FACE_ALT[where[0]]=where.slice(1);
-  });
   if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[];
     GAMES.clear(); forgetSeen(); SAMPLE=false; }
   const missing=[];
@@ -148,6 +141,17 @@ async function bootFromData(){
     else if(ingest(first.text, data[0])) DATA.files.push(data[0]);
     else missing.push(first.at+" -> 中身が result / record / play のどれでもない");
   }
+  // 顔と球場の写真は画像そのものを参照する。読み込みを待つ必要は無い。
+  // 置き場所が決まってから並べると、最初の候補でそのまま当たる。
+  // 外れても、img が出せなければ次の候補へ移る。
+  pics.forEach(n=>{
+    const only=n.split("/").pop();
+    // 置き場所が分かっていれば名前だけで組む。manifest のパスは
+    // 手元の並びなので、公開先が直下なら毎回 1 回外す。
+    const where=candidates(goodDir===null ? n : only);
+    FACES[only.replace(/\\.[^.]+$/,"")]=where[0];
+    FACE_ALT[where[0]]=where.slice(1);
+  });
   // 残りはまとめて取ってから、並びどおりに読み込む。
   // 1 つずつ待っていると、ファイルの数だけ待ち時間が積み上がって画面が出ない。
   const rest=data.slice(1);
@@ -186,7 +190,11 @@ document.addEventListener("error", event => {
   const img=event.target;
   if(!img || img.tagName!=="IMG") return;
   const next=(FACE_ALT[img.getAttribute("src")]||[]).slice();
-  if(!next.length) return;
+  if(!next.length){
+    // どこにも無かった。球場の写真は消して「写真なし」を見せる。
+    if(img.classList.contains("shot")) img.remove();
+    return;
+  }
   const now=next.shift();
   FACE_ALT[now]=next;
   img.src=now;
