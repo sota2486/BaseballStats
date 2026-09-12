@@ -1368,6 +1368,10 @@ function render(){
     return;
   }
   if(VIEW==="pawa"){
+    // 名札の一覧はまるごと作り直すので、見ていた位置を覚えておいて戻す。
+    // 戻さないと、名札を押すたびに一覧が一番上まで跳ねる。
+    const before=document.querySelector(".namelist");
+    const at=before ? before.scrollTop : 0;
     // 能力画面の中身は PLAYER を見て組み立てる。
     // ここだけ選んでいる人が別なので、描いている間だけ差し替える。
     const keep=PLAYER;
@@ -1378,6 +1382,8 @@ function render(){
     const list=nameList(PLAYER);
     PLAYER=keep;
     app.innerHTML=`<div class="withlist">${list}<div class="listmain">${body}</div></div>`;
+    const after=document.querySelector(".namelist");
+    if(after) after.scrollTop=at;
     return;
   }
   app.innerHTML = safely(SIDE==="bat" ? batterView : pitcherView, PLAYER + " の成績");
@@ -2524,16 +2530,38 @@ function weakRate(S){
 const QUAL_CHANCE=5;
 
 /**
- * 走りの速さの元になる値。余分に進めた割合と、ダッシュを使った割合。
+ * 内野安打の割合。打球が内野で止まったのに間に合った安打。
+ *
+ * <p>ゴロ(打球角 10 度未満)で、本塁から 40m 以内に落ちた単打を数える。
+ * 打球の強さではなく足でもぎ取った安打なので、走力の裏付けになる。
+ *
+ * @return 決着した打席に対する割合(%)。打席の記録が無ければ null
+ */
+function infieldHitRate(name){
+  const rows=pitchOf(name,"bat").filter(r=>r.result);
+  if(rows.length<4) return null;
+  const hits=rows.filter(r=>{
+    if(r.result!=="SINGLE") return false;
+    const la=Number(r.launch_angle), d=distanceOf(r);
+    return isFinite(la) && la<10 && isFinite(d) && d>0 && d<=40;
+  }).length;
+  return 100*hits/rows.length;
+}
+
+/**
+ * 走りの速さの元になる値。
+ * 余分に進めた割合、ダッシュを使った割合、内野安打の割合から。
  *
  * <p>この値そのものは能力にしない。リーグの中で何番目かを見るのに使う。
  */
 function runRaw(name){
   const B=baserunLine(playOf(name,"run"));
   if(!B.plays) return null;
+  const infield=infieldHitRate(name);
   return blend([
     [B.extraRate===null?null:ability(B.extraRate, 10, 120), 1.2],
-    [B.sprint===null?null:ability(B.sprint*100, 0, 60), 0.6]
+    [B.sprint===null?null:ability(B.sprint*100, 0, 60), 0.6],
+    [infield===null?null:ability(infield, 0, 25), 0.8]
   ]);
 }
 
