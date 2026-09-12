@@ -481,11 +481,11 @@ table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:cen
 @media (max-width:760px){.parkcards{grid-template-columns:1fr}}
 .parkcard{border:1px solid var(--line); border-radius:8px; overflow:hidden;
   background:var(--panel-2)}
-.parkcard .shot{width:100%; aspect-ratio:16/9; object-fit:cover; display:block;
-  background:var(--panel); border-bottom:1px solid var(--line)}
+.parkcard .shotwrap{position:relative; border-bottom:1px solid var(--line)}
+.parkcard .shot{position:absolute; left:0; top:0; width:100%; height:100%;
+  object-fit:cover; display:block}
 .parkcard .noshot{width:100%; aspect-ratio:16/9; display:flex; align-items:center;
-  justify-content:center; color:var(--muted); font-size:11.5px;
-  background:var(--panel); border-bottom:1px solid var(--line)}
+  justify-content:center; color:var(--muted); font-size:11.5px; background:var(--panel)}
 .parkcard .body{padding:9px 11px 11px}
 .parkcard h4{margin:0 0 6px; font-family:"Barlow Condensed",sans-serif; font-size:19px;
   letter-spacing:.02em}
@@ -1482,19 +1482,19 @@ function topView(){
   const qb=d=>d.L.pa>=QUAL_PA;                 // 規定打席
   const qp=d=>d.L.outs/3>=QUAL_IP;             // 規定投球回
   const batCards=[
-    card("AVG",  bat, qb, d=>d.L.avg,  f3, true),
-    card("HR",   bat, null, d=>d.L.hr,  v=>v, true),
-    card("RBI",  bat, null, d=>d.L.rbi, v=>v, true),
-    card("HIT",  bat, null, d=>d.L.h,   v=>v, true),
+    card("打率",  bat, qb, d=>d.L.avg,  f3, true),
+    card("本塁打",   bat, null, d=>d.L.hr,  v=>v, true),
+    card("打点",  bat, null, d=>d.L.rbi, v=>v, true),
+    card("安打",  bat, null, d=>d.L.h,   v=>v, true),
     card("OPS",  bat, qb, d=>d.L.ops,  f3, true),
     card("wRC+", bat, qb, d=>d.wrc,    v=>String(Math.round(v)), true)
   ].join("");
   const pitCards=[
-    card("ERA (5回)",  pit, qp, d=>d.L.era,  f2, false),
-    card("WIN",  pit, null, d=>d.w,     v=>v, true),
-    card("SO",   pit, null, d=>d.L.so,  v=>v, true),
-    card("IP",   pit, null, d=>d.L.outs, ipText, true),
-    card("SAVE", pit, null, d=>d.sv,    v=>v, true),
+    card("防御率 (5回)",  pit, qp, d=>d.L.era,  f2, false),
+    card("勝利",  pit, null, d=>d.w,     v=>v, true),
+    card("奪三振",   pit, null, d=>d.L.so,  v=>v, true),
+    card("投球回",   pit, null, d=>d.L.outs, ipText, true),
+    card("セーブ", pit, null, d=>d.sv,    v=>v, true),
     card("WHIP", pit, qp, d=>d.L.whip, f2, false)
   ].join("");
   return `<section class="span"><div class="pad">
@@ -3280,6 +3280,17 @@ function parkFacts(park){
     max, min, avg, area, height:h, lean:right-left};
 }
 
+/**
+ * 球場の写真の置き場所。
+ *
+ * <p>手元で開いているときは、読み込んだファイルの中にしか写真が無いので
+ * 何も返さない。公開しているサイト(index.html)では、ここが
+ * 実際のフォルダを指すように差し替わる。
+ */
+function parkShotUrl(){
+  return "";
+}
+
 /** 収容人数。yml に書いてあれば出す。 */
 function parkSeats(park){
   return isFinite(park.seats) && park.seats>0 ? park.seats : null;
@@ -3322,11 +3333,15 @@ function stadiumView(){
 function parkCard(park){
   const f=parkFacts(park);
   const seats=parkSeats(park);
-  const shot=faceSrc(park.name);
+  // 写真は「球場名.png」。読み込んであればそれ、無ければ置き場所から直に当たる。
+  // 読めなかったときは img を消して、後ろの「写真なし」を見せる。
+  const shot=faceSrc(park.name) || parkShotUrl(park.name);
   const h=f.height;
   return `<div class="parkcard">
-    ${shot ? `<img class="shot" src="${shot}" alt="">`
-           : '<div class="noshot">写真なし (球場名.png を読み込むと出ます)</div>'}
+    <div class="shotwrap">
+      <div class="noshot">写真なし (球場名.png を読み込むと出ます)</div>
+      ${shot ? `<img class="shot" src="${esc(shot)}" alt="" onerror="this.remove()">` : ""}
+    </div>
     <div class="body">
       <h4>${esc(park.name)}</h4>
       <div class="facts">
@@ -4107,7 +4122,9 @@ async function bootFromData(){
     }
     return {at:null, why:last};
   };
-  const pics=names.filter(n=>/\.(png|jpe?g|gif|webp)$/i.test(n));
+  // 写真は manifest に無いものも当たってみる(球場の写真を後から置いたとき用)
+  const pics=names.filter(n=>/\.(png|jpe?g|gif|webp)$/i.test(n))
+    .concat(maybe.filter(n=>/\.(png|jpe?g|gif|webp)$/i.test(n)));
   // 別名表を先に読みたいので、yml を前に出す
   const data=names.filter(n=>/\.(csv|ya?ml)$/i.test(n))
     .sort((a,b)=>{
