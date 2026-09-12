@@ -1287,7 +1287,8 @@ function render(){
   const playerRow=document.getElementById("playerRow");
   const onPlayer = VIEW==="player" || VIEW==="pawa";
   playerRow.hidden = !onPlayer;
-  app.classList.toggle("wide", !onPlayer);
+  // 狭い枠にするのは Savant だけ。能力画面は横に名札が並ぶぶん広く使う。
+  app.classList.toggle("wide", VIEW!=="player");
   if(VIEW==="top"){ renderParks(); app.innerHTML=safely(topView, "TOP"); return; }
   if(VIEW==="leaderboard"){
     renderParks();
@@ -1304,20 +1305,22 @@ function render(){
   // ここから下は選手の画面(Savant と パワプロ風能力)
   renderTabs();
   renderParks();
-  const list=nameList();
   if(!PLAYER){
     app.innerHTML='<section><div class="empty">csv を読み込むと選手が並びます</div></section>';
     return;
   }
   if(VIEW==="pawa"){
-    app.innerHTML=`<div class="withlist">${list}<div class="listmain">`
-      + safely(SIDE==="bat" ? pawaBatter : pawaPitcher, PLAYER + " の能力")
-      + `</div></div>`;
+    // 能力画面の中身は PLAYER を見て組み立てる。
+    // ここだけ選んでいる人が別なので、描いている間だけ差し替える。
+    const keep=PLAYER;
+    PLAYER=PAWA_PLAYER;
+    const body=safely(SIDE==="bat" ? pawaBatter : pawaPitcher, PLAYER + " の能力");
+    const list=nameList(PLAYER);
+    PLAYER=keep;
+    app.innerHTML=`<div class="withlist">${list}<div class="listmain">${body}</div></div>`;
     return;
   }
-  app.innerHTML=`<div class="withlist">${list}<div class="listmain">`
-    + safely(SIDE==="bat" ? batterView : pitcherView, PLAYER + " の成績")
-    + `</div></div>`;
+  app.innerHTML = safely(SIDE==="bat" ? batterView : pitcherView, PLAYER + " の成績");
   if(SIDE==="bat"){ drawSpray(); } else { drawLoc(); drawHeats(); }
   // 試合は古い順のまま。直近が見えるよう、開いた時点で一番下へ送る
   document.querySelectorAll(".gamescroll").forEach(el=>{ el.scrollTop=el.scrollHeight; });
@@ -1329,17 +1332,19 @@ function renderViewTabs(){
     `<div class="tab" data-view="${k}" aria-selected="${k===VIEW}">${label}</div>`).join("");
 }
 function renderTabs(){
-  const names=new Set();
-  DATA.plate.forEach(r=>{ if(r.batter)names.add(r.batter); if(r.pitcher)names.add(r.pitcher); });
-  DATA.pitch.forEach(r=>{ if(r.batter)names.add(r.batter); if(r.pitcher)names.add(r.pitcher); });
-  const list=[...names].filter(Boolean).sort();
+  const list=playerNames();
   if(!list.includes(PLAYER)) PLAYER=list[0]||"";
-  // 名前の一覧は画面の横に出す。ここでは打者/投手の切り替えだけ。
-  document.getElementById("tabs").innerHTML="";
+  if(!list.includes(PAWA_PLAYER)) PAWA_PLAYER=list[0]||"";
+  // Savant は今までどおり上に名前を並べる。能力画面は横の名札を使う。
+  document.getElementById("tabs").innerHTML = VIEW==="pawa" ? "" :
+    list.map(n=>`<div class="tab" data-name="${esc(n)}" aria-selected="${n===PLAYER}">${esc(n)}</div>`).join("");
   document.getElementById("sideTabs").innerHTML=
     `<div class="tab" data-side="bat" aria-selected="${SIDE==="bat"}">打者</div>
      <div class="tab" data-side="pit" aria-selected="${SIDE==="pit"}">投手</div>`;
 }
+
+/** 能力画面で選んでいる選手。Savant とは別に覚える。 */
+let PAWA_PLAYER="";
 
 /**
  * 選手の名札を縦に並べた一覧。画面の横に置く。
@@ -1347,15 +1352,18 @@ function renderTabs(){
  * <p>名札の色は能力画面の名前と同じ。守ってきた位置で色が決まるので、
  * 一覧を見ただけで投手か野手かが分かる。
  */
-function nameList(){
+function nameList(current){
+  return `<aside class="namelist">${playerNames().map(n=>
+    `<div class="nameplate${n===current?" on":""}" data-name="${esc(n)}"
+      style="background:${plateBackground(n)}">${esc(n)}</div>`).join("")}</aside>`;
+}
+
+/** 記録に出てくる選手の名前。並びは五十音(コード順)。 */
+function playerNames(){
   const names=new Set();
   DATA.plate.forEach(r=>{ if(r.batter)names.add(r.batter); if(r.pitcher)names.add(r.pitcher); });
   DATA.pitch.forEach(r=>{ if(r.batter)names.add(r.batter); if(r.pitcher)names.add(r.pitcher); });
-  const list=[...names].filter(Boolean).sort();
-  if(!list.includes(PLAYER)) PLAYER=list[0]||"";
-  return `<aside class="namelist">${list.map(n=>
-    `<div class="nameplate${n===PLAYER?" on":""}" data-name="${esc(n)}"
-      style="background:${plateBackground(n)}">${esc(n)}</div>`).join("")}</aside>`;
+  return [...names].filter(Boolean).sort();
 }
 
 /** POOR / AVERAGE / GREAT の見出し。 */
@@ -4295,13 +4303,14 @@ document.getElementById("viewTabs").addEventListener("click",e=>{
 document.getElementById("playerRow").addEventListener("click",e=>{
   const t=e.target.closest(".tab"); if(!t) return;
   if(t.dataset.side) SIDE=t.dataset.side;
+  else if(t.dataset.name) PLAYER=t.dataset.name;
   render();
 });
-// 横の名札
+// 横の名札。能力画面で選んでいる人は Savant とは別に覚える。
 document.getElementById("app").addEventListener("click",e=>{
   const plate=e.target.closest(".nameplate");
   if(!plate) return;
-  PLAYER=plate.dataset.name;
+  PAWA_PLAYER=plate.dataset.name;
   render();
 });
 // リーダーボードの切り替えと並べ替え、リザルトの試合選び
@@ -4330,6 +4339,7 @@ document.getElementById("app").addEventListener("click",e=>{
   const who=e.target.closest("[data-who]");
   if(who && who.dataset.who){
     PLAYER=canon(who.dataset.who);
+    PAWA_PLAYER=PLAYER;
     VIEW="player";
     render();
   }
