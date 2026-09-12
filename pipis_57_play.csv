@@ -1,0 +1,11 @@
+game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind
+2026091202,1,TOP,,spot,pipis_57,,,,,,,,,,,FIRST_BASEMAN,,,,,,,,,,,,,,,,,,
+2026091202,1,TOP,2026091202#2,field,pipis_57,28,138,169.6,11.4,54.6,0-15/150-175,,,,,FIRST_BASEMAN,2,306.3,-88.5,276.7,-120.4,false,false,false,false,false,2,-1,,false,false,false,false,
+2026091202,2,TOP,2026091202#13,field,pipis_57,2,38,157.3,-29.7,3.4,LT0/150-175,,,,,FIRST_BASEMAN,2,308.6,-90.1,285.2,-69.9,false,false,false,true,false,0,-1,,true,false,false,false,
+2026091202,3,TOP,,spot,pipis_57,,,,,,,,,,,FIRST_BASEMAN,,,,,,,,,,,,,,,,,,
+2026091202,3,TOP,2026091202#21,field,pipis_57,2,53,131.6,-45.1,2.2,LT0/125-150,,,,,FIRST_BASEMAN,2,306.6,-88.3,284.8,-68.6,false,false,false,true,false,0,-1,,false,false,false,false,
+2026091202,3,BOTTOM,2026091202#27,run,pipis_57,10,25,154.5,1.1,20.0,0-15/150-175,0,0,true,0.00,,,,,,,,,,,,,,,false,,,FORCE
+2026091202,5,TOP,,spot,pipis_57,,,,,,,,,,,FIRST_BASEMAN,,,,,,,,,,,,,,,,,,
+2026091202,5,TOP,2026091202#43,field,pipis_57,2,72,87.0,-56.9,0.4,LT0/LT100,,,,,FIRST_BASEMAN,1,305.9,-87.2,285.4,-66.9,false,true,false,false,false,1,-1,,true,false,false,false,
+2026091202,5,BOTTOM,,run,pipis_57,2,36,96.1,-58.0,2.4,LT0/LT100,0,1,false,0.00,,,,,,,,,,,,,,,false,,,
+2026091202,5,BOTTOM,2026091202#48,run,pipis_57,11,22,161.5,2.9,22.8,0-15/150-175,1,2,false,0.00,,,,,,,,,,,,,,,false,,,
