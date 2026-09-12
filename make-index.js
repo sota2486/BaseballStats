@@ -83,13 +83,16 @@ async function bootFromData(){
   // 置き場所が変わっても拾えるよう、いくつか当たってみる。
   // 手元では site/ に入れていても、公開先では直下に並べていることがある。
   // site/ を先に見る。古い写しが直下に残っていると、そちらに引っぱられるため。
-  const WHERE_FILE=["site/", "", "data/"];
+  const WHERE_FILE=["site/", "csv/", "", "data/"];
   // 一度どこで見つかったかを覚えておき、次からはそこだけ見る。
   // 毎回 3 か所当たると、ファイルの数だけ無駄な 404 が積み上がる。
   let goodDir=null;
   const candidates=name => {
     const only=name.split("/").pop();
-    const dirs=goodDir===null ? WHERE_FILE : [goodDir];
+    // 覚えたフォルダを先に当てて無駄な 404 を減らすが、そこに無ければ
+    // ほかのフォルダも当たり直す。フォルダをまたいで置いてあっても読めるように。
+    const dirs=goodDir===null ? WHERE_FILE
+      : [goodDir, ...WHERE_FILE.filter(d=>d!==goodDir)];
     const list=name.includes("/") ? [base+enc(name)] : [];
     dirs.forEach(dir=>{
       const at=base+dir+enc(only);
@@ -118,7 +121,9 @@ async function bootFromData(){
     }
     return {at:null, why:last};
   };
-  const pics=names.filter(n=>/\\.(png|jpe?g|gif|webp)$/i.test(n));
+  // 写真は manifest に無いものも当たってみる(球場の写真を後から置いたとき用)
+  const pics=names.filter(n=>/\\.(png|jpe?g|gif|webp)$/i.test(n))
+    .concat(maybe.filter(n=>/\\.(png|jpe?g|gif|webp)$/i.test(n)));
   // 別名表を先に読みたいので、yml を前に出す
   const data=names.filter(n=>/\\.(csv|ya?ml)$/i.test(n))
     .sort((a,b)=>{
@@ -132,7 +137,8 @@ async function bootFromData(){
     FACES[n.split("/").pop().replace(/\\.[^.]+$/,"")]=where[0];
     FACE_ALT[where[0]]=where.slice(1);
   });
-  if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[]; SAMPLE=false; }
+  if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[];
+    GAMES.clear(); forgetSeen(); SAMPLE=false; }
   const missing=[];
   // 置き場所を決めるために 1 つだけ先に取る。
   // ここで goodDir が決まるので、残りは無駄な 404 を出さずに済む。

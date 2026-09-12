@@ -6,9 +6,15 @@
  *
  *   node update-data.js
  *
- * <p>拾うのは site/、index.html と同じ階層、data/ の csv・yml・画像。
- * 同じ名前が複数あれば site/ のものを使う。
- * プラグイン側の設定 (config.yml など) は混ぜない。
+ * <p>拾うのは site/、csv/、index.html と同じ階層、data/ の csv・yml・画像。
+ *
+ * <p>同じ名前のファイルが二か所にあるときは、両方をパス付きで載せる。
+ * 記録は試合ごとに書き出すので、site/ に古い試合、csv/ に新しい試合、
+ * という分かれ方をする。片方だけにすると、もう片方の試合がまるごと消える。
+ * 一か所にしかない名前は、これまでどおり名前だけを書く
+ * (公開先でどのフォルダに置いても index.html が探し当てられる)。
+ *
+ * <p>プラグイン側の設定 (config.yml など) は混ぜない。
  *
  * <p>書き出すのは 2 つの並び。
  * <ul>
@@ -60,15 +66,23 @@ function collect(dir, prefix) {
 // 二重に読むと打席が倍に数えられてしまう。
 // site/ を先に見るのは、ここが記録の置き場だから。
 // 同じ名前の古い写しが親フォルダに残っていても、そちらに引っぱられない。
-const picked = new Map();
-[...collect("site", "site/"), ...collect(".", ""), ...collect("data", "data/")]
+const found = new Map();
+[...collect("site", "site/"), ...collect("csv", "csv/"),
+ ...collect(".", ""), ...collect("data", "data/")]
   .forEach(rel => {
     const base = path.basename(rel);
-    if (!picked.has(base)) picked.set(base, rel);
+    if (!found.has(base)) found.set(base, []);
+    found.get(base).push(rel);
   });
-// 名前だけを書く。公開先で site/ に入れていても直下に並べていても、
-// index.html 側がどちらも当たってくれる。
-const files = [...picked.keys()].sort();
+// 中身を読むとき用に、その名前の代表を 1 つ決めておく
+const picked = new Map();
+found.forEach((list, base) => picked.set(base, list[0]));
+// どのファイルも置き場所を付けて書く。
+// 名前だけだと、index.html 側が「最初に見つかったフォルダ」を覚えてしまい、
+// 別のフォルダにしか無いファイルを取りに行けない。
+// パスが合わなくなっても、index.html は名前だけでも探し直す。
+const files = [];
+[...found.keys()].sort().forEach(base => found.get(base).forEach(rel => files.push(rel)));
 
 /**
  * その csv が選手ごとの記録か。
@@ -91,11 +105,14 @@ function playerCsv(name) {
 
 // 選手の名簿。顔画像と、すでにある記録のファイル名から拾う。
 // 顔画像のファイル名はプレイヤー名そのものなので、名簿としてちょうどよい。
+const parks = new Set(stadiumNames());
 const names = new Set();
-files.forEach(name => {
+files.forEach(rel => {
+  const name = rel.includes("/") ? rel.slice(rel.lastIndexOf("/") + 1) : rel;
   const picture = name.match(PICTURE);
   if (picture) {
-    names.add(picture[1]);
+    // 球場の写真は選手ではない。「球場名.csv」を探しに行かせない。
+    if (!parks.has(picture[1])) names.add(picture[1]);
     return;
   }
   if (!playerCsv(name)) return;
@@ -108,8 +125,45 @@ files.forEach(name => {
   }
 });
 
+/**
+ * stadium.yml に並んでいる球場の名前。
+ *
+ * <p>球場の写真は「球場名.png」。後から置いても読めるよう、
+ * まだファイルが無くても名前だけ先回りの並びに入れておく。
+ */
+function stadiumNames() {
+  const names = new Set();
+  picked.forEach((rel, base) => {
+    if (!YAML.test(base)) return;
+    let text = "";
+    try { text = fs.readFileSync(rel, "utf8"); } catch (e) { return; }
+    const lines = text.split(/\r?\n/);
+    let inRoot = false, nameIndent = -1;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const indent = raw.length - raw.replace(/^ +/, "").length;
+      if (!inRoot) {
+        if (/^Stadiums:$/i.test(line)) inRoot = true;
+        continue;
+      }
+      if (nameIndent < 0) nameIndent = indent;
+      if (indent < nameIndent) break;
+      if (indent !== nameIndent) continue;
+      const key = line.match(/^['"]?([^'":]+?)['"]?s*:$/);
+      if (key) names.add(key[1].trim());
+    }
+  });
+  return [...names];
+}
+
 // まだ無いかもしれない記録。読めなくても知らせない。
 const maybe = [];
+// 球場の写真
+stadiumNames().forEach(name => {
+  const file = name + ".png";
+  if (!picked.has(file)) maybe.push(file);
+});
 [...names].sort().forEach(who => {
   [who + ".csv", who + "_play.csv"].forEach(name => {
     if (!picked.has(name)) maybe.push(name);
