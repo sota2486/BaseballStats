@@ -302,6 +302,9 @@ section{background:var(--panel); border:1px solid var(--line); border-radius:5px
   border-bottom:3px solid var(--rule); margin-bottom:9px}
 .head small{font-family:"Source Sans 3",sans-serif; font-size:11.5px; color:var(--muted);
   font-weight:400; margin-left:auto}
+/* 試合会場。見出しの中に小さく添える */
+.head .venue{font-family:"Source Sans 3",sans-serif; font-size:11.5px; font-weight:600;
+  color:var(--rule); border:1px solid var(--line); border-radius:3px; padding:1px 7px}
 .title{text-align:center; font-family:"Barlow Condensed",sans-serif; font-size:22px;
   padding:11px 12px 9px}
 .title b{color:var(--hot)}
@@ -497,6 +500,42 @@ table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:cen
                         distance,result
    ========================================================================== */
 const DATA={plate:[], pitch:[], play:[], files:[]};
+/**
+ * 試合 ID → その試合の情報(チーム名と球場名)。game.csv から作る。
+ *
+ * <p>打席の記録は 1 打席 1 行なので、試合に 1 つしかないものを入れると
+ * 同じ値が何百行も並ぶ。チーム名と球場名はこちらへ分けてある。
+ */
+const GAMES=new Map();
+function ingestGames(rows){
+  rows.forEach(r=>{
+    const id=String(r.game_id||"").trim();
+    if(!id) return;
+    GAMES.set(id, {
+      top:String(r.topteam||"").trim(),
+      bottom:String(r.bottomteam||"").trim(),
+      stadium:String(r.stadium||"").trim()
+    });
+  });
+}
+/** その試合の球場名。分からなければ空。 */
+function venueOf(id){
+  const info=GAMES.get(String(id||"").trim());
+  return info ? info.stadium : "";
+}
+/**
+ * その試合の先攻・後攻の名前。
+ *
+ * <p>game.csv があればそれを使う。昔の result はチーム名の列を持っているので、
+ * 無ければそちらから拾う。どちらも無ければ先攻/後攻。
+ */
+function teamNames(rows){
+  const id=rows.length ? String(rows[0].game_id||"").trim() : GAME;
+  const info=GAMES.get(id) || {};
+  const first=rows.find(r=>r.topteam||r.bottomteam) || {};
+  return [String(info.top||first.topteam||"").trim()||"先攻",
+          String(info.bottom||first.bottomteam||"").trim()||"後攻"];
+}
 let PLAYER="", SIDE="bat", SAMPLE=true;
 /** 選手ページの見せ方。savant か pawa(パワプロ風)。 */
 let STYLE="savant";
@@ -1717,9 +1756,7 @@ function lineupCard(rows, side, name){
 }
 
 function lineupBox(rows){
-  const first=rows.find(r=>r.topteam||r.bottomteam) || {};
-  const names=[String(first.topteam||"").trim()||"先攻",
-               String(first.bottomteam||"").trim()||"後攻"];
+  const names=teamNames(rows);
   const cards=[lineupCard(rows,0,names[0]), lineupCard(rows,1,names[1])].join("");
   if(!cards) return "";
   return `<section class="span"><div class="pad">
@@ -1735,8 +1772,9 @@ function resultView(){
   const rows=DATA.plate.filter(r=>String(r.game_id)===GAME);
   const pick=games.map(g=>
     `<button data-game="${esc(g)}" aria-selected="${g===GAME}">${esc(gameLabel(g))}</button>`).join("");
+  const venue=venueOf(GAME);
   return `<section class="span"><div class="pad">
-    <div class="head">Result<small>${games.length} 試合</small></div>
+    <div class="head">Result${venue ? `<span class="venue">${esc(venue)}</span>` : ""}<small>${games.length} 試合</small></div>
     <div class="gamepick">${pick}</div>
     ${scoreBoard(rows)}
   </div></section>
@@ -1762,10 +1800,7 @@ function scoreBoard(rows){
   const d=decisions(rows);
   const relief=reliefCredits(rows, d);
   const winner = total(1)>total(0) ? 1 : (total(0)>total(1) ? 0 : -1);
-  // 記録にチーム名があれば使う。無ければ先攻/後攻。
-  const first=rows.find(r=>r.topteam||r.bottomteam) || {};
-  const names=[String(first.topteam||"").trim()||"先攻",
-               String(first.bottomteam||"").trim()||"後攻"];
+  const names=teamNames(rows);
   const sides=teamSides(rows);
   const row=side=>`<tr class="${side?"second":"first"} ${winner===side?"win":""}">
     <td class="team">${esc(names[side])}</td>
@@ -3439,6 +3474,49 @@ function fillGaps(values){
   }
   for(let i=last+1;i<values.length;i++) values[i]=values[last];
 }
+/**
+ * もう読んだ記録の覚え書き。同じ内容を二度数えないために使う。
+ *
+ * <p>記録は試合ごとに書き出すので、同じ選手のファイルが
+ * 置き場所ごとに複数あることがある(古い試合は site/、新しい試合は csv/ など)。
+ * 全部読まないと抜ける試合が出るが、そのまま足すと重なった試合が倍になる。
+ */
+const SEEN={games:new Set(), pitch:new Set(), play:new Set()};
+
+/** 読んだ記録の覚え書きを白紙に戻す。 */
+function forgetSeen(){
+  SEEN.games.clear(); SEEN.pitch.clear(); SEEN.play.clear();
+}
+
+
+/** 打席の記録。すでに読んだ試合のぶんは読み飛ばす。 */
+function addPlate(rows){
+  const mine=new Set(rows.map(r=>String(r.game_id||"")));
+  const skip=new Set([...mine].filter(g=>SEEN.games.has(g)));
+  mine.forEach(g=>SEEN.games.add(g));
+  const keep=rows.filter(r=>!skip.has(String(r.game_id||"")));
+  DATA.plate.push(...keep);
+  return keep.length;
+}
+
+/** 1 行ずつ、同じものが無ければ足す。 */
+function addRows(target, rows, seen, key){
+  let added=0;
+  rows.forEach(r=>{
+    const k=key(r);
+    if(seen.has(k)) return;
+    seen.add(k);
+    target.push(r);
+    added++;
+  });
+  return added;
+}
+
+/** 1 球の記録を一意にする組。同じ球は同じ組になる。 */
+function pitchKey(r){
+  return [r.game, r.pa, r.pitch_no, r.side, r.pitcher, r.batter].join("|");
+}
+
 function ingest(text,name){
   if(name&&/\.ya?ml$/i.test(name)){
     // 同じ yml でも、選手の別名表と球場は中身で見分ける
@@ -3446,10 +3524,18 @@ function ingest(text,name){
   }
   const {head,rows}=parseCsv(text);
   if(!rows.length) return null;
-  if(head.includes("game_id")){ DATA.plate.push(...rows); return "result"; }
-  if(head.includes("side")&&head.includes("pitch_no")){ DATA.pitch.push(...rows); return "record"; }
+  // 1 試合 1 行の game.csv。打席の記録と同じ game_id を持つので、先に見分ける
+  if(head.includes("game_id") && !head.includes("inning")){ ingestGames(rows); return "game"; }
+  if(head.includes("game_id")){ addPlate(rows); return "result"; }
+  if(head.includes("side")&&head.includes("pitch_no")){
+    addRows(DATA.pitch, rows, SEEN.pitch, pitchKey);
+    return "record";
+  }
   // 守備と走塁の記録(record/<名前>_play.csv)
-  if(head.includes("kind")&&head.includes("touchorder")){ DATA.play.push(...rows); return "play"; }
+  if(head.includes("kind")&&head.includes("touchorder")){
+    addRows(DATA.play, rows, SEEN.play, r=>JSON.stringify(r));
+    return "play";
+  }
   return null;
 }
 /**
@@ -3495,13 +3581,16 @@ async function bootFromData(){
   // 置き場所が変わっても拾えるよう、いくつか当たってみる。
   // 手元では site/ に入れていても、公開先では直下に並べていることがある。
   // site/ を先に見る。古い写しが直下に残っていると、そちらに引っぱられるため。
-  const WHERE_FILE=["site/", "", "data/"];
+  const WHERE_FILE=["site/", "csv/", "", "data/"];
   // 一度どこで見つかったかを覚えておき、次からはそこだけ見る。
   // 毎回 3 か所当たると、ファイルの数だけ無駄な 404 が積み上がる。
   let goodDir=null;
   const candidates=name => {
     const only=name.split("/").pop();
-    const dirs=goodDir===null ? WHERE_FILE : [goodDir];
+    // 覚えたフォルダを先に当てて無駄な 404 を減らすが、そこに無ければ
+    // ほかのフォルダも当たり直す。フォルダをまたいで置いてあっても読めるように。
+    const dirs=goodDir===null ? WHERE_FILE
+      : [goodDir, ...WHERE_FILE.filter(d=>d!==goodDir)];
     const list=name.includes("/") ? [base+enc(name)] : [];
     dirs.forEach(dir=>{
       const at=base+dir+enc(only);
@@ -3544,7 +3633,8 @@ async function bootFromData(){
     FACES[n.split("/").pop().replace(/\.[^.]+$/,"")]=where[0];
     FACE_ALT[where[0]]=where.slice(1);
   });
-  if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[]; SAMPLE=false; }
+  if(data.length){ DATA.plate=[]; DATA.pitch=[]; DATA.play=[]; DATA.files=[];
+    GAMES.clear(); forgetSeen(); SAMPLE=false; }
   const missing=[];
   // 置き場所を決めるために 1 つだけ先に取る。
   // ここで goodDir が決まるので、残りは無駄な 404 を出さずに済む。
