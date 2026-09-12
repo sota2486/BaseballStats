@@ -551,6 +551,14 @@ const LB={side:"bat", mode:"std", key:null, dir:-1};
 let GAME="";
 /** 打者の規定打席。試合数は問わない。率で並べるときの線引きに使う。 */
 const QUAL_PA=10;
+/**
+ * 1 試合のイニング数。
+ *
+ * <p>このイベントは 5 回制。防御率も「9 回あたり」ではなく
+ * 「5 回あたり = 1 試合あたり」で出す。9 回で出すと、
+ * 5 回しかない試合の失点が実際より多く見える。
+ */
+const GAME_INNINGS=5;
 
 const HIT=new Set(["SINGLE","DOUBLE","TRIPLE","HOME_RUN"]);
 const NOT_AB=new Set(["WALK","HIT_BY_PITCH","SACRIFICE_BUNT","SACRIFICE_FLY"]);
@@ -741,20 +749,38 @@ function isBarrel(ev,la){
 const SCALE={
   xwoba:[0.220,0.580], xba:[0.180,0.560], xslg:[0.220,0.980],
   ev:[145,192], barrel:[12,50], hard:[58,94], sweet:[42,76],
-  chase:[42,16], whiff:[40,14], k:[52,26], bb:[1,12],
+  // 見送るという考えがほぼ無いので、追いかけ率も空振り率も MLB とはまるで違う。
+  // 実測は打者の追いかけ 60〜80%、空振り 32〜35%、
+  // 投手の追いかけさせ 44〜63%、空振り取り 41〜49%。
+  chase:[85,45], whiff:[48,20], k:[52,26], bb:[1,12],
   xera:[8.0,2.0], gb:[18,44], wrc:[40,190], k9:[4.0,16.0], bb9:[6.0,0.5],
   // 守備と走塁。いずれも 1 プレーあたりに直した値で見る
   range:[-0.25,0.25], arm_value:[-0.20,0.20], arm:[95,145],
   baserun:[-0.20,0.25],
   // 投手側で向きが変わるもの
   ev_p:[192,145], barrel_p:[50,12], hard_p:[94,58], xba_p:[0.560,0.180],
-  k_p:[26,52], bb_p:[12,1], chase_p:[16,42], whiff_p:[14,40]
+  k_p:[26,52], bb_p:[12,1], chase_p:[40,75], whiff_p:[30,55]
 };
+/**
+ * 真ん中より下の傾きを緩める割合。
+ *
+ * <p>下振れした数字がそのまま出ると、記録が少ないうちは
+ * 目も当てられない数字が並ぶ。50 より下は差を縮めて出す。
+ * 50 以上はそのまま。順番は変わらない。
+ */
+const SOFT_LOW=0.6;
+
+/** 50 未満を 50 へ寄せる。 */
+function softLow(value){
+  return value>=50 ? value : 50-(50-value)*SOFT_LOW;
+}
+
 function score(key,value){
   const s=SCALE[key];
   if(!s||value===null||!isFinite(value)) return null;
   const [lo,hi]=s;
-  return Math.max(0,Math.min(100,Math.round((value-lo)/(hi-lo)*100)));
+  const raw=Math.max(0,Math.min(100,(value-lo)/(hi-lo)*100));
+  return Math.round(softLow(raw));
 }
 function scoreColor(v){
   if(v===null) return "var(--mid)";
@@ -950,7 +976,8 @@ function pitcherLine(rows){
   const runs=rows.reduce((n,r)=>n+(Number(r.runs)||0),0);
   const ip=outs/3;
   return Object.assign(L, {outs, runs, ip,
-    era: ip? 9*runs/ip : null,
+    // 5 回制なので 5 回あたりの失点を防御率とする
+    era: ip? GAME_INNINGS*runs/ip : null,
     whip: ip? (L.h+L.bb)/ip : null});
 }
 /** 投球回の表示。5 回 1/3 なら 5.1。 */
@@ -1367,7 +1394,7 @@ function decisionTotal(name, which){
 /* ------------------------------------------------------------ TOP 画面
    主要成績の上位、record から拾った目立つ 1 打席、そしてベストオーダー。 */
 /** 投手の率を出すのに要る最低投球回。 */
-const QUAL_IP=3;
+const QUAL_IP=GAME_INNINGS;
 
 function topView(){
   if(!DATA.plate.length && !DATA.pitch.length){
@@ -1385,7 +1412,7 @@ function topView(){
     card("wRC+", bat, qb, d=>d.wrc,    v=>String(Math.round(v)), true)
   ].join("");
   const pitCards=[
-    card("ERA",  pit, qp, d=>d.L.era,  f2, false),
+    card("ERA (5回)",  pit, qp, d=>d.L.era,  f2, false),
     card("WIN",  pit, null, d=>d.w,     v=>v, true),
     card("SO",   pit, null, d=>d.L.so,  v=>v, true),
     card("IP",   pit, null, d=>d.L.outs, ipText, true),
@@ -1569,7 +1596,7 @@ function pitcherColumns(mode){
     {key:"r",   head:"R",    get:d=>d.L.runs,  fmt:v=>v, low:true},
     {key:"sv",  head:"SV",   get:d=>d.sv,      fmt:v=>v},
     {key:"hld", head:"HLD",  get:d=>d.hld,     fmt:v=>v},
-    {key:"era", head:"ERA",  get:d=>d.L.era,   fmt:f2, low:true},
+    {key:"era", head:"ERA(5回)",  get:d=>d.L.era,   fmt:f2, low:true},
     {key:"whip",head:"WHIP", get:d=>d.L.whip,  fmt:f2, low:true}
   ];
   return [
@@ -1578,7 +1605,7 @@ function pitcherColumns(mode){
     {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, low:true},
     {key:"whip",  head:"WHIP",   get:d=>d.L.whip,   fmt:f2, low:true},
     {key:"ops",   head:"OPS",    get:d=>d.L.ops,    fmt:f3, low:true},
-    {key:"xera",  head:"xERA",   get:d=>d.xera,     fmt:f1, low:true},
+    {key:"xera",  head:"xERA(5回)",   get:d=>d.xera,     fmt:f1, low:true},
     {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, low:true},
     {key:"ev",    head:"EV",     get:d=>d.S.ev,     fmt:f1, low:true},
     {key:"barrel",head:"Barrel%",get:d=>d.S.barrel, fmt:pc, low:true},
@@ -1623,8 +1650,8 @@ function xeraScale(){
   }
   XERA_SCALE={key, ok:true,
     xwoba,
-    era: 27*runs/outs,
-    tilt: (pa/outs*27)/1.15};
+    era: GAME_INNINGS*3*runs/outs,
+    tilt: (pa/outs*GAME_INNINGS*3)/1.15};
   return XERA_SCALE;
 }
 
@@ -1992,7 +2019,9 @@ const ABILITY_DEFAULT=55;
 function ability(value, lo, hi){
   if(value===null || value===undefined || !isFinite(value)) return ABILITY_DEFAULT;
   const t=Math.max(0, Math.min(1, (value-lo)/(hi-lo)));
-  return Math.round(20+75*t);
+  // 50 より下は差を縮める。下振れがそのまま出ると見るのが嫌になる。
+  // 順番は変わらないので、上手い下手の並びはそのまま。
+  return Math.round(softLow(20+75*t));
 }
 /**
  * 記録の量から、その項目をどれだけ重く見るか。
@@ -2940,7 +2969,7 @@ function pitcherView(){
   const xw=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
   const xera=xeraOf(xw);
   const rows=[
-    ["xERA","期待防御率","xera",xera,f1],
+    ["xERA","期待防御率(5回)","xera",xera,f1],
     ["xBA","被期待打率","xba_p",S.xba,f3],
     ["Avg Exit Velo","被打球の平均速度","ev_p",S.ev,f1],
     ["Chase %","ボール球を振らせた","chase_p",S.chase,pc],
@@ -2960,7 +2989,7 @@ function pitcherView(){
     {head:"SO",  get:L=>L.so},
     {head:"BB",  get:L=>L.bb},
     {head:"R",   get:L=>L.runs},
-    {head:"ERA", get:L=>f2(L.era)}
+    {head:"ERA(5回)", get:L=>f2(L.era)}
   ];
   const adv=[
     {head:"K%",   get:L=>pc(L.kRate)},
