@@ -106,18 +106,21 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .who .facebig{margin-bottom:6px}
 
 /* ------------------------------------------------- パワプロ風の能力画面 */
-.abwrap{display:grid; grid-template-columns:minmax(250px,380px) minmax(0,1fr); gap:12px}
+.abwrap{display:grid; grid-template-columns:minmax(320px,470px) minmax(0,1fr); gap:12px}
 @media (max-width:820px){.abwrap{grid-template-columns:1fr}}
 /* 選手の一覧を画面の横に置く */
-.withlist{display:grid; grid-template-columns:150px minmax(0,1fr); gap:10px;
+.withlist{display:grid; grid-template-columns:225px minmax(0,1fr); gap:10px;
   align-items:start}
 @media (max-width:760px){.withlist{grid-template-columns:1fr}}
-.namelist{display:flex; flex-direction:column; gap:4px; max-height:calc(100vh - 130px);
-  overflow:auto; padding:2px 2px 8px; position:sticky; top:4px}
+/* 名札の一覧。画面の高さいっぱいで、はみ出したぶんはここだけ動かす */
+.namelist{display:flex; flex-direction:column; gap:5px; height:calc(100vh - 120px);
+  overflow-y:auto; overscroll-behavior:contain;
+  padding:2px 6px 8px 2px; position:sticky; top:4px}
 @media (max-width:760px){.namelist{flex-direction:row; flex-wrap:wrap;
-  max-height:none; position:static}}
-.nameplate{border:2px solid transparent; border-radius:7px; padding:3px 8px;
-  font-size:13px; font-weight:800; color:#13395f; cursor:pointer;
+  height:auto; position:static}}
+.nameplate{border:2px solid transparent; border-radius:8px; padding:8px 10px;
+  min-height:38px; display:flex; align-items:center; flex:none;
+  font-size:15px; font-weight:800; color:#13395f; cursor:pointer;
   text-shadow:0 1px 0 rgba(255,255,255,.55); white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis}
 .nameplate:hover{border-color:#e8a33c}
@@ -147,6 +150,12 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .abhead .facebox{background:#fff; border-radius:7px; padding:3px; line-height:0}
 .abhead .stat{display:flex; align-items:center; gap:8px; background:#fff;
   border-radius:7px; padding:5px 12px; font-size:14px; font-weight:700}
+/* 打者/投手の切り替え。成績の横に置く */
+.abhead .sidepick{display:inline-flex; gap:3px; background:#fff; border-radius:7px;
+  padding:3px}
+.abhead .sidepick b{padding:3px 12px; border-radius:5px; font-size:14px;
+  cursor:pointer; color:#7f99ad}
+.abhead .sidepick b.on{background:#1d6fb8; color:#fff}
 .abhead .apt{display:flex; align-items:center; gap:4px; background:#fff;
   border-radius:7px; padding:5px 10px; font-size:14px; font-weight:700}
 .abhead .apt span{color:#b9c4cc}
@@ -195,13 +204,38 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .basic.good{background:linear-gradient(#d7ebff,#a9d0f5); color:#0f4a86}
 .basic.bad{background:linear-gradient(#ffe6e6,#ffc4c4); color:#9b2226}
 
+/* 守備位置ごとの守備力 */
+.pawa .dhead{font-size:13px; font-weight:800; color:#3d7ea8; padding:0 2px 6px}
+.posgrid{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px;
+  padding-bottom:8px}
+.posgrid .pos{display:flex; align-items:center; justify-content:center; gap:4px;
+  background:var(--pale); border-radius:7px; padding:5px 2px; font-weight:800}
+.posgrid .pos i{font-style:normal; font-size:15px; color:#3d7ea8}
+.posgrid .pos b{font-size:16px}
+.posgrid .pos u{text-decoration:none; font-family:"Barlow Condensed",sans-serif;
+  font-size:18px}
+.posgrid .pos.none{color:var(--paletext); background:rgba(255,255,255,.45)}
+/* プレースタイル。緑の札 */
+.styles{display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-auto-rows:44px; gap:6px}
+.style{display:flex; align-items:center; justify-content:center; min-width:0;
+  padding:0 4px; border-radius:7px; font-size:20px; font-weight:800;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border:1.5px solid rgba(19,57,95,.16);
+  background:linear-gradient(#dcffe0,#aeeeb8); color:#177a35;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),
+             inset 0 -3px 6px rgba(19,57,95,.08),
+             0 1px 2px rgba(19,57,95,.12)}
+.style.empty{background:rgba(255,255,255,.45); border-color:rgba(19,57,95,.08);
+  box-shadow:none}
+
 /* 特殊能力。空き枠も出す */
 /* 選手の一覧を横に置いたぶん、ここだけ幅を詰める。
    能力の数字(左側)は読みづらくなるので触らない。 */
 .skills{display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
-  grid-auto-rows:46px; gap:5px}
+  grid-auto-rows:52px; gap:6px}
 .skill{display:flex; align-items:center; justify-content:center; min-width:0;
-  padding:0 3px; border-radius:7px; font-size:21px; line-height:1;
+  padding:0 4px; border-radius:7px; font-size:24px; line-height:1;
   font-weight:800; text-align:center; letter-spacing:.02em; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis;
   border:1.5px solid rgba(19,57,95,.16);
@@ -312,6 +346,8 @@ table.pa2 col.c-s{width:52px} table.pa2 col.c-m{width:62px} table.pa2 col.c-k{wi
 main{display:grid; grid-template-columns:minmax(340px,1.08fr) minmax(430px,1.48fr) minmax(360px,1.08fr);
   gap:12px; padding:12px 18px; align-items:start}
 main.wide{grid-template-columns:minmax(0,1fr); max-width:1180px; margin-inline:auto}
+/* 能力画面は名札のぶんと中身のぶん、1.3 倍ほど広く取る */
+main.wide.pawawide{max-width:1540px}
 section.span{grid-column:1/-1}
 @media (max-width:1280px){main{grid-template-columns:1fr 1fr}}
 @media (max-width:860px){main{grid-template-columns:1fr}}
@@ -1285,10 +1321,11 @@ function render(){
   renderViewTabs();
   const app=document.getElementById("app");
   const playerRow=document.getElementById("playerRow");
-  const onPlayer = VIEW==="player" || VIEW==="pawa";
-  playerRow.hidden = !onPlayer;
+  // 能力画面は成績の横に切り替えを置くので、上の段は出さない
+  playerRow.hidden = VIEW!=="player";
   // 狭い枠にするのは Savant だけ。能力画面は横に名札が並ぶぶん広く使う。
   app.classList.toggle("wide", VIEW!=="player");
+  app.classList.toggle("pawawide", VIEW==="pawa");
   if(VIEW==="top"){ renderParks(); app.innerHTML=safely(topView, "TOP"); return; }
   if(VIEW==="leaderboard"){
     renderParks();
@@ -2331,6 +2368,10 @@ function pawaHead(name, badge, stats){
     <span class="numbox">${badge}</span>
     <span class="facebox">${face(name,40)}</span>
     <span class="stat"><b>成績</b>${stats}</span>
+    <span class="sidepick">
+      <b data-side="bat" class="${SIDE==="bat"?"on":""}">打者</b>
+      <b data-side="pit" class="${SIDE==="pit"?"on":""}">投手</b>
+    </span>
     ${aptitudeBox(name)}
   </div>`;
 }
@@ -2376,7 +2417,7 @@ function skillGrid(skills, slots){
   // 水=低い能力 青=高い能力 赤=悪い能力 緑=個性的
   const tone=k => k.bad ? "bad" : k.green ? "green" : k.low ? "low" : "good";
   const cells=skills.map(k=>
-    `<span class="skill ${tone(k)}" style="font-size:${fitFont(k.name, 4)-4}px">`
+    `<span class="skill ${tone(k)}" style="font-size:${fitFont(k.name, 4)-1}px">`
     + `${esc(k.name)}</span>`);
   const least=slots || 8;
   while(cells.length<least || cells.length%4!==0){
@@ -2575,6 +2616,92 @@ function stanceOf(name){
   return right>=left ? "R" : "L";
 }
 
+/**
+ * 守備位置ごとの守備力。
+ *
+ * <p>守ったことのある位置だけ数字を出す。守った回数が少ない位置は、
+ * その分だけ 55(並)へ寄せる。ゲームの「守備適性」と同じ見え方にする。
+ */
+function positionSkill(name, glove, position){
+  const one=aptitude(name).find(a=>a.position===position);
+  if(!one) return null;
+  return steady(glove, one.n, QUAL_CHANCE);
+}
+
+/** 守備の枠。守備位置ごとの数字と捕球を並べる。 */
+function defencePanel(name, G){
+  const cells=Object.keys(POS_LABEL).map(at=>{
+    const value=positionSkill(name, G.glove, at);
+    const r=value===null ? "" : rank(value);
+    return `<span class="pos${value===null?" none":""}">
+      <i>${POS_LABEL[at]}</i>
+      <b style="color:${value===null?"inherit":RANK_COLOR[r]}">${value===null?"—":r}</b>
+      <u>${value===null?"—":value}</u></span>`;
+  }).join("");
+  return `<div class="card defence">
+    <div class="dhead">守備力</div>
+    <div class="posgrid">${cells}</div>
+    ${abrow("捕球", G.hands)}
+    ${abrow("送球", G.control)}
+  </div>`;
+}
+
+/**
+ * プレースタイル。緑の札で出す。
+ *
+ * <p>成績そのものではなく「どういう打ち方・守り方をする人か」。
+ * 数字に出ない持ち味を言葉にする。
+ */
+function playStyles(name, side){
+  const out=[];
+  const ps=pitchOf(name, side);
+  const S=summarize(ps);
+  const swing=S.pitches ? 100*S.swings/S.pitches : null;
+  const first=ps.filter(r=>Number(r.pitch_no)===1);
+  const firstSwing=first.length ? 100*first.filter(r=>r.swing===true).length/first.length : null;
+  if(side==="bat"){
+    const L=line(plateOf(name,"bat"));
+    if(swing!==null && S.pitches>=25 && swing>=58) out.push("積極打法");
+    if(swing!==null && S.pitches>=25 && swing<=45) out.push("慎重打法");
+    if(firstSwing!==null && first.length>=8 && firstSwing>=60) out.push("初球から");
+    if(firstSwing!==null && first.length>=8 && firstSwing<=35) out.push("初球は見る");
+    if(S.n>=4 && S.hard!==null && S.hard>=60) out.push("強振多用");
+    else if(S.n>=4 && S.whiff!==null && S.whiff<=45) out.push("ミート多用");
+    if(L.bbRate!==null && L.bbRate>=12) out.push("四球選び");
+    const B=baserunLine(playOf(name,"run"));
+    if(B.plays>=8 && B.extraRate!==null && B.extraRate>=45) out.push("積極走塁");
+    if(B.plays>=8 && B.extraRate!==null && B.extraRate<=12) out.push("慎重走塁");
+  }else{
+    const L=pitcherLine(plateOf(name,"pit"));
+    if(L.kRate!==null && L.kRate>=30) out.push("奪三振");
+    if(S.gb!==null && S.gb>=45 && (L.kRate===null||L.kRate<25)) out.push("打たせて取る");
+    if(L.bbRate!==null && L.bbRate<=5) out.push("制球重視");
+    if(S.chase!==null && S.chase>=60) out.push("誘い球");
+    const kinds=new Set(ps.map(r=>String(r.type||"")).filter(Boolean));
+    if(kinds.size>=4) out.push("球種豊富");
+    else if(kinds.size<=2 && ps.length>=40) out.push("力押し");
+  }
+  // 守備の姿勢はどちらにも出す
+  const F=playOf(name,"field");
+  const dived=F.filter(r=>r.dived===true).length;
+  if(F.length>=8 && dived>=Math.max(2, F.length*0.12)) out.push("積極守備");
+  return out.slice(0,8);
+}
+
+/** プレースタイルの枠。緑の札で並べる。 */
+function stylePanel(name, side){
+  const list=playStyles(name, side);
+  const cells=list.map(text=>
+    `<span class="style" style="font-size:${fitFont(text,5)-2}px">${esc(text)}</span>`);
+  while(cells.length<6 || cells.length%3!==0){
+    cells.push('<span class="style empty">&nbsp;</span>');
+  }
+  return `<div class="card">
+    <div class="dhead">プレースタイル</div>
+    <div class="styles">${cells.join("")}</div>
+  </div>`;
+}
+
 function pawaBatter(){
   const A=batterAbility(PLAYER);
   const skills=batterSkills(PLAYER, A);
@@ -2601,6 +2728,10 @@ function pawaBatter(){
           ${basicRow(skills.basics)}
           ${skillGrid(skills.skills, 12)}
         </div>
+      </div>
+      <div class="abwrap" style="margin-top:10px">
+        ${defencePanel(PLAYER, G)}
+        ${stylePanel(PLAYER, "bat")}
       </div>
     </div>
   </div></section>`;
@@ -2870,26 +3001,33 @@ function avgOf(rows, key){
 }
 
 /**
- * 変化量。既定は 3。空振りを奪えていれば上がり、強い打球を許していれば下がる。
+ * 変化量の段階(1〜7)。実際に測った曲がり幅から出す。
+ *
+ * <p>1 球ごとの記録には、無回転で投げた場合との差が
+ * v_break / h_break(ブロック)で入っている。その大きさをそのまま段階にする。
+ * 空振りの多さから組み立てていたころは、どの球種も 2〜4 に固まっていた。
+ *
+ * <p>目盛りは実測に合わせてある。このリーグの曲がり幅は
+ * 中央 1.1、上位 25% が 2.0、最大 4.4 ブロック。
+ * SFF が 0.6、スライダーが 1.8、カーブが 3.5 あたり。
  *
  * <p>速球系と、上へ向かう球には付けない。
  * 落ちない球はパワプロでも変化量を持たないため。
  */
+const BREAK_STEPS=[0.70, 1.00, 1.35, 1.80, 2.30, 3.00];
+
 function breakAmount(name, rows, dir){
   if(STRAIGHT.some(x=>x===name)) return 0;
   if(dir==="up" || dir==="upLeft" || dir==="upRight") return 0;
+  const v=avgOf(rows,"v_break"), h=avgOf(rows,"h_break");
+  if(v===null && h===null) return 3;
+  const size=Math.hypot(v||0, h||0);
+  let value=1;
+  BREAK_STEPS.forEach(step=>{ if(size>=step) value++; });
+  // 同じ曲がり幅でも、空振りを多く奪える球は 1 つ上に見る
   const swings=rows.filter(r=>r.swing===true).length;
   const whiffs=rows.filter(r=>r.whiff===true).length;
-  const bip=rows.filter(r=>r.contact===true&&r.call==="IN_PLAY"&&Number(r.exit_velocity)>0);
-  let value=3;
-  if(swings>=4){
-    const rate=100*whiffs/swings;
-    value += rate>=40 ? 2 : rate>=28 ? 1 : rate<=10 ? -1 : 0;
-  }
-  if(bip.length>=4){
-    const hard=100*bip.filter(r=>Number(r.exit_velocity)>=153).length/bip.length;
-    value += hard<=45 ? 1 : hard>=80 ? -1 : 0;
-  }
+  if(swings>=6 && 100*whiffs/swings>=45) value++;
   return Math.max(1, Math.min(7, value));
 }
 
@@ -3085,6 +3223,10 @@ function pawaPitcher(){
           ${basicRow(skills.basics)}
           ${skillGrid(skills.skills, 12)}
         </div>
+      </div>
+      <div class="abwrap" style="margin-top:10px">
+        ${defencePanel(PLAYER, gloveAbility(PLAYER))}
+        ${stylePanel(PLAYER, "pit")}
       </div>
     </div>
   </div></section>`;
@@ -4309,9 +4451,10 @@ document.getElementById("playerRow").addEventListener("click",e=>{
 // 横の名札。能力画面で選んでいる人は Savant とは別に覚える。
 document.getElementById("app").addEventListener("click",e=>{
   const plate=e.target.closest(".nameplate");
-  if(!plate) return;
-  PAWA_PLAYER=plate.dataset.name;
-  render();
+  if(plate){ PAWA_PLAYER=plate.dataset.name; render(); return; }
+  // 能力画面の中に置いた打者/投手の切り替え
+  const side=e.target.closest(".sidepick [data-side]");
+  if(side){ SIDE=side.dataset.side; render(); }
 });
 // リーダーボードの切り替えと並べ替え、リザルトの試合選び
 document.getElementById("app").addEventListener("click",e=>{
