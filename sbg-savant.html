@@ -141,9 +141,12 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 
 /* 名前・背番号・顔・成績 */
 .abhead{display:flex; align-items:center; gap:8px; padding:0 0 10px; flex-wrap:wrap}
+/* 名前の枠は幅を決めておく。名前の長さで右側の並びが動かないように。 */
 .abhead .plate{background:#fff; border:2px solid #e8a33c; border-radius:7px;
-  padding:3px 14px; font-size:20px; font-weight:800; line-height:1.2;
-  text-shadow:0 1px 0 rgba(255,255,255,.55)}
+  padding:3px 10px; font-size:20px; font-weight:800; line-height:1.2;
+  text-shadow:0 1px 0 rgba(255,255,255,.55);
+  width:230px; flex:none; text-align:center; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis}
 .abhead .numbox{background:#2b3a47; color:#fff; border-radius:6px; padding:4px 10px;
   font-family:"Barlow Condensed",sans-serif; font-size:20px; font-weight:700}
 .abhead .facebox{background:#fff; border-radius:7px; padding:3px; line-height:0}
@@ -2660,13 +2663,11 @@ function batterSkills(name, A){
   const basics=[], skills=[];
   // チャンス。得点圏とそれ以外の wRC+ を比べる。
   basics.push("チャンス " + basicRank(clutchSplit(name)));
-  basics.push("対左投手 D");
-  // 出場率から怪我のしにくさ。休まず出ているほど上。
-  const games=new Set(A.pa.map(r=>String(r.game_id))).size;
-  const all=gameIds().length;
-  basics.push("ケガしにくさ "
-    + (all ? (games/all>=0.9 ? "C" : games/all>=0.6 ? "D" : "E") : "D"));
-  basics.push("回復 C");
+  // 対左投手。左投げ相手の wRC+ を、いつもの wRC+ と比べる。
+  basics.push("対左投手 " + basicRank(vsLeftSplit(name)));
+  // ケガしにくさはイベントに顔を出した割合、回復は試合に出た割合から。
+  basics.push("ケガしにくさ " + basicRank(toughnessOf(name)));
+  basics.push("回復 " + basicRank(recoveryOf(name)));
   // 盗塁は記録の取りようが無いので並で置く
   basics.push("盗塁 D");
   const G=gloveAbility(name);
@@ -2684,6 +2685,65 @@ function batterSkills(name, A){
   return {basics, skills};
 }
 /** 得点圏とそれ以外の wRC+ の差から、チャンスの強さを 1〜100 で返す。 */
+/**
+ * 対左投手。左投げ相手の打撃が、いつもよりどれだけ良いか。
+ *
+ * <p>1 球ごとの記録に入っている投手の投げ手(throws)で、打席を振り分ける。
+ * 左投げとの打席が少ないうちは並(55)へ寄せる。
+ */
+function vsLeftSplit(name){
+  const ended=pitchOf(name,"bat").filter(r=>r.result);
+  const left=ended.filter(r=>String(r.throws||"").toUpperCase()==="L");
+  if(left.length<4 || ended.length<8) return ABILITY_DEFAULT;
+  const all=wrcPlus(line(ended)), vs=wrcPlus(line(left));
+  if(all===null || vs===null) return ABILITY_DEFAULT;
+  return steady(ability(vs-all, -60, 60), left.length, 12);
+}
+
+/**
+ * 試合に出た割合。全試合のうち何試合に出たか。
+ *
+ * <p>「回復」の元にする。休まず出られる人は回復が早い、という見立て。
+ */
+function playRate(name){
+  const all=gameIds().length;
+  if(!all) return null;
+  const mine=new Set();
+  DATA.plate.forEach(r=>{
+    if(r.batter===name || r.pitcher===name) mine.add(String(r.game_id));
+  });
+  return mine.size/all;
+}
+
+/**
+ * イベントに出た割合。開催日のうち何日に顔を出したか。
+ *
+ * <p>「ケガしにくさ」の元にする。同じ日に 2 試合あっても、
+ * どちらかに出ていればその日は出たものとして数える。
+ * 試合 ID の頭 8 桁(年月日)で日を見る。
+ */
+function eventRate(name){
+  const days=new Set(gameIds().map(g=>String(g).slice(0,8)));
+  if(!days.size) return null;
+  const mine=new Set();
+  DATA.plate.forEach(r=>{
+    if(r.batter===name || r.pitcher===name) mine.add(String(r.game_id).slice(0,8));
+  });
+  return mine.size/days.size;
+}
+
+/** 回復。全試合に出ていれば B(75)。 */
+function recoveryOf(name){
+  const rate=playRate(name);
+  return rate===null ? ABILITY_DEFAULT : Math.round(20+55*rate);
+}
+
+/** ケガしにくさ。全開催日に顔を出していれば C(65)。 */
+function toughnessOf(name){
+  const rate=eventRate(name);
+  return rate===null ? ABILITY_DEFAULT : Math.round(20+45*rate);
+}
+
 function clutchSplit(name){
   const rows=plateOf(name,"bat");
   const scoring=rows.filter(r=>r.base2===true||r.base3===true);
@@ -2742,11 +2802,16 @@ function throwHandOf(name){
   return right>=left ? "R" : "L";
 }
 
-/** 「右投左打」のような書き方。分からない側は省く。 */
-function handsText(name){
+/**
+ * 「右投左打」のような書き方。
+ *
+ * @param fill 記録が無いときに右投右打として出すか
+ */
+function handsText(name, fill){
   const t=throwHandOf(name), b=stanceOf(name);
-  const throwText = t==="L" ? "左投" : t==="R" ? "右投" : "";
-  const batText = b==="L" ? "左打" : b==="R" ? "右打" : b==="S" ? "両打" : "";
+  const throwText = t==="L" ? "左投" : t==="R" ? "右投" : (fill ? "右投" : "");
+  const batText = b==="L" ? "左打" : b==="R" ? "右打" : b==="S" ? "両打"
+    : (fill ? "右打" : "");
   return (throwText+batText) || "—";
 }
 
@@ -3045,7 +3110,7 @@ function batterView(){
     <section>
       <div class="who"><div class="facebig">${face(PLAYER,64)}</div>
         <div class="nm">${esc(PLAYER)}</div>
-        <div class="meta">打者 ｜ ${L.pa} 打席 ・ ${S.pitches} 球</div></div>
+        <div class="meta">${handsText(PLAYER, true)}</div></div>
       <div class="pad">
         <div class="head">Standard</div>
         ${pa.length? gameTable(pa,std) : '<div class="empty">打席の記録がありません</div>'}
@@ -3377,9 +3442,7 @@ function pitcherSkills(name, A){
   basics.push("対左打者 " + basicRank(splitByStance(name)));
   // 打たれ強さ。連打を許していないか。
   basics.push("打たれ強さ " + basicRank(noStreak(A.pa)));
-  const all=gameIds().length;
-  basics.push("ケガしにくさ "
-    + (all ? (A.games/all>=0.9 ? "C" : A.games/all>=0.6 ? "D" : "E") : "D"));
+  basics.push("ケガしにくさ " + basicRank(toughnessOf(name)));
   // ノビ。上へ向かう球種の空振り率。
   const rise=A.types.filter(t=>t.dir==="up").map(t=>t.name);
   const riseRows=A.ps.filter(r=>rise.includes(r.type||"Normal"));
@@ -3388,7 +3451,7 @@ function pitcherSkills(name, A){
   basics.push("ノビ "
     + basicRank(riseWhiff===null ? ABILITY_DEFAULT : ability(riseWhiff, 8, 38)));
   basics.push("クイック D");
-  basics.push("回復 D");
+  basics.push("回復 " + basicRank(recoveryOf(name)));
 
   if(A.k9!==null && A.k9>=10) skills.push({name:"奪三振"});
   // ゴロを打たせるのは個性寄りなので緑
@@ -3582,7 +3645,7 @@ function pitcherView(){
     <section>
       <div class="who"><div class="facebig">${face(PLAYER,64)}</div>
         <div class="nm">${esc(PLAYER)}</div>
-        <div class="meta">投手 ｜ ${L.pa} 打者 ・ ${S.pitches} 球</div></div>
+        <div class="meta">${handsText(PLAYER, true)}</div></div>
       <div class="pad">
         <div class="head">Standard</div>
         ${pa.length? gameTable(pa,std,pitcherLine) : '<div class="empty">対戦の記録がありません</div>'}
@@ -3934,7 +3997,7 @@ function standingsView(){
     <div class="head">リーグ平均<small>${gameIds().length} 試合</small></div>
     <div class="cards">
       ${bigNumber("打率", f3(lg.avg))}
-      ${bigNumber("防御率 (5回)", f2(lg.era))}
+      ${bigNumber("平均得点", f2(lg.runs/Math.max(1,lg.games)))}
       ${bigNumber("OPS", f3(lg.ops))}
     </div>
   </div></section>
