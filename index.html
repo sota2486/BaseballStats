@@ -2459,26 +2459,51 @@ function winPath(rows){
   return out;
 }
 
+/** アウトで終わった打席か。抑えた側の手柄として書く。 */
+const OUT_RESULT=new Set(["STRIKE_OUT","GROUND_OUT","FLY_OUT","DOUBLE_PLAY",
+  "TRIPLE_PLAY","FIELDER_CHOICE","SACRIFICE_BUNT","SACRIFICE_FLY"]);
+
 /**
  * その打席をひとことで。丸に当てたときに出す文。
  *
- * <p>3 ラン本塁打のように、打点の数も入れる。
+ * <p>打った側が良くなった場面は打者の手柄、抑えた側が良くなった場面は
+ * 投手の手柄として書く。勝率の動きは「後攻 15pt up」の形。
  */
 function playNote(row, delta){
-  const who=row.batter || "打者";
+  const batter=row.batter || "打者";
+  const pitcher=row.pitcher || "投手";
   const label=JA[row.result] || row.result || "打席";
   const rbi=Number(row.rbi)||0;
+  const risp=row.base1===true || row.base2===true || row.base3===true;
   let text;
   if(row.result==="HOME_RUN"){
-    text=who+" の"+(rbi>=2 ? rbi+"ラン本塁打" : "ソロ本塁打");
+    const kind=rbi>=4 ? "満塁ホームラン"
+      : rbi>=2 ? rbi+"ランホームラン" : "ソロホームラン";
+    text=batter+" の"+kind;
+  }else if(OUT_RESULT.has(row.result)){
+    // 抑えた側の手柄。走者を置いていたならピンチを切り抜けた形。
+    if(row.result==="STRIKE_OUT"){
+      text=risp ? pitcher+" がピンチを三振で切り抜けた"
+                : pitcher+" が三振を奪った";
+    }else if(row.result==="DOUBLE_PLAY" || row.result==="TRIPLE_PLAY"){
+      text=pitcher+" が"+label+"に仕留めた";
+    }else if(rbi>0){
+      // 犠飛などは点が入っているので、打った側の記録として書く
+      text=batter+" の"+label+"("+rbi+"打点)";
+    }else if(risp){
+      text=pitcher+" がピンチを抑えた";
+    }else{
+      text=pitcher+" が"+batter+" を"+label+"に打ち取った";
+    }
   }else if(rbi>0){
-    text=who+" の"+label+"("+rbi+"打点)";
+    text=batter+" の"+label+"("+rbi+"打点)";
   }else{
-    text=who+" の"+label;
+    text=batter+" の"+label;
   }
+  const side=delta>0 ? "先攻" : "後攻";
   const move=(100*Math.abs(delta)).toFixed(0);
   return text+" ｜ "+row.inning+"回"+(isBottom(row)?"裏":"表")
-    +" ｜ 勝率 "+move+"pt 動いた";
+    +" ｜ "+side+" "+move+"pt up";
 }
 
 /**
