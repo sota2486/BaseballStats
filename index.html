@@ -555,6 +555,12 @@ table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:cen
   font-size:15px; font-weight:700; color:var(--muted)}
 .lineup .at{width:20px; text-align:center; font-size:12px; font-weight:700;
   color:var(--rule)}
+/* ベストオーダーとゴールデングラブを横に並べる */
+.bestwrap{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:12px;
+  grid-column:1/-1}
+@media (max-width:900px){.bestwrap{grid-template-columns:1fr}}
+.glovefield{width:100%; height:auto; display:block}
+
 /* 戦況変化 */
 .winwrap{display:grid; grid-template-rows:auto 1fr auto; gap:2px}
 .winchart{width:100%; height:auto; display:block}
@@ -602,8 +608,9 @@ table.split th,table.split td{border-bottom:1px solid var(--line); padding:6px 1
   text-align:right; white-space:nowrap}
 table.split th{color:var(--muted); font-weight:600; letter-spacing:.03em;
   border-bottom:2px solid var(--rule)}
-table.split td.sit,table.split th.sit{text-align:left; width:110px;
+table.split td.sit,table.split th.sit{text-align:left; width:132px;
   font-family:"Source Sans 3",sans-serif; font-size:12px}
+table.split td.sit .diamond{margin-right:6px; vertical-align:middle}
 table.split tbody tr:hover td{background:var(--panel-2)}
 /* カウントのランプ。緑がボール、黄がストライク */
 .lamp{display:inline-flex; align-items:center; gap:3px}
@@ -1735,10 +1742,16 @@ function topView(){
       ${whiffCard()}
     </div>
   </div></section>
-  <section class="span"><div class="pad">
-    <div class="head">ベストオーダー<small>規定打席到達者の wRC+ 上位 9 人</small></div>
-    ${bestOrder(bat, pit)}
-  </div></section>`;
+  <div class="bestwrap">
+    <section><div class="pad">
+      <div class="head">ベストオーダー</div>
+      ${bestOrder(bat, pit)}
+    </div></section>
+    <section><div class="pad">
+      <div class="head">ゴールデングラブ</div>
+      ${goldenGlove(pit)}
+    </div></section>
+  </div>`;
 }
 
 /**
@@ -1822,16 +1835,77 @@ function bestOrder(bat, pit){
       <td class="slot">${i+1}</td>
       <td class="nm">${withFace(d.name,22)}</td>
       <td>${d.L.pa} 打席</td><td>${f3(d.L.avg)}</td>
-      <td>${d.L.hr} HR</td><td>${d.L.rbi} 打点</td>
+      <td>${d.L.hr} 本</td><td>${d.L.rbi} 打点</td>
     </tr>` : "").join("")}
     ${ace ? `<tr class="pit">
       <td class="slot">P</td>
       <td class="nm">${withFace(ace.name,22)}</td>
-      <td>${ipText(ace.L.outs)} IP</td><td>${f2(ace.L.era)} ERA</td>
-      <td>${ace.w} 勝</td><td>${ace.L.so} SO</td>
+      <td>${ipText(ace.L.outs)} 回</td><td>防御率 ${f2(ace.L.era)}</td>
+      <td>${ace.w} 勝</td><td>${ace.L.so} 奪三振</td>
     </tr>` : ""}
   </tbody></table></div>`;
 }
+/**
+ * ゴールデングラブ。守備位置ごとに、その位置でいちばん守れる人。
+ *
+ * <p>規定は置かない。同じ人が複数の位置に選ばれてもよい。
+ * 投手だけは守備の数字ではなく、防御率がいちばん良い人にする。
+ */
+function goldenGlove(pit){
+  const names=playerNames();
+  const best={};
+  Object.keys(POS_LABEL).forEach(at=>{
+    if(at==="PITCHER") return;
+    let top=null;
+    names.forEach(n=>{
+      const value=positionSkill(n, gloveAbility(n).glove, at);
+      if(value===null) return;
+      if(!top || value>top.value) top={name:n, value};
+    });
+    if(top) best[at]=top;
+  });
+  // 投手は防御率がいちばん良い人。ここだけは規定投球回に届いた人から選ぶ。
+  const arms=pit.filter(d=>d.L.era!==null && isFinite(d.L.era)
+      && d.L.outs/3>=QUAL_IP)
+    .sort((a,b)=>a.L.era-b.L.era);
+  if(arms.length) best.PITCHER={name:arms[0].name, era:arms[0].L.era};
+  return gloveField(best);
+}
+
+/** ゴールデングラブの図。扇形の球場に選ばれた人を置く。 */
+function gloveField(best){
+  const W=330, H=300, cx=W/2, cy=H-24, reach=H-56;
+  const at=(x,y)=>[cx + x*reach*0.80, cy - y*reach];
+  const [lx,ly]=at(-1,1), [rx,ry]=at(1,1);
+  let g=`<path d="M${cx} ${cy} L${lx.toFixed(1)} ${ly.toFixed(1)}
+      A ${reach.toFixed(1)} ${reach.toFixed(1)} 0 0 1 ${rx.toFixed(1)} ${ry.toFixed(1)} Z"
+      fill="var(--panel-2)" stroke="var(--line)" stroke-width="1.4"/>`;
+  const d=[[0,0],[0.30,0.30],[0,0.60],[-0.30,0.30]].map(v=>at(v[0],v[1]));
+  g+=`<path d="M${d.map(q=>q[0].toFixed(1)+" "+q[1].toFixed(1)).join(" L")} Z"
+      fill="none" stroke="var(--line)" stroke-width="1.2"/>`;
+  Object.keys(FIELD_SPOT).forEach(pos=>{
+    const one=best[pos];
+    const [x,y]=at(FIELD_SPOT[pos][0], FIELD_SPOT[pos][1]);
+    const shot=one ? faceSrc(one.name) : null;
+    // 選ばれた人の枠は金色。数字は出さず、守備位置と顔と名前だけ。
+    g+=`<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">
+      <rect x="-54" y="-14" width="108" height="28" rx="8"
+        fill="var(--panel)" stroke="${one ? "#e8a33c" : "var(--line)"}"
+        stroke-width="${one ? 2.2 : 1}"/>
+      <text x="-47" y="5" font-size="12" font-weight="800"
+        fill="${one ? "#e8a33c" : "var(--muted)"}">${POS_LABEL[pos]}</text>
+      ${shot ? `<image href="${esc(shot)}" x="-33" y="-9" width="18" height="18"
+          preserveAspectRatio="xMidYMid slice"
+          style="image-rendering:pixelated"/>` : ""}
+      <text x="${shot ? -11 : -30}" y="5" font-size="12" font-weight="700"
+        fill="${one ? "var(--text)" : "var(--muted)"}">${
+        one ? esc(String(one.name).slice(0, shot ? 9 : 12)) : "—"}</text>
+    </g>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" class="glovefield" role="img"
+    aria-label="ゴールデングラブ">${g}</svg>`;
+}
+
 /**
  * 総合で一番の投手。
  *
@@ -4162,6 +4236,22 @@ function countGroups(rows){
   return out;
 }
 
+/**
+ * 得点圏かどうかで分ける。二塁か三塁に走者がいれば得点圏。
+ *
+ * <p>塁状況別は 8 通りに散るので、まとめて見る枠を別に置く。
+ */
+function scoringGroups(rows){
+  const risp=r=>r.base2===true || r.base3===true;
+  const anyone=r=>r.base1===true || r.base2===true || r.base3===true;
+  return [
+    {label:baseMarkAt(false,true,true)+" 得点圏", rows:rows.filter(risp)},
+    {label:baseMarkAt(true,false,false)+" 一塁のみ",
+      rows:rows.filter(r=>anyone(r) && !risp(r))},
+    {label:baseMarkAt(false,false,false)+" 走者なし", rows:rows.filter(r=>!anyone(r))}
+  ];
+}
+
 /** 塁状況別。打席の記録の base1〜3 で分ける。 */
 function baseGroups(rows){
   const out=[];
@@ -4200,6 +4290,10 @@ function splitBatter(){
     ${splitTable(countGroups(ended), SPLIT_BAT)}
   </div></section>
   <section class="span"><div class="pad">
+    <div class="head">得点圏<small>二塁か三塁に走者</small></div>
+    ${splitTable(scoringGroups(pa), SPLIT_BAT)}
+  </div></section>
+  <section class="span"><div class="pad">
     <div class="head">塁状況別<small>打席が始まった時点</small></div>
     ${splitTable(baseGroups(pa), SPLIT_BAT)}
   </div></section>
@@ -4222,6 +4316,11 @@ function splitPitcher(){
   <section class="span"><div class="pad">
     <div class="head">カウント別<small>${ended.length} 打席</small></div>
     ${splitTable(countGroups(ended), SPLIT_PIT)}
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">得点圏<small>二塁か三塁に走者</small></div>
+    ${splitTable(scoringGroups(pa).map(g=>Object.assign(g,{line:pitcherLine})),
+      SPLIT_PIT)}
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">塁状況別<small>打席が始まった時点</small></div>
