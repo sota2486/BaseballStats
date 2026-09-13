@@ -1,5 +1,5 @@
-game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind
-2026091201,2,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,
-2026091201,3,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,
-2026091201,4,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,
-2026091201,5,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,
+game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+2026091201,2,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026091201,3,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026091201,4,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026091201,5,TOP,,spot,Nagase_Futaba,,,,,,,,,,,LEFT_FIELDER,,,,,,,,,,,,,,,,,,,R
