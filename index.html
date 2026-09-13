@@ -1942,7 +1942,10 @@ function batterColumns(mode){
     {key:"avg", head:"打率", get:d=>d.L.avg,      fmt:f3, rate:true},
     {key:"obp", head:"出塁率", get:d=>d.L.obp,      fmt:f3, rate:true},
     {key:"slg", head:"長打率", get:d=>d.L.slg,      fmt:f3, rate:true},
-    {key:"ops", head:"OPS", get:d=>d.L.ops,      fmt:f3, rate:true}
+    {key:"ops", head:"OPS", get:d=>d.L.ops,      fmt:f3, rate:true},
+    // 守備の記録から。刺殺はアウトを取った数、補殺は送球で助けた数。
+    {key:"po",  head:"刺殺", get:d=>d.F.putouts,  fmt:v=>v},
+    {key:"a",   head:"補殺", get:d=>d.F.assists,  fmt:v=>v}
   ];
   return [
     {key:"pa",    head:"打席",     get:d=>d.L.pa,     fmt:v=>v},
@@ -1968,26 +1971,29 @@ function pitcherColumns(mode){
     {key:"ip",  head:"投球回",   get:d=>d.L.outs,  fmt:ipText},
     {key:"so",  head:"奪三振",   get:d=>d.L.so,    fmt:v=>v},
     {key:"bb",  head:"与四球",   get:d=>d.L.bb,    fmt:v=>v},
-    {key:"r",   head:"失点",    get:d=>d.L.runs,  fmt:v=>v, low:true},
+    // 失点と被本塁打は「多い人から」並べる
+    {key:"r",   head:"失点",    get:d=>d.L.runs,  fmt:v=>v},
+    {key:"hra", head:"被本塁打", get:d=>d.L.hr,   fmt:v=>v},
     {key:"sv",  head:"セーブ",   get:d=>d.sv,      fmt:v=>v},
     {key:"hld", head:"ホールド",  get:d=>d.hld,     fmt:v=>v},
-    {key:"era", head:"防御率(5回)",  get:d=>d.L.era,   fmt:f2, low:true},
-    {key:"whip",head:"WHIP", get:d=>d.L.whip,  fmt:f2, low:true}
+    // 率の項目は規定投球回に届いた人を先に出す
+    {key:"era", head:"防御率(5回)", get:d=>d.L.era, fmt:f2, low:true, rate:true},
+    {key:"whip",head:"WHIP", get:d=>d.L.whip, fmt:f2, low:true, rate:true}
   ];
   return [
     {key:"ip",    head:"投球回",     get:d=>d.L.outs,   fmt:ipText},
-    {key:"kp",    head:"K%",     get:d=>d.L.kRate,  fmt:pc},
-    {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, low:true},
-    {key:"whip",  head:"WHIP",   get:d=>d.L.whip,   fmt:f2, low:true},
-    {key:"ops",   head:"OPS",    get:d=>d.L.ops,    fmt:f3, low:true},
-    {key:"xera",  head:"xERA(5回)",   get:d=>d.xera,     fmt:f1, low:true},
-    {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, low:true},
-    {key:"ev",    head:"EV",     get:d=>d.S.ev,     fmt:f1, low:true},
-    {key:"barrel",head:"Barrel%",get:d=>d.S.barrel, fmt:pc, low:true},
-    {key:"hard",  head:"Hard%",  get:d=>d.S.hard,   fmt:pc, low:true},
-    {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc},
-    {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc},
-    {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc}
+    {key:"kp",    head:"K%",     get:d=>d.L.kRate,  fmt:pc, rate:true},
+    {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, low:true, rate:true},
+    {key:"whip",  head:"WHIP",   get:d=>d.L.whip,   fmt:f2, low:true, rate:true},
+    {key:"ops",   head:"OPS",    get:d=>d.L.ops,    fmt:f3, low:true, rate:true},
+    {key:"xera",  head:"xERA(5回)",   get:d=>d.xera,  fmt:f1, low:true, rate:true},
+    {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, low:true, rate:true},
+    {key:"ev",    head:"EV",     get:d=>d.S.ev,     fmt:f1, low:true, rate:true},
+    {key:"barrel",head:"Barrel%",get:d=>d.S.barrel, fmt:pc, low:true, rate:true},
+    {key:"hard",  head:"Hard%",  get:d=>d.S.hard,   fmt:pc, low:true, rate:true},
+    {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
+    {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true},
+    {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc, rate:true}
   ];
 }
 /** xERA の目盛りを覚えておく。読み込んだ記録が変われば作り直す。 */
@@ -2048,7 +2054,8 @@ function leaderRows(side){
     const L=side==="pit" ? pitcherLine(pa) : line(pa);
     const S=summarize(ps);
     const xwoba=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
-    return {name, L, S, xwoba,
+    const F=fieldingLine(playOf(name,"field"));
+    return {name, L, S, F, xwoba,
       games:new Set(pa.map(r=>String(r.game_id))).size,
       wrc: side==="bat" ? wrcPlus(L) : null,
       xera: xeraOf(xwoba),
@@ -2096,9 +2103,10 @@ function leaderSorted(rows, col, side){
   }).map(d=>Object.assign({qualified:ok(d)}, d));
 }
 
-/** 項目 1 つぶんのカード。上位 3 人。 */
+/** 項目 1 つぶんのカード。上位 3 人。率の項目は規定に届いた人だけ。 */
 function leaderCard(col, rows, side){
-  const list=leaderSorted(rows, col, side).slice(0,3);
+  const all=leaderSorted(rows, col, side);
+  const list=(col.rate ? all.filter(d=>d.qualified) : all).slice(0,3);
   const body=list.length
     ? `<ol>${list.map(d=>`<li class="plink" data-who="${esc(d.name)}">${face(d.name,20)}
         <span>${esc(d.name)}</span><b>${col.fmt(col.get(d))}</b></li>`).join("")}</ol>`
@@ -4354,7 +4362,7 @@ function splitBatter(){
   const std=SPLIT_BAT.slice(0,8), adv=SPLIT_BAT.slice(8);
   return `${splitHead(PLAYER, "打者")}
   <section class="span"><div class="pad">
-    <div class="head">通算<small>Standard &amp; Advanced</small></div>
+    <div class="head">通算</div>
     ${splitTable([{label:"通算", rows:pa}], SPLIT_BAT_TOTAL)}
   </div></section>
   <section class="span"><div class="pad">
@@ -4382,7 +4390,7 @@ function splitPitcher(){
   const L=pitcherLine(pa), S=summarize(ps);
   return `${splitHead(PLAYER, "投手")}
   <section class="span"><div class="pad">
-    <div class="head">通算<small>Standard &amp; Advanced</small></div>
+    <div class="head">通算</div>
     ${splitTable([{label:"通算", rows:pa, line:pitcherLine}], splitPitTotal(PLAYER))}
   </div></section>
   <section class="span"><div class="pad">
