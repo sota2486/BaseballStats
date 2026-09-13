@@ -74,14 +74,15 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
    打者/投手の切り替えは巻き込まれないよう外に出して常に見せる */
 .tabrow{display:flex; align-items:flex-end; gap:10px; margin-top:11px}
 .tabrow[hidden]{display:none}
-.tabs{display:flex; gap:2px; overflow-x:auto; flex:1; min-width:0; padding-bottom:1px}
+.tabs{display:flex; gap:2px; flex-wrap:wrap; flex:1; min-width:0; padding-bottom:1px}
 .tab{font-family:"Barlow Condensed",sans-serif; font-size:16px; letter-spacing:.02em;
   padding:6px 15px 7px; border:1px solid var(--line); border-bottom:0; border-radius:4px 4px 0 0;
   background:var(--panel-2); color:var(--muted); white-space:nowrap; cursor:pointer}
 .tab[aria-selected="true"]{background:var(--panel); color:var(--text); font-weight:600;
   box-shadow:inset 0 3px 0 var(--rule); margin-bottom:-1px}
-.side{display:flex; gap:2px; flex:none}
-.side .tab{border-color:var(--rule)}
+.side{display:flex; gap:4px; flex:none; align-self:flex-end}
+.side .tab{border-color:var(--rule); font-size:21px; padding:8px 26px 9px;
+  font-weight:700}
 
 #drop{margin:12px 18px 0; padding:8px 13px; background:var(--panel);
   border:1px dashed var(--line); border-radius:4px; color:var(--muted); font-size:12.5px;
@@ -585,8 +586,8 @@ table.lbfull td.place{width:46px; text-align:center;
   color:var(--rule)}
 table.lbfull td.big,table.lbfull th.big{text-align:right;
   font-family:"Barlow Condensed",sans-serif; font-size:26px; font-weight:700}
-table.lbfull td.side,table.lbfull th.side{text-align:right; font-size:12px;
-  color:var(--muted)}
+table.lbfull td.lbsub,table.lbfull th.lbsub{text-align:right; font-size:12px;
+  color:var(--muted); width:90px}
 table.lbfull tr.unq td{opacity:.5}
 table.lbfull tbody tr:hover td{background:var(--panel-2)}
 
@@ -606,10 +607,10 @@ table.split td.sit,table.split th.sit{text-align:left; width:110px;
 table.split tbody tr:hover td{background:var(--panel-2)}
 /* カウントのランプ。緑がボール、黄がストライク */
 .lamp{display:inline-flex; align-items:center; gap:3px}
-.lamp i{width:9px; height:9px; border-radius:99px; display:block;
-  border:1px solid var(--line); background:transparent}
-.lamp i.b.on{background:#41d400; border-color:#41d400}
-.lamp i.k.on{background:#ffd93d; border-color:#ffd93d}
+.lamp i{width:12px; height:12px; border-radius:99px; display:block;
+  border:2px solid var(--muted); background:transparent}
+.lamp i.b.on{background:#2fb400; border-color:#1c7a00}
+.lamp i.k.on{background:#f5c400; border-color:#b08c00}
 .lamp em{width:5px}
 
 /* 順位表 */
@@ -867,7 +868,9 @@ const ALIAS={
   pitchername:"pitcher", battername:"batter",
   resulttype:"result", runsscored:"runs", outsonplay:"outs",
   runneronfirst:"base1", runneronsecond:"base2", runneronthird:"base3",
-  battingorder:"order"
+  battingorder:"order",
+  // 打席の左右と投手の投げ手。1 球ごとの記録と同じ名前に寄せる
+  batterstance:"stance", pitcherthrows:"throws"
 };
 function parseCsv(text){
   const lines=text.split(/\r?\n/).filter(l=>l.trim());
@@ -2041,12 +2044,12 @@ function leaderFull(col, rows, side){
       <td class="place">${place}</td>
       <td class="nm">${withFace(d.name,26)}</td>
       <td class="big">${col.fmt(v)}</td>
-      <td class="side">${side==="bat" ? d.L.pa+" 打席" : ipText(d.L.outs)+" 回"}</td>
+      <td class="lbsub">${side==="bat" ? d.L.pa+" 打席" : ipText(d.L.outs)+" 回"}</td>
     </tr>`;
   }).join("");
   return `<div class="scroll"><table class="lbfull">
     <thead><tr><th>順</th><th class="nm">選手</th><th class="big">${col.head}</th>
-      <th class="side">${side==="bat"?"打席":"投球回"}</th></tr></thead>
+      <th class="lbsub">${side==="bat"?"打席":"投球回"}</th></tr></thead>
     <tbody>${body}</tbody></table></div>`;
 }
 
@@ -4097,6 +4100,24 @@ const SPLIT_PIT=[
   {head:"WHIP",    get:L=>L.whip===undefined||L.whip===null ? "—" : f2(L.whip)}
 ];
 
+/** 通算だけに出す項目。打者は wRC+。 */
+const SPLIT_BAT_TOTAL=SPLIT_BAT.concat([
+  {head:"wRC+", get:L=>{ const v=wrcPlus(L); return v===null?"—":Math.round(v); }}
+]);
+
+/** 通算だけに出す項目。投手は勝敗と救援の記録。 */
+function splitPitTotal(name){
+  const win=decisionTotal(name,"win"), lose=decisionTotal(name,"lose");
+  const decided=win+lose;
+  return SPLIT_PIT.concat([
+    {head:"勝",    get:()=>win},
+    {head:"敗",    get:()=>lose},
+    {head:"勝率",  get:()=>decided ? f3(win/decided) : "—"},
+    {head:"ホールド", get:()=>reliefTotal(name,"hold")},
+    {head:"セーブ",  get:()=>reliefTotal(name,"save")}
+  ]);
+}
+
 /** 場面ごとの表。label は見出しに入れる HTML。 */
 function splitTable(groups, cols){
   const rows=groups.filter(g=>g.rows.length).map(g=>{
@@ -4169,10 +4190,10 @@ function splitBatter(){
   const ended=ps.filter(r=>r.result);
   const L=line(pa), S=summarize(ps);
   const std=SPLIT_BAT.slice(0,8), adv=SPLIT_BAT.slice(8);
-  return `${splitHead(PLAYER, "打者", L.pa + " 打席 ・ " + S.pitches + " 球")}
+  return `${splitHead(PLAYER, "打者")}
   <section class="span"><div class="pad">
     <div class="head">通算<small>Standard &amp; Advanced</small></div>
-    ${splitTable([{label:"通算", rows:pa}], SPLIT_BAT)}
+    ${splitTable([{label:"通算", rows:pa}], SPLIT_BAT_TOTAL)}
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">カウント別<small>${ended.length} 打席</small></div>
@@ -4184,7 +4205,7 @@ function splitBatter(){
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">左右別<small>投手の投げ手</small></div>
-    ${splitTable(handGroups(ended,"throws"), SPLIT_BAT)}
+    ${splitTable(handGroups(pa,"throws"), SPLIT_BAT)}
   </div></section>`;
 }
 
@@ -4193,10 +4214,10 @@ function splitPitcher(){
   const pa=plateOf(PLAYER,"pit"), ps=pitchOf(PLAYER,"pit");
   const ended=ps.filter(r=>r.result);
   const L=pitcherLine(pa), S=summarize(ps);
-  return `${splitHead(PLAYER, "投手", ipText(L.outs) + " 回 ・ " + S.pitches + " 球")}
+  return `${splitHead(PLAYER, "投手")}
   <section class="span"><div class="pad">
     <div class="head">通算<small>Standard &amp; Advanced</small></div>
-    ${splitTable([{label:"通算", rows:pa, line:pitcherLine}], SPLIT_PIT)}
+    ${splitTable([{label:"通算", rows:pa, line:pitcherLine}], splitPitTotal(PLAYER))}
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">カウント別<small>${ended.length} 打席</small></div>
@@ -4208,16 +4229,17 @@ function splitPitcher(){
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">左右別<small>打者の打席</small></div>
-    ${splitTable(handGroups(ended,"stance"), SPLIT_PIT)}
+    ${splitTable(handGroups(pa,"stance").map(g=>Object.assign(g,{line:pitcherLine})),
+      SPLIT_PIT)}
   </div></section>`;
 }
 
 /** 選手成績の見出し。 */
-function splitHead(name, role, note){
+function splitHead(name, role){
   return `<section class="span"><div class="pad">
     <div class="splithead">${face(name,48)}
       <div><div class="nm">${esc(name)}</div>
-        <div class="meta">${role} ｜ ${esc(note)} ｜ ${handsText(name, true)}</div></div>
+        <div class="meta">${role} ｜ ${handsText(name, true)}</div></div>
     </div>
   </div></section>`;
 }
@@ -5458,13 +5480,23 @@ document.getElementById("viewTabs").addEventListener("click",e=>{
 document.getElementById("playerRow").addEventListener("click",e=>{
   const t=e.target.closest(".tab"); if(!t) return;
   if(t.dataset.side) SIDE=t.dataset.side;
-  else if(t.dataset.name) PLAYER=t.dataset.name;
+  else if(t.dataset.name){
+    PLAYER=t.dataset.name;
+    // 能力画面も同じ人にしておく
+    PAWA_PLAYER=PLAYER;
+  }
   render();
 });
 // 横の名札。能力画面で選んでいる人は Savant とは別に覚える。
 document.getElementById("app").addEventListener("click",e=>{
   const plate=e.target.closest(".nameplate");
-  if(plate){ PAWA_PLAYER=plate.dataset.name; render(); return; }
+  if(plate){
+    // 名札で選んだ人は、選手成績・選手統計とも同じ人にする
+    PAWA_PLAYER=plate.dataset.name;
+    PLAYER=PAWA_PLAYER;
+    render();
+    return;
+  }
   // 能力画面の中に置いた 打者/投手/守備 の切り替え
   const tab=e.target.closest(".sidepick [data-pawa]");
   if(tab){ PAWA_TAB=tab.dataset.pawa; render(); }
