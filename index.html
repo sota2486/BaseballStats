@@ -463,6 +463,11 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .prow{display:grid; grid-template-columns:104px 1fr 44px; gap:9px; align-items:center;
   padding:3px 14px}
 .prow + .prow{border-top:1px dashed var(--line-soft)}
+/* 打球の難しさごとの成否 */
+.tiers{display:flex; flex-wrap:wrap; gap:4px 10px; font-size:10.5px; padding:2px 0 4px}
+.tiers span{display:flex; gap:4px; align-items:baseline}
+.tiers i{font-style:normal; color:var(--muted)}
+.tiers b{font-family:"Roboto Mono",monospace; font-weight:500}
 /* パーセンタイルのくくりの見出し */
 .pgroup{font-size:10.5px; font-weight:700; letter-spacing:.10em; text-transform:uppercase;
   color:var(--muted); padding:9px 14px 3px; border-top:1px solid var(--line-soft)}
@@ -1061,6 +1066,128 @@ function nz(value){
   return isFinite(n) ? n : null;
 }
 
+/** 守備の走る速さ。ブロック/秒。プラグインの Player_Assumed_Speed と同じ。 */
+const FIELD_SPEED=5.6;
+
+/** その試合の本塁の座標。球場が分からなければ null。 */
+function homeOf(gameId){
+  const park=parkOf(venueOf(gameId));
+  if(!park || !isFinite(park.hx) || !isFinite(park.hz)) return null;
+  return {x:park.hx, z:park.hz};
+}
+
+/**
+ * その打球に、あとどれだけ足りなかったか(秒)。
+ *
+ * <p>負なら余裕を持って待てた、0 なら間一髪、正なら足りなかった。
+ *
+ * <p>フライは「落ちてくるところへ間に合うか」。
+ * ゴロとライナーは、本塁から落下点へ伸びる線をそのまま転がる線とみなし、
+ * 自分の横を通り過ぎるまでに、その線まで寄れるかで見る。
+ * 外野の頭を越えた打球で内野手が減点されないよう、
+ * 打球が自分の位置まで来る時間をきちんと数える。
+ */
+function reachGap(r){
+  const sx=nz(r.startx), sz=nz(r.startz), lx=nz(r.landx), lz=nz(r.landz);
+  if(sx===null||sz===null||lx===null||lz===null) return null;
+  const home=homeOf(r.game);
+  const hang=nz(r.hangticks)||0, la=nz(r.launchangle)||0, ev=nz(r.exitvelocity)||0;
+  // 上がった打球。落ちてくるところへ走って間に合えば捕れる
+  if(la>=15 && hang>=25){
+    return Math.hypot(sx-lx, sz-lz)/FIELD_SPEED - hang/20;
+  }
+  if(!home) return null;
+  let ux=lx-home.x, uz=lz-home.z;
+  const carry=Math.hypot(ux,uz);
+  if(carry<0.5) return null;
+  ux/=carry; uz/=carry;
+  const dx=sx-home.x, dz=sz-home.z;
+  // 打球の線に沿った距離と、そこからの横のずれ
+  const along=dx*ux+dz*uz;
+  const perp=Math.hypot(dx-along*ux, dz-along*uz);
+  if(along<=0) return Math.hypot(sx-lx, sz-lz)/FIELD_SPEED;
+  let ticks;
+  if(along<=carry){
+    // まだ空を飛んでいるあいだ。落下点まで hang tick で届く
+    ticks=hang*(along/carry);
+  }else{
+    // 落ちてからは転がる。1 tick ごとに 0.96 倍で遅くなる
+    let v=Math.max(0.2, ev*0.6/72), flown=0, t=0;
+    while(flown < along-carry && t<200){ flown+=v; v*=0.96; t++; }
+    ticks=hang+t;
+  }
+  return perp/FIELD_SPEED - ticks/20;
+}
+
+/**
+ * 打球の難しさ 5 段階。
+ *
+ * <p>expect はその段でリーグが処理できる割合。
+ * 易しい打球は成功しても伸びず、落とすと大きく減る。
+ * 難しい打球はその逆になる。
+ */
+const REACH_TIERS=[
+  {limit:-1.5, name:"必ず追いつける",   expect:0.95},
+  {limit:-0.4, name:"大体追いつける",   expect:0.82},
+  {limit: 0.5, name:"追いつけそう",     expect:0.50},
+  {limit: 2.0, name:"追いつけなさそう", expect:0.18},
+  {limit: Infinity, name:"追いつけない", expect:0.03}
+];
+function reachTier(gap){
+  return REACH_TIERS.find(t=>gap<=t.limit) || REACH_TIERS[REACH_TIERS.length-1];
+}
+
+/** 同じ打球の行をまとめる鍵。 */
+function playKey(r){
+  return [r.game, r.inning, r.half, r.pa, r.hangticks, r.landx, r.landz].join("|");
+}
+
+/**
+ * その打球を誰の守備機会とみなすか。
+ *
+ * <p>1 つの打球には守った全員の行が残る。そのまま数えると、
+ * 味方が処理した打球でも他の 8 人が取りこぼしたことになってしまう。
+ * 実際に追いついた人がいればその人、いなければ一番惜しかった人だけを数える。
+ */
+let FIELD_OWNER=null, FIELD_OWNER_N=-1;
+function fieldOwners(){
+  if(FIELD_OWNER && FIELD_OWNER_N===DATA.play.length) return FIELD_OWNER;
+  const plays=new Map();
+  DATA.play.forEach(r=>{
+    if(r.kind!=="field") return;
+    const gap=reachGap(r);
+    if(gap===null) return;
+    const key=playKey(r);
+    const list=plays.get(key) || plays.set(key, []).get(key);
+    list.push({name:r.player, gap, reached:reachedBall(r)});
+  });
+  const out=new Map();
+  plays.forEach((list, key)=>{
+    const got=list.find(x=>x.reached);
+    const own=got || list.reduce((a,b)=>b.gap<a.gap ? b : a);
+    out.set(key, own.name);
+  });
+  FIELD_OWNER=out; FIELD_OWNER_N=DATA.play.length;
+  return out;
+}
+
+/** その行が、その打球の守備機会として数える 1 行か。 */
+function ownsPlay(r){
+  return fieldOwners().get(playKey(r))===r.player;
+}
+
+/**
+ * 弾いたあとに拾い直したか。
+ *
+ * <p>ゴロは弾いても拾い直して投げられれば、失敗ではない。
+ * ノーバウンドの打球を弾いた場合だけは、バウンドで拾っても落球のまま。
+ * 捕れていればアウトだった打球なので、取り返しがつかない。
+ */
+function recovered(r){
+  if(r.fumbleonfly===true) return false;
+  return r.threwtobase===true || r.gotout===true || r.assist===true;
+}
+
 /**
  * 自分で打球に追いついたか。
  *
@@ -1142,6 +1269,7 @@ function fieldingLine(rows){
   let armSum=0, armN=0, assists=0, putouts=0;
   let throws=0, errors=0, errorWeight=0;
   let drops=0, dropWeight=0, bases=0, dropExpected=0;
+  const tiers={};
   rows.forEach(r=>{
     const sx=nz(r.startx), sz=nz(r.startz), lx=nz(r.landx), lz=nz(r.landz);
     const outfield=OUTFIELD.has(String(r.position||""));
@@ -1159,18 +1287,27 @@ function fieldingLine(rows){
     }
     const allowed=nz(r.basesallowed);
     if(allowed!==null) bases+=allowed;
-    if(r.fumbled===true){
+    if(r.fumbled===true && !recovered(r)){
       drops++;
       // 外野のノーバウンド落球は大減点。捕れていれば確実にアウトだった。
       dropWeight += (outfield && r.fumbleonfly===true) ? 3.0 : 1.0;
     }
     const at=String(r.position||"");
     if(!POS_LABEL[at]) return;
+    // 難しさが測れて、その打球の受け持ちだった行だけを守備機会に数える
+    const gap=reachGap(r);
+    if(gap===null || !ownsPlay(r)) return;
+    const tier=reachTier(gap);
     chances++;
-    expected+=base[fieldGroup(at)].reach;
+    expected+=tier.expect;
+    tiers[tier.name]=tiers[tier.name] || {n:0, made:0};
+    tiers[tier.name].n++;
     // 落球の起こりやすさは守備位置でそこまで変わらない。リーグ全体で見る。
     dropExpected+=base.all.drop;
-    if(reachedBall(r)) made++;
+    // 追いついて、なおかつ落とさなければ成功。
+    // 弾いても拾い直したゴロは失敗にしない。
+    const clean=r.fumbled!==true || recovered(r);
+    if(reachedBall(r) && clean){ made++; tiers[tier.name].made++; }
   });
   // 機会が少ないうちは、平均どおりの人が 16 機会ぶん先にいるものとして混ぜる。
   // 寄せ先はその人が守った位置の平均。外野と内野では来る打球が違う。
@@ -1178,7 +1315,7 @@ function fieldingLine(rows){
   const dropRate=chances
     ? blendRate(dropWeight, chances, dropExpected/chances, 16) : null;
   return {
-    chances, made, expected, reachRate, dropRate, dropExpected,
+    chances, made, expected, reachRate, dropRate, dropExpected, tiers,
     // 1 つのアウトはおよそ 0.75 点ぶんの価値がある
     range: chances ? (made-expected)*0.75 : null,
     arm: armN ? armSum/armN : null,
@@ -1816,8 +1953,14 @@ function fieldingPanel(name){
     ["Arm","送球の速さ","arm", F.arm, f1],
     ["Baserunning","走塁の値打ち","baserun", per(B.runs,B.plays), v=>v.toFixed(3)]
   ];
+  const tiers=REACH_TIERS.map(t=>{
+    const one=F.tiers[t.name];
+    if(!one) return "";
+    return `<span><i>${t.name}</i><b>${one.made}/${one.n}</b></span>`;
+  }).filter(Boolean).join("");
   return `<div class="pad" style="padding-top:10px">
       <div class="head">守備と走塁<small>守備 ${F.chances} 機会 / 走塁 ${B.plays} 回</small></div>
+      ${tiers ? `<div class="tiers">${tiers}</div>` : ""}
     </div>
     ${rows.map(r=>prow(...r)).join("")}`;
 }
@@ -3326,11 +3469,11 @@ function gloveAbility(name){
   // 肩力。送球の速さそのもの。
   const arm=F.arm===null ? ABILITY_DEFAULT
     : steady(ability(F.arm, 95, 145), F.throws, QUAL_CHANCE);
-  // 守備力。同じ守備位置の人より、どれだけ多く打球に追いつけたか。
-  // 割合そのものを平均へ寄せてあるので、機会が少ない人は自然と真ん中に来る。
+  // 守備力。その難しさなら処理できて当たり前という割合を、どれだけ上回ったか。
+  // 割合そのものを段の期待値へ寄せてあるので、機会が少ない人は真ん中に来る。
   const wide=fieldBase();
   const glove=F.chances
-    ? ability(F.reachRate, wide.all.reach-0.30, wide.all.reach+0.30)
+    ? ability(F.reachRate - F.expected/F.chances, -0.30, 0.30)
     : ABILITY_DEFAULT;
   // 捕球。落球の少なさ。外野のノーバウンド落球は 3 つぶんとして数えてある。
   const hands=F.chances
@@ -4354,16 +4497,22 @@ function pitcherView(){
     ["Hard Hit %","被 153km/h 以上","hard_p",S.hard,pc],
     ["GB %","ゴロ率","gb",S.gb,pc]
   ];
+  const wins=(g)=>g?decisionFor(g,PLAYER,"win"):decisionTotal(PLAYER,"win");
+  const loses=(g)=>g?decisionFor(g,PLAYER,"lose"):decisionTotal(PLAYER,"lose");
   const std=[
+    {head:"防御率(5回)", get:L=>f2(L.era)},
     {head:"投球回",  get:L=>ipText(L.outs)},
-    {head:"勝",   get:(L,g)=>g?decisionFor(g,PLAYER,"win"):decisionTotal(PLAYER,"win")},
-    {head:"敗",   get:(L,g)=>g?decisionFor(g,PLAYER,"lose"):decisionTotal(PLAYER,"lose")},
+    {head:"勝",   get:(L,g)=>wins(g)},
+    {head:"敗",   get:(L,g)=>loses(g)},
+    {head:"勝率",  get:(L,g)=>{
+      const d=wins(g)+loses(g);
+      return d ? f3(wins(g)/d) : "—";
+    }},
     {head:"セーブ",  get:(L,g)=>g?reliefFor(g,PLAYER,"save"):reliefTotal(PLAYER,"save")},
     {head:"ホールド", get:(L,g)=>g?reliefFor(g,PLAYER,"hold"):reliefTotal(PLAYER,"hold")},
     {head:"奪三振",  get:L=>L.so},
     {head:"与四球",  get:L=>L.bb},
-    {head:"失点",   get:L=>L.runs},
-    {head:"防御率(5回)", get:L=>f2(L.era)}
+    {head:"失点",   get:L=>L.runs}
   ];
   const adv=[
     {head:"K%",   get:L=>pc(L.kRate)},
@@ -4556,9 +4705,10 @@ const SPLIT_BAT=[
 
 /** 投手の並び。防御率と WHIP は投球回が要るので、分かるときだけ出す。 */
 const SPLIT_PIT=[
+  {head:"防御率",  get:L=>L.era===undefined||L.era===null ? "—" : f2(L.era)},
+  {head:"投球回",  get:L=>L.outs===undefined ? "—" : ipText(L.outs)},
   {head:"被打席",  get:L=>L.pa},
   {head:"被打数",  get:L=>L.ab},
-  {head:"防御率",  get:L=>L.era===undefined||L.era===null ? "—" : f2(L.era)},
   {head:"被打率",  get:L=>f3(L.avg)},
   {head:"三振",    get:L=>L.so},
   {head:"四球",    get:L=>L.bb},
@@ -4566,6 +4716,14 @@ const SPLIT_PIT=[
   {head:"被OPS",   get:L=>f3(L.ops)},
   {head:"WHIP",    get:L=>L.whip===undefined||L.whip===null ? "—" : f2(L.whip)}
 ];
+
+/**
+ * カウント別に出す項目。
+ *
+ * <p>カウント別は 1 球ごとの記録から数えるので、アウトの数を持っていない。
+ * 防御率と投球回は出せないので外す。
+ */
+const SPLIT_PIT_COUNT=SPLIT_PIT.slice(2);
 
 /** 通算だけに出す項目。打者は wRC+。 */
 const SPLIT_BAT_TOTAL=SPLIT_BAT.concat([
@@ -4576,13 +4734,18 @@ const SPLIT_BAT_TOTAL=SPLIT_BAT.concat([
 function splitPitTotal(name){
   const win=decisionTotal(name,"win"), lose=decisionTotal(name,"lose");
   const decided=win+lose;
-  return SPLIT_PIT.concat([
+  const games=new Set(plateOf(name,"pit").map(r=>String(r.game_id))).size;
+  return [
+    {head:"登板",  get:()=>games},
+    {head:"防御率", get:L=>L.era===undefined||L.era===null ? "—" : f2(L.era)},
+    {head:"投球回", get:L=>L.outs===undefined ? "—" : ipText(L.outs)},
     {head:"勝",    get:()=>win},
     {head:"敗",    get:()=>lose},
     {head:"勝率",  get:()=>decided ? f3(win/decided) : "—"},
     {head:"ホールド", get:()=>reliefTotal(name,"hold")},
     {head:"セーブ",  get:()=>reliefTotal(name,"save")}
-  ]);
+    // 防御率と投球回は先頭に出したので、ここでは繰り返さない
+  ].concat(SPLIT_PIT.slice(2));
 }
 
 /** 場面ごとの表。label は見出しに入れる HTML。 */
@@ -4708,7 +4871,7 @@ function splitPitcher(){
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">カウント別<small>${ended.length} 打席</small></div>
-    ${splitTable(countGroups(ended), SPLIT_PIT)}
+    ${splitTable(countGroups(ended), SPLIT_PIT_COUNT)}
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">得点圏<small>二塁か三塁に走者</small></div>
@@ -5639,7 +5802,8 @@ function buildPark(park){
      && isFinite(park.fx) && isFinite(park.fz)){
     const built=profileFromBlocks(park.fence, park.hx, park.hz, park.fx, park.fz);
     if(built) return {name:park.name, dist:built.dist, heights:built.heights,
-                      pts:built.pts, blocks:park.fence.length, seats:park.seats};
+                      pts:built.pts, blocks:park.fence.length, seats:park.seats,
+                      hx:park.hx, hz:park.hz};
   }
   if(park.dist.length===91 && park.dist.every(v=>isFinite(v)&&v>0)){
     const heights = park.heights.length===91 ? park.heights.slice() : new Array(91).fill(0);
