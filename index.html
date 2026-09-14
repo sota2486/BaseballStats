@@ -372,6 +372,15 @@ table.pa2 col.c-s{width:52px} table.pa2 col.c-m{width:62px} table.pa2 col.c-k{wi
 /* ------------------------------------------------------------ layout */
 main{display:grid; grid-template-columns:minmax(340px,1.08fr) minmax(430px,1.48fr) minmax(360px,1.08fr);
   gap:12px; padding:12px 18px; align-items:start}
+/* 選手統計だけは字を詰めて、1 画面に収まりやすくする */
+main:not(.wide){font-size:11.5px}
+main:not(.wide) .head{font-size:16px; padding:1px 0 4px; border-bottom-width:2px;
+  margin-bottom:6px}
+main:not(.wide) .pad{padding:8px 10px}
+main:not(.wide) table{font-size:11px}
+main:not(.wide) table th,main:not(.wide) table td{padding:2px 5px}
+main:not(.wide) .who .nm{font-size:20px}
+main:not(.wide) section{border-radius:6px}
 main.wide{grid-template-columns:minmax(0,1fr); max-width:1180px; margin-inline:auto}
 /* 能力画面は名札のぶんと中身のぶん、1.3 倍ほど広く取る */
 main.wide.pawawide{max-width:1540px}
@@ -454,6 +463,11 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .prow{display:grid; grid-template-columns:104px 1fr 44px; gap:9px; align-items:center;
   padding:3px 14px}
 .prow + .prow{border-top:1px dashed var(--line-soft)}
+/* パーセンタイルのくくりの見出し */
+.pgroup{font-size:10.5px; font-weight:700; letter-spacing:.10em; text-transform:uppercase;
+  color:var(--muted); padding:9px 14px 3px; border-top:1px solid var(--line-soft)}
+.pgroup:first-child{border-top:0; padding-top:4px}
+.pgroup + .prow{border-top:0}
 .prow .nm{font-size:12.5px; font-weight:600; text-align:right; line-height:1.15}
 .prow .nm small{display:block; font-weight:400; color:var(--muted); font-size:10px}
 .bar{position:relative; height:19px; background:var(--track); border-radius:2px}
@@ -470,6 +484,11 @@ col.c-num{width:50px} col.c-flag{width:66px}
 
 /* ------------------------------------------------------------ zone */
 .zonewrap{display:flex; gap:11px; align-items:flex-start; flex-wrap:wrap}
+/* 打者の影。捕手目線なので、右打者は左(三塁側)に立つ */
+.zonebox{position:relative; padding-left:66px; color:var(--muted)}
+.zonebox.lefty{padding-left:0; padding-right:66px}
+.zoneman{position:absolute; left:0; top:0; opacity:.30; pointer-events:none}
+.zonebox.lefty .zoneman{left:auto; right:0; transform:scaleX(-1)}
 .zone{display:grid; grid-template-columns:repeat(5,60px); grid-auto-rows:48px; gap:2px}
 .z{border-radius:2px; display:flex; flex-direction:column; align-items:center; justify-content:center;
   border:1px solid transparent; color:#11161d}
@@ -973,6 +992,11 @@ const SCALE={
   // 投手の追いかけさせ 44〜63%、空振り取り 41〜49%。
   chase:[85,45], whiff:[48,20], k:[52,26], bb:[1,12],
   xera:[8.0,2.0], gb:[18,44], wrc:[40,190], k9:[4.0,16.0], bb9:[6.0,0.5],
+  // スイングの速さと、芯で捉えた度合い
+  bat_speed:[95,130], squared:[72,104],
+  // Run Value。打者は通算の点、投手は 100 球あたりの点
+  bat_rv:[-6,12], run_rv:[-1.5,4.0], field_rv:[-5.0,2.5],
+  pitch_rv:[-4.0,4.0], fast_rv:[-5.0,5.0], break_rv:[-5.0,5.0], off_rv:[-7.0,7.0],
   // 守備と走塁。いずれも 1 プレーあたりに直した値で見る
   range:[-0.25,0.25], arm_value:[-0.20,0.20], arm:[95,145],
   baserun:[-0.20,0.25],
@@ -1038,32 +1062,86 @@ function nz(value){
 }
 
 /**
- * その打球に追いつけたはずか。
+ * 自分で打球に追いついたか。
  *
- * <p>落下地点までの距離を、滞空時間で割った「必要な速さ」で見る。
- * 人が走れるのはおよそ 6 ブロック/秒なので、そこを五分に置く。
- * 近くにゆっくり上がった打球なら誰でも捕れて、
- * 遠くへ速く抜けた打球は誰にも捕れない、という形になる。
+ * <p>飛球を捕った人か、その打球に最初に触った人だけを数える。
+ * 一塁で送球を受けてアウトにしただけの人は、追いついたことにはしない。
+ * ここを分けないと、一塁手が立っているだけで守備範囲が広く出てしまう。
  */
-function reachChance(distance, hangTicks){
-  if(distance===null || hangTicks===null || hangTicks<=0) return null;
-  const need=distance/Math.max(0.25, hangTicks/20);
-  return 1/(1+Math.exp((need-6.0)/1.1));
+function reachedBall(r){
+  return r.caughtonfly===true || nz(r.touchorder)===1;
+}
+
+/** 守備位置のまとまり。打球の来かたが違うので、比べる相手を分ける。 */
+function fieldGroup(position){
+  if(position==="PITCHER" || position==="CATCHER") return "battery";
+  return OUTFIELD.has(position) ? "outfield" : "infield";
+}
+
+/**
+ * リーグ全体の守備の下敷き。
+ *
+ * <p>打球に追いついた割合と落球の重さを、守備位置のまとまりごとに出す。
+ * 打球の難しさを物理で当てるより、同じところを守っている人どうしで
+ * 比べたほうが素直に並ぶ。
+ */
+let FIELD_BASE=null, FIELD_BASE_N=-1;
+function fieldBase(){
+  if(FIELD_BASE && FIELD_BASE_N===DATA.play.length) return FIELD_BASE;
+  const sum={}, all={n:0, reach:0, drop:0};
+  DATA.play.forEach(r=>{
+    if(r.kind!=="field") return;
+    const at=String(r.position||"");
+    if(!POS_LABEL[at]) return;
+    const g=fieldGroup(at);
+    const one=sum[g] || (sum[g]={n:0, reach:0, drop:0});
+    const drop=r.fumbled===true
+      ? ((OUTFIELD.has(at) && r.fumbleonfly===true) ? 3.0 : 1.0) : 0;
+    one.n++; all.n++;
+    if(reachedBall(r)){ one.reach++; all.reach++; }
+    one.drop+=drop; all.drop+=drop;
+  });
+  const wide={reach: all.n ? all.reach/all.n : 0.35,
+              drop: all.n ? all.drop/all.n : 0.15};
+  const out={all:wide};
+  ["battery","infield","outfield"].forEach(g=>{
+    const one=sum[g];
+    // そのまとまりの記録が薄いうちは、リーグ全体のほうへ寄せる
+    const trust=one ? Math.min(1, one.n/40) : 0;
+    out[g]={
+      reach: one ? wide.reach + (one.reach/one.n - wide.reach)*trust : wide.reach,
+      drop:  one ? wide.drop  + (one.drop/one.n  - wide.drop )*trust : wide.drop
+    };
+  });
+  FIELD_BASE=out; FIELD_BASE_N=DATA.play.length;
+  return out;
+}
+
+/**
+ * 少ない記録の割合をリーグ平均へ寄せる。
+ *
+ * <p>4 機会で落球 0 でも、それは上手い証拠にはならない。
+ * 平均どおりの人が prior 回ぶん先にいると考えて混ぜる。
+ */
+function blendRate(sum, n, base, prior){
+  return (sum + base*prior)/(n + prior);
 }
 
 /**
  * 守備の集計。
  *
- * <p>Range は「捕れた数 − 捕れたはずの数」。
+ * <p>Range は「自分で追いついた数 − 同じ守備位置の人なら追いつく数」。
+ * 送球を受けただけのアウトは入れない。
  * 捕球は落球の少なさで、外野のノーバウンド落球だけ重く見る。
  * 手が届いていた飛球を落とすのは、失点に直結するため。
  * 肩は送球の速さ、送球の正確さは悪送球の少なさ。
  */
 function fieldingLine(rows){
+  const base=fieldBase();
   let chances=0, made=0, expected=0;
   let armSum=0, armN=0, assists=0, putouts=0;
   let throws=0, errors=0, errorWeight=0;
-  let drops=0, dropWeight=0, bases=0;
+  let drops=0, dropWeight=0, bases=0, dropExpected=0;
   rows.forEach(r=>{
     const sx=nz(r.startx), sz=nz(r.startz), lx=nz(r.landx), lz=nz(r.landz);
     const outfield=OUTFIELD.has(String(r.position||""));
@@ -1086,21 +1164,21 @@ function fieldingLine(rows){
       // 外野のノーバウンド落球は大減点。捕れていれば確実にアウトだった。
       dropWeight += (outfield && r.fumbleonfly===true) ? 3.0 : 1.0;
     }
-    if(sx===null||sz===null||lx===null||lz===null) return;
-    const distance=Math.hypot(sx-lx, sz-lz);
-    const chance=reachChance(distance, nz(r.hangticks));
-    if(chance===null) return;
+    const at=String(r.position||"");
+    if(!POS_LABEL[at]) return;
     chances++;
-    expected+=chance;
-    // 滞空が長い打球はフライ。捕ればアウト。
-    // 転がった打球は、触って落とさなければ処理できたとみなす。
-    const fly=nz(r.hangticks)>=25;
-    made += (fly ? r.caughtonfly===true
-                 : (r.gotout===true || (r.assist===true)
-                    || (r.threwtobase===true && r.fumbled!==true))) ? 1 : 0;
+    expected+=base[fieldGroup(at)].reach;
+    // 落球の起こりやすさは守備位置でそこまで変わらない。リーグ全体で見る。
+    dropExpected+=base.all.drop;
+    if(reachedBall(r)) made++;
   });
+  // 機会が少ないうちは、平均どおりの人が 16 機会ぶん先にいるものとして混ぜる。
+  // 寄せ先はその人が守った位置の平均。外野と内野では来る打球が違う。
+  const reachRate=chances ? blendRate(made, chances, expected/chances, 16) : null;
+  const dropRate=chances
+    ? blendRate(dropWeight, chances, dropExpected/chances, 16) : null;
   return {
-    chances, made, expected,
+    chances, made, expected, reachRate, dropRate, dropExpected,
     // 1 つのアウトはおよそ 0.75 点ぶんの価値がある
     range: chances ? (made-expected)*0.75 : null,
     arm: armN ? armSum/armN : null,
@@ -1175,6 +1253,22 @@ function summarize(rows){
     if(l>=8&&l<=32) sweet++;
     if(l<10) gb++;
   });
+  // バットスピード。ゲージ 0% で 85km/h、100% で 135km/h。
+  // そこへ使っていたバットのパワーを掛ける。
+  let speedSum=0, speedN=0, sqSum=0, sqN=0;
+  rows.forEach(r=>{
+    if(r.swing!==true) return;
+    const gauge=Number(r.swing_power), power=Number(r.bat_power);
+    if(!isFinite(gauge) || !isFinite(power) || power<=0) return;
+    const bat=(85+50*Math.max(0,Math.min(1,gauge)))*power;
+    speedSum+=bat; speedN++;
+    const e=Number(r.exit_velocity);
+    if(r.contact===true && r.call==="IN_PLAY" && e>0){
+      // 芯で捉えた度合い。分母は「その振りで出せるはずの打球速度」。
+      // 球速の分は 150km/h で揃える。
+      sqSum+=100*e/(bat*1.23 + 150*0.23); sqN++;
+    }
+  });
   const n=bip.length;
   // 打席の数と四死球も record から数える。
   // 打席結果は 1 球ごとの記録にも入っているので、result 側と混ぜずに済む。
@@ -1187,6 +1281,8 @@ function summarize(rows){
   // 三振は期待値 0 の打数として分母にだけ入れる。
   const ab=n+so;
   return {n,bip,pitches:rows.length,swings,whiffs,xbaSum:xba,
+    batSpeed: speedN ? speedSum/speedN : null,
+    squared:  sqN ? sqSum/sqN : null, squaredN:sqN, speedN,
     pa:ended.length, bb, hbp, so, ab,
     xba:ab?xba/ab:null, xslg:ab?xslg/ab:null, ev:n?ev/n:null,
     barrel:n?100*barrel/n:null, hard:n?100*hard/n:null,
@@ -1403,6 +1499,149 @@ function wrcPlus(L){
   return 100*((w-lg.woba)/scale + lg.rpa)/lg.rpa;
 }
 
+/* ====================================================== Run Value
+   1 球ごとに「この球で得点期待値がどれだけ動いたか」を足していく。
+   カウントが進めば投手が得をし、打たれれば損をする。
+   打者側は打撃・走塁・守備の 3 つに分けて出す。 */
+
+/** カウントごとの得点期待値(打者から見た点)。0-0 を 0 とする。 */
+const COUNT_VALUE={"0-0":0.000, "0-1":-0.037, "0-2":-0.101,
+  "1-0":0.032, "1-1":-0.015, "1-2":-0.082,
+  "2-0":0.095, "2-1":0.036, "2-2":-0.042,
+  "3-0":0.207, "3-1":0.132, "3-2":0.040};
+
+/**
+ * この試合の得点の入りやすさ。MLB の何倍かで見る。
+ *
+ * <p>カウントの表は MLB のものなので、点の入りやすさの違いだけ伸ばす。
+ */
+function runScale(){
+  const lg=league();
+  return lg.rpa ? Math.max(0.5, Math.min(4, lg.rpa/0.117)) : 1;
+}
+
+/** 打席が終わったときの値打ち。リーグ平均の打席を 0 とした点。 */
+function endValue(woba){
+  const lg=league();
+  if(lg.woba===null) return 0;
+  return (woba-lg.woba)/1.25;
+}
+
+/**
+ * その 1 球で動いた点(打者から見て)。
+ *
+ * <p>打席が決まった球は結果の値打ち、そうでなければカウントの進み方。
+ */
+function pitchValue(r){
+  const before=COUNT_VALUE[String(r.count||"0-0")];
+  if(before===undefined) return null;
+  const done=String(r.result||"");
+  if(done==="WALK") return endValue(0.699)-before*runScale();
+  if(done==="HIT_BY_PITCH") return endValue(0.728)-before*runScale();
+  if(done==="STRIKE_OUT") return endValue(0)-before*runScale();
+  if(r.call==="IN_PLAY"){
+    const e=Number(r.exit_velocity), l=Number(r.launch_angle);
+    const x=battedExpectation(e,l);
+    // 期待安打率と期待塁打から、その打球の期待 wOBA を作る。
+    // 1 つ余分に進む塁はおよそ 0.37 の重み。
+    const woba=0.883*x.ba + 0.37*Math.max(0, x.tb-x.ba);
+    return endValue(woba)-before*runScale();
+  }
+  const parts=String(r.count||"0-0").split("-").map(Number);
+  const b=parts[0]||0, st=parts[1]||0;
+  const next=(r.call==="BALL") ? (b+1)+"-"+st : b+"-"+Math.min(2, st+1);
+  const after=COUNT_VALUE[next];
+  if(after===undefined) return null;
+  return (after-before)*runScale();
+}
+
+/** チェンジアップ系。ブレーキングのうち、遅くて沈む球。 */
+const OFFSPEED=new Set(["チェンジアップ","チェンジオブペース","サークルチェンジ",
+  "スローカーブ","スローシンカー","シンカー","カーブ"]);
+
+/** 表に載っている球種か。 */
+function knownType(name){
+  return Object.keys(BREAK_DIRECTION)
+    .some(k=>BREAK_DIRECTION[k].indexOf(name)>=0);
+}
+
+/**
+ * その球が速球系かブレーキング系か。
+ *
+ * <p>上へ伸びる球として登録してあるものが速球。
+ * 表に無い球種は速さで見分ける(110km/h 以上なら速球)。
+ */
+function pitchClass(name, velocity){
+  if(BREAK_DIRECTION.up.indexOf(name)>=0) return "fast";
+  if(knownType(name) || OFFSPEED.has(name)) return "breaking";
+  return (isFinite(velocity) && velocity>=110) ? "fast" : "breaking";
+}
+
+/** オフスピード(ブレーキングのうち遅い球)か。 */
+function isOffspeed(name, velocity){
+  if(pitchClass(name, velocity)!=="breaking") return false;
+  if(OFFSPEED.has(name)) return true;
+  return !knownType(name) && isFinite(velocity) && velocity<80;
+}
+
+/**
+ * 投手の Run Value。100 球あたりの点で出す。
+ *
+ * <p>球数が 10 に満たない区分は出さない。たまたま 1 球で大きく振れるため。
+ */
+function pitchRunValues(rows){
+  const sum={all:0, fast:0, breaking:0, offspeed:0};
+  const n={all:0, fast:0, breaking:0, offspeed:0};
+  rows.forEach(r=>{
+    const v=pitchValue(r);
+    if(v===null) return;
+    const name=String(r.type||"");
+    const speed=Number(isFinite(Number(r.init_velocity)) && r.init_velocity!==""
+      ? r.init_velocity : r.velocity);
+    const cls=pitchClass(name, speed);
+    sum.all-=v; n.all++;
+    sum[cls]-=v; n[cls]++;
+    if(isOffspeed(name, speed)){ sum.offspeed-=v; n.offspeed++; }
+  });
+  const per=k=>n[k]>=10 ? 100*sum[k]/n[k] : null;
+  return {pitching:per("all"), fast:per("fast"),
+    breaking:per("breaking"), offspeed:per("offspeed"), n};
+}
+
+/** 内野安打の数。走塁の値打ちに足す。 */
+function infieldHits(name){
+  return pitchOf(name,"bat").filter(r=>{
+    if(r.result!=="SINGLE") return false;
+    const la=Number(r.launch_angle), d=distanceOf(r);
+    return isFinite(la) && la<10 && isFinite(d) && d>0 && d<=40;
+  }).length;
+}
+
+/**
+ * 打者の Run Value。打撃・走塁・守備の 3 つ。
+ *
+ * <p>打撃は wOBA がリーグ平均からどれだけ離れているか × 打席数。
+ * 走塁は余分な進塁に内野安打を足したもの。足の速さは内野安打にも出る。
+ * 守備は追いつき・捕球・送球を足したもの。
+ */
+function batterRunValues(name){
+  const L=line(plateOf(name,"bat"));
+  const lg=league();
+  const w=wobaOf(L);
+  const bat=(w===null || lg.woba===null || !L.pa) ? null
+    : (w-lg.woba)/1.25*L.pa;
+  const B=baserunLine(playOf(name,"run"));
+  const F=fieldingLine(playOf(name,"field"));
+  const infield=infieldHits(name);
+  // 打球への追いつきも足の速さの表れなので、少しだけ走塁にも足す
+  const legs=F.chances ? (F.range||0)*0.25 : 0;
+  const run=(B.plays || infield)
+    ? (B.runs||0) + infield*0.30 + legs : null;
+  const field=F.chances
+    ? (F.range||0)+(F.catchRuns||0)+(F.armValue||0) : null;
+  return {bat, run, field};
+}
+
 /* ------------------------------------------------------------- 表示 */
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const f3=v=>v===null||!isFinite(v)?"—":v.toFixed(3).replace(/^0\./,".");
@@ -1583,6 +1822,8 @@ function fieldingPanel(name){
     ${rows.map(r=>prow(...r)).join("")}`;
 }
 function prow(name, sub, key, value, fmt){
+  // 先頭が "#" の行はくくりの見出し。棒は出さない。
+  if(name==="#") return `<div class="pgroup">${esc(sub)}</div>`;
   const s=score(key,value), color=scoreColor(s), w=s===null?0:s;
   return `<div class="prow">
     <div class="nm">${name}${sub?`<small>${sub}</small>`:""}</div>
@@ -1957,9 +2198,11 @@ function batterColumns(mode){
     {key:"barrel",head:"Barrel%",get:d=>d.S.barrel, fmt:pc, rate:true},
     {key:"hard",  head:"Hard%",  get:d=>d.S.hard,   fmt:pc, rate:true},
     {key:"sweet", head:"Sweet%", get:d=>d.S.sweet,  fmt:pc, rate:true},
+    {key:"bspd",  head:"Bat Speed", get:d=>d.S.batSpeed, fmt:f1, rate:true},
+    {key:"sqd",   head:"Squared Up%", get:d=>d.S.squared, fmt:pc, rate:true},
     {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
     {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true},
-    {key:"k",     head:"K%",     get:d=>d.L.kRate,  fmt:pc, rate:true},
+    {key:"k",     head:"K%",     get:d=>d.L.kRate,  fmt:pc, rate:true, low:true},
     {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, rate:true}
   ];
 }
@@ -1993,9 +2236,30 @@ function pitcherColumns(mode){
     {key:"hard",  head:"Hard%",  get:d=>d.S.hard,   fmt:pc, low:true, rate:true},
     {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
     {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true},
-    {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc, rate:true}
+    {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc, rate:true},
+    {key:"fly",   head:"FLY%",   get:d=>d.S.gb===null?null:100-d.S.gb, fmt:pc,
+      low:true, rate:true},
+    {key:"baa",   head:"被打率",  get:d=>d.L.avg,    fmt:f3, low:true, rate:true},
+    // 奪三振率と与四球率は 5 回あたり。このイベントは 5 回制。
+    {key:"k5",    head:"奪三振率", get:d=>d.L.outs ? GAME_INNINGS*3*d.L.so/d.L.outs : null,
+      fmt:f2, rate:true},
+    {key:"bb5",   head:"与四球率", get:d=>d.L.outs ? GAME_INNINGS*3*d.L.bb/d.L.outs : null,
+      fmt:f2, low:true, rate:true},
+    {key:"fip",   head:"FIP",    get:d=>fipOf(d.L), fmt:f2, low:true, rate:true}
   ];
 }
+/**
+ * FIP。守備に左右されない部分だけで測る失点の目安。
+ *
+ * <p>(13 × 被本塁打 + 3 × 与四球 − 2 × 奪三振) ÷ 投球回 + 3.5。
+ * 投球回は 5 回制に合わせて、アウト数 ÷ 3 をそのまま使う。
+ */
+function fipOf(L){
+  const ip=L.outs/3;
+  if(!ip) return null;
+  return (13*L.hr + 3*L.bb - 2*L.so)/ip + 3.5;
+}
+
 /** xERA の目盛りを覚えておく。読み込んだ記録が変われば作り直す。 */
 let XERA_SCALE=null;
 
@@ -3062,17 +3326,20 @@ function gloveAbility(name){
   // 肩力。送球の速さそのもの。
   const arm=F.arm===null ? ABILITY_DEFAULT
     : steady(ability(F.arm, 95, 145), F.throws, QUAL_CHANCE);
-  // 守備力。打球にどれだけ追いつけたか。
+  // 守備力。同じ守備位置の人より、どれだけ多く打球に追いつけたか。
+  // 割合そのものを平均へ寄せてあるので、機会が少ない人は自然と真ん中に来る。
+  const wide=fieldBase();
   const glove=F.chances
-    ? steady(ability(per(F.range,F.chances), -0.25, 0.25), F.chances, QUAL_CHANCE)
+    ? ability(F.reachRate, wide.all.reach-0.30, wide.all.reach+0.30)
     : ABILITY_DEFAULT;
   // 捕球。落球の少なさ。外野のノーバウンド落球は 3 つぶんとして数えてある。
   const hands=F.chances
-    ? steady(ability(F.dropWeight/F.chances, 0.6, 0.0), F.chances, QUAL_CHANCE)
+    ? ability(F.dropRate, wide.all.drop*1.88+0.02, 0)
     : ABILITY_DEFAULT;
-  // 送球(コントロール)。悪送球の少なさ。
-  const control=F.throwAccuracy===null ? ABILITY_DEFAULT
-    : steady(ability(F.throwAccuracy, 55, 100), F.throws, QUAL_CHANCE);
+  // 送球(コントロール)。悪送球の少なさ。送球の数も少ないので平均へ寄せる。
+  const control=F.throws
+    ? ability(blendRate(F.throws-F.errors, F.throws, 0.85, 6)*100, 60, 100)
+    : ABILITY_DEFAULT;
   // 走塁。走塁の値打ち。
   const baserun=B.plays
     ? steady(ability(per(B.runs,B.plays), -0.20, 0.25), B.plays, QUAL_CHANCE)
@@ -3128,13 +3395,16 @@ function vsLeftSplit(name){
  * <p>「回復」の元にする。休まず出られる人は回復が早い、という見立て。
  */
 function playRate(name){
-  const all=gameIds().length;
-  if(!all) return null;
   const mine=new Set();
   DATA.plate.forEach(r=>{
     if(r.batter===name || r.pitcher===name) mine.add(String(r.game_id));
   });
-  return mine.size/all;
+  if(!mine.size) return null;
+  // 初めて出た試合より前は数えない。後から入ってきた人が
+  // それだけで低くならないようにする。
+  const first=[...mine].sort()[0];
+  const since=gameIds().filter(g=>g>=first);
+  return since.length ? mine.size/since.length : null;
 }
 
 /**
@@ -3145,13 +3415,15 @@ function playRate(name){
  * 試合 ID の頭 8 桁(年月日)で日を見る。
  */
 function eventRate(name){
-  const days=new Set(gameIds().map(g=>String(g).slice(0,8)));
-  if(!days.size) return null;
   const mine=new Set();
   DATA.plate.forEach(r=>{
     if(r.batter===name || r.pitcher===name) mine.add(String(r.game_id).slice(0,8));
   });
-  return mine.size/days.size;
+  if(!mine.size) return null;
+  // 初めて顔を出した日より前は数えない
+  const first=[...mine].sort()[0];
+  const days=[...new Set(gameIds().map(g=>String(g).slice(0,8)))].filter(d=>d>=first);
+  return days.length ? mine.size/days.length : null;
 }
 
 /** 回復。全試合に出ていれば B(75)。 */
@@ -3269,8 +3541,6 @@ function stanceOf(name){
 function positionSkill(name, glove, position){
   const one=aptitude(name).find(a=>a.position===position);
   if(!one) return null;
-  // 投手の守備は測らない。守ったことがあれば一律 D55。
-  if(position==="PITCHER") return 55;
   return steady(glove, one.n, QUAL_CHANCE);
 }
 
@@ -3319,8 +3589,7 @@ function defenceRows(name, G){
       return n + (one ? one.n : 0);
     }, 0);
     if(!chances) return `<span class="half none"><i>${label}</i><b>−</b></span>`;
-    // 投手の守備は測らない。守ったことがあれば一律 D55。
-    const value=spots[0]==="PITCHER" ? 55 : steady(G.glove, chances, QUAL_CHANCE);
+    const value=steady(G.glove, chances, QUAL_CHANCE);
     const r=rank(value);
     return `<span class="half"><i>${label}</i>
       <b style="color:${RANK_COLOR[r]}">${r}</b><u>${value}</u></span>`;
@@ -3503,7 +3772,13 @@ function batterView(){
   const L=line(pa), S=summarize(ps);
   // 四死球と打席数も record から取る
   const xwoba=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
+  const RV=batterRunValues(PLAYER);
   const rows=[
+    ["#","Value"],
+    ["Batting Run Value","打撃で稼いだ点","bat_rv",RV.bat,f1],
+    ["Running Run Value","走塁で稼いだ点","run_rv",RV.run,f1],
+    ["Fielding Run Value","守備で防いだ点","field_rv",RV.field,f1],
+    ["#","Hitting"],
     ["xwOBA","期待出塁率","xwoba",xwoba,f3],
     ["xBA","期待打率","xba",S.xba,f3],
     ["xSLG","期待長打率","xslg",S.xslg,f3],
@@ -3511,6 +3786,8 @@ function batterView(){
     ["Barrel %","バレル率","barrel",S.barrel,pc],
     ["Hard Hit %","153km/h 以上","hard",S.hard,pc],
     ["LA Sweet-Spot %","打球角 8〜32°","sweet",S.sweet,pc],
+    ["Bat Speed","平均スイング速度","bat_speed",S.batSpeed,f1],
+    ["Squared Up %","芯で捉えた度合い","squared",S.squared,pc],
     ["Chase %","ボール球スイング","chase",S.chase,pc],
     ["Whiff %","スイングの空振り","whiff",S.whiff,pc],
     ["K %","三振率","k",L.kRate,pc],
@@ -3544,7 +3821,7 @@ function batterView(){
     </section>
     <section><div class="pad">
       <div class="head">ゾーン別<small>捕手目線</small></div>
-      <div class="zonewrap">${zoneGrid(ps)}
+      <div class="zonewrap">${batterShadow(PLAYER, zoneGrid(ps))}
         <div class="zlegend">上段が打率、下段は本塁打数と空振り率(空振り / スイング)。<br>
           太枠の中がストライクゾーン。<br>色は打率の高さ。</div>
       </div>
@@ -3720,6 +3997,32 @@ function zoneGrid(rows){
       <i>${(c.hr?`HR${c.hr} `:"")+(whiff===null?"":whiff+"%")}</i></div>`;
   }
   return `<div class="zone">${html}</div>`;
+}
+
+/**
+ * ゾーンの横に立たせる打者の影。
+ *
+ * <p>捕手目線なので、右打者は左側(三塁側)、左打者は右側に立つ。
+ * ストライクゾーンの上下が脇の下と膝に来るように背丈を合わせてある。
+ */
+function batterShadow(name, inner){
+  const lefty=stanceOf(name)==="L";
+  return `<div class="zonebox${lefty?" lefty":""}">
+    <svg class="zoneman" width="78" height="248" viewBox="0 0 78 248"
+      aria-hidden="true" focusable="false">
+      <path d="M20 58 L5 4" stroke="currentColor" stroke-width="8"
+        stroke-linecap="round" opacity=".55"/>
+      <g fill="currentColor">
+        <rect x="26" y="10" width="30" height="30" rx="3"/>
+        <rect x="24" y="46" width="34" height="58" rx="4"/>
+        <rect x="10" y="52" width="14" height="44" rx="6"/>
+        <rect x="24" y="104" width="34" height="44" rx="4"/>
+        <rect x="25" y="148" width="14" height="100" rx="4"/>
+        <rect x="43" y="148" width="14" height="100" rx="4"/>
+      </g>
+    </svg>
+    ${inner}
+  </div>`;
 }
 
 /* ---------------------------------------------------------- 投手の能力
@@ -3930,7 +4233,7 @@ function slowStarter(rows){
  * <p>中心のボールから、その向きへ変化量のぶんだけ段を積む。
  * 球種の名前は段の先に書く。
  */
-function breakCompass(types){
+function breakCompass(types, lefty){
   const W=280, H=210, cx=W/2, cy=H/2;
   // 向きごとの角度(度。0 が右、下が正)
   const DEG={up:-90, upRight:-45, right:0, lowRight:45,
@@ -3943,7 +4246,10 @@ function breakCompass(types){
   types.forEach(t=>{ (bucket[t.dir]=bucket[t.dir] || []).push(t); });
   let g="";
   Object.keys(bucket).forEach(dir=>{
-    const list=bucket[dir], base=DEG[dir]===undefined ? 90 : DEG[dir];
+    const list=bucket[dir];
+    // 左投手は左右が逆に見える。図もそのまま裏返す。
+    const raw=DEG[dir]===undefined ? 90 : DEG[dir];
+    const base=lefty ? 180-raw : raw;
     // 2 本以上あるときは角度を広げ、名前の位置も前後へずらす
     const spread=list.length>1 ? 34 : 0;
     list.forEach((t, i)=>{
@@ -4012,7 +4318,7 @@ function pawaPitcher(){
           ${abplain("球速", "125 km/h")}
           ${abrow("コントロール", A.control)}
           ${abrow("スタミナ", A.stamina)}
-          ${breakCompass(A.types)}
+          ${breakCompass(A.types, throwHandOf(PLAYER)==="L")}
         </div>
         <div class="card ab" style="gap:6px">
           ${basicRow(skills.basics)}
@@ -4029,7 +4335,14 @@ function pitcherView(){
   const L=pitcherLine(pa), S=summarize(ps);
   const xw=S.pa ? (S.xbaSum+S.bb+S.hbp)/S.pa : null;
   const xera=xeraOf(xw);
+  const RV=pitchRunValues(ps);
   const rows=[
+    ["#","Value"],
+    ["Pitching Run Value","100 球あたり","pitch_rv",RV.pitching,f1],
+    ["Fastball Run Value","速球系","fast_rv",RV.fast,f1],
+    ["Breaking Run Value","変化球系","break_rv",RV.breaking,f1],
+    ["Offspeed Run Value","遅い球","off_rv",RV.offspeed,f1],
+    ["#","Pitching"],
     ["xERA","期待防御率(5回)","xera",xera,f1],
     ["xBA","被期待打率","xba_p",S.xba,f3],
     ["Avg Exit Velo","被打球の平均速度","ev_p",S.ev,f1],
