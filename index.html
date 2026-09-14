@@ -381,6 +381,29 @@ main:not(.wide) table{font-size:11px}
 main:not(.wide) table th,main:not(.wide) table td{padding:2px 5px}
 main:not(.wide) .who .nm{font-size:20px}
 main:not(.wide) section{border-radius:6px}
+main:not(.wide) .title{font-size:13px; padding:7px 12px}
+main:not(.wide) .who{padding:8px 12px 6px}
+main:not(.wide) .who .meta{font-size:11px}
+main:not(.wide) .prow{grid-template-columns:118px 1fr 40px; gap:7px; padding:2px 11px}
+main:not(.wide) .prow .nm{font-size:11px}
+main:not(.wide) .prow .nm small{font-size:9px}
+main:not(.wide) .prow .val{font-size:11px}
+main:not(.wide) .bar{height:16px}
+main:not(.wide) .bar .num{width:18px; height:18px; font-size:9px; border-width:2px}
+main:not(.wide) .pgroup{font-size:9.5px; padding:6px 11px 2px}
+main:not(.wide) .zone{grid-template-columns:repeat(5,52px); grid-auto-rows:41px}
+main:not(.wide) .z b{font-size:11px}
+main:not(.wide) .z i{font-size:8.5px}
+main:not(.wide) .zonebox{padding-left:56px}
+main:not(.wide) .zonebox.lefty{padding-left:0; padding-right:56px}
+main:not(.wide) .zoneman{width:58px; height:213px}
+main:not(.wide) .zlegend{font-size:10px; max-width:130px}
+main:not(.wide) .usage{font-size:11px}
+main:not(.wide) .usage td{padding:3px 3px}
+main:not(.wide) .note{font-size:10px; padding:6px 11px 0}
+main:not(.wide) .apt{font-size:10.5px}
+main:not(.wide) .empty{font-size:11px; padding:10px}
+main:not(.wide) .loclegend{font-size:10px}
 main.wide{grid-template-columns:minmax(0,1fr); max-width:1180px; margin-inline:auto}
 /* 能力画面は名札のぶんと中身のぶん、1.3 倍ほど広く取る */
 main.wide.pawawide{max-width:1540px}
@@ -460,14 +483,9 @@ col.c-num{width:50px} col.c-flag{width:66px}
   border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid currentColor}
 .poor{color:var(--cold)} .avg{color:var(--mid)} .great{color:var(--hot)}
 
-.prow{display:grid; grid-template-columns:104px 1fr 44px; gap:9px; align-items:center;
+.prow{display:grid; grid-template-columns:126px 1fr 44px; gap:8px; align-items:center;
   padding:3px 14px}
 .prow + .prow{border-top:1px dashed var(--line-soft)}
-/* 打球の難しさごとの成否 */
-.tiers{display:flex; flex-wrap:wrap; gap:4px 10px; font-size:10.5px; padding:2px 0 4px}
-.tiers span{display:flex; gap:4px; align-items:baseline}
-.tiers i{font-style:normal; color:var(--muted)}
-.tiers b{font-family:"Roboto Mono",monospace; font-weight:500}
 /* パーセンタイルのくくりの見出し */
 .pgroup{font-size:10.5px; font-weight:700; letter-spacing:.10em; text-transform:uppercase;
   color:var(--muted); padding:9px 14px 3px; border-top:1px solid var(--line-soft)}
@@ -1188,6 +1206,11 @@ function recovered(r){
   return r.threwtobase===true || r.gotout===true || r.assist===true;
 }
 
+/** その打球に触れたか。順番は問わない。 */
+function touchedBall(r){
+  return r.caughtonfly===true || nz(r.touchorder)>0;
+}
+
 /**
  * 自分で打球に追いついたか。
  *
@@ -1215,21 +1238,24 @@ function fieldGroup(position){
 let FIELD_BASE=null, FIELD_BASE_N=-1;
 function fieldBase(){
   if(FIELD_BASE && FIELD_BASE_N===DATA.play.length) return FIELD_BASE;
-  const sum={}, all={n:0, reach:0, drop:0};
+  const sum={}, all={n:0, reach:0, drop:0, touches:0};
   DATA.play.forEach(r=>{
     if(r.kind!=="field") return;
     const at=String(r.position||"");
     if(!POS_LABEL[at]) return;
     const g=fieldGroup(at);
     const one=sum[g] || (sum[g]={n:0, reach:0, drop:0});
-    const drop=r.fumbled===true
+    const drop=(r.fumbled===true && !recovered(r))
       ? ((OUTFIELD.has(at) && r.fumbleonfly===true) ? 3.0 : 1.0) : 0;
     one.n++; all.n++;
     if(reachedBall(r)){ one.reach++; all.reach++; }
+    if(touchedBall(r)) all.touches++;
     one.drop+=drop; all.drop+=drop;
   });
   const wide={reach: all.n ? all.reach/all.n : 0.35,
-              drop: all.n ? all.drop/all.n : 0.15};
+              drop: all.n ? all.drop/all.n : 0.15,
+              // 触れた打球あたりの落球。捕球の目盛りはこちらで見る
+              touchDrop: all.touches ? all.drop/all.touches : 0.2};
   const out={all:wide};
   ["battery","infield","outfield"].forEach(g=>{
     const one=sum[g];
@@ -1242,6 +1268,17 @@ function fieldBase(){
   });
   FIELD_BASE=out; FIELD_BASE_N=DATA.play.length;
   return out;
+}
+
+/**
+ * 打球を処理できたときの伸び。
+ *
+ * <p>平均より上回った分だけを大きく見る。下回った分はそのまま。
+ * 守備が上手い人の伸びしろが小さいと、誰も差が出ないため。
+ */
+const RANGE_GAIN=1.8;
+function rangeLift(over){
+  return over>0 ? over*RANGE_GAIN : over;
 }
 
 /**
@@ -1268,7 +1305,7 @@ function fieldingLine(rows){
   let chances=0, made=0, expected=0;
   let armSum=0, armN=0, assists=0, putouts=0;
   let throws=0, errors=0, errorWeight=0;
-  let drops=0, dropWeight=0, bases=0, dropExpected=0;
+  let drops=0, dropWeight=0, bases=0, dropExpected=0, touches=0;
   const tiers={};
   rows.forEach(r=>{
     const sx=nz(r.startx), sz=nz(r.startz), lx=nz(r.landx), lz=nz(r.landz);
@@ -1287,6 +1324,7 @@ function fieldingLine(rows){
     }
     const allowed=nz(r.basesallowed);
     if(allowed!==null) bases+=allowed;
+    if(touchedBall(r)) touches++;
     if(r.fumbled===true && !recovered(r)){
       drops++;
       // 外野のノーバウンド落球は大減点。捕れていれば確実にアウトだった。
@@ -1312,17 +1350,18 @@ function fieldingLine(rows){
   // 機会が少ないうちは、平均どおりの人が 16 機会ぶん先にいるものとして混ぜる。
   // 寄せ先はその人が守った位置の平均。外野と内野では来る打球が違う。
   const reachRate=chances ? blendRate(made, chances, expected/chances, 16) : null;
-  const dropRate=chances
-    ? blendRate(dropWeight, chances, dropExpected/chances, 16) : null;
+  // 落球は「触れた打球」で割る。触ってもいない打球は関係ない。
+  const dropRate=touches
+    ? blendRate(dropWeight, touches, base.all.touchDrop, 8) : null;
   return {
-    chances, made, expected, reachRate, dropRate, dropExpected, tiers,
+    chances, made, expected, reachRate, dropRate, dropExpected, tiers, touches,
     // 1 つのアウトはおよそ 0.75 点ぶんの価値がある
-    range: chances ? (made-expected)*0.75 : null,
+    range: chances ? rangeLift(made-expected)*0.75 : null,
     arm: armN ? armSum/armN : null,
     // 送球の値打ち。刺した数を足し、悪送球と余計な進塁を引く。
     armValue: (armN||throws) ? assists*0.45 - errorWeight*0.5 - bases*0.12 : null,
-    // 捕球。落球の重さぶんだけ引く。
-    catchRuns: chances ? -dropWeight*0.5 : null,
+    // 捕球。落球の重さぶんだけ引く。こぼしはそこまで重く見ない。
+    catchRuns: chances ? -dropWeight*0.3 : null,
     throwAccuracy: throws ? 100*(throws-errors)/throws : null,
     drops, dropWeight, assists, putouts, throws, errors, bases
   };
@@ -1953,14 +1992,8 @@ function fieldingPanel(name){
     ["Arm","送球の速さ","arm", F.arm, f1],
     ["Baserunning","走塁の値打ち","baserun", per(B.runs,B.plays), v=>v.toFixed(3)]
   ];
-  const tiers=REACH_TIERS.map(t=>{
-    const one=F.tiers[t.name];
-    if(!one) return "";
-    return `<span><i>${t.name}</i><b>${one.made}/${one.n}</b></span>`;
-  }).filter(Boolean).join("");
   return `<div class="pad" style="padding-top:10px">
       <div class="head">守備と走塁<small>守備 ${F.chances} 機会 / 走塁 ${B.plays} 回</small></div>
-      ${tiers ? `<div class="tiers">${tiers}</div>` : ""}
     </div>
     ${rows.map(r=>prow(...r)).join("")}`;
 }
@@ -3473,11 +3506,11 @@ function gloveAbility(name){
   // 割合そのものを段の期待値へ寄せてあるので、機会が少ない人は真ん中に来る。
   const wide=fieldBase();
   const glove=F.chances
-    ? ability(F.reachRate - F.expected/F.chances, -0.30, 0.30)
+    ? ability(rangeLift(F.reachRate - F.expected/F.chances), -0.30, 0.30)
     : ABILITY_DEFAULT;
   // 捕球。落球の少なさ。外野のノーバウンド落球は 3 つぶんとして数えてある。
-  const hands=F.chances
-    ? ability(F.dropRate, wide.all.drop*1.88+0.02, 0)
+  const hands=F.touches
+    ? ability(F.dropRate, wide.all.touchDrop*2.6+0.05, 0)
     : ABILITY_DEFAULT;
   // 送球(コントロール)。悪送球の少なさ。送球の数も少ないので平均へ寄せる。
   const control=F.throws
