@@ -4723,9 +4723,9 @@ function drawHeats(){
 
 /** 打者の並び。 */
 const SPLIT_BAT=[
+  {head:"打率",  get:L=>f3(L.avg)},
   {head:"打席",  get:L=>L.pa},
   {head:"打数",  get:L=>L.ab},
-  {head:"打率",  get:L=>f3(L.avg)},
   {head:"本塁打",get:L=>L.hr},
   {head:"打点",  get:L=>L.rbi},
   {head:"安打",  get:L=>L.h},
@@ -4759,9 +4759,12 @@ const SPLIT_PIT=[
 const SPLIT_PIT_COUNT=SPLIT_PIT.slice(2);
 
 /** 通算だけに出す項目。打者は wRC+。 */
-const SPLIT_BAT_TOTAL=SPLIT_BAT.concat([
-  {head:"wRC+", get:L=>{ const v=wrcPlus(L); return v===null?"—":Math.round(v); }}
-]);
+function splitBatTotal(name){
+  const games=new Set(plateOf(name,"bat").map(r=>String(r.game_id))).size;
+  return [{head:"試合", get:()=>games}].concat(SPLIT_BAT).concat([
+    {head:"wRC+", get:L=>{ const v=wrcPlus(L); return v===null?"—":Math.round(v); }}
+  ]);
+}
 
 /** 通算だけに出す項目。投手は勝敗と救援の記録。 */
 function splitPitTotal(name){
@@ -4872,7 +4875,7 @@ function splitBatter(){
   return `${splitHead(PLAYER, "打者")}
   <section class="span"><div class="pad">
     <div class="head">通算</div>
-    ${splitTable([{label:"通算", rows:pa}], SPLIT_BAT_TOTAL)}
+    ${splitTable([{label:"通算", rows:pa}], splitBatTotal(PLAYER))}
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">カウント別<small>${ended.length} 打席</small></div>
