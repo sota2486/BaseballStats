@@ -1123,7 +1123,7 @@ const SCALE={
   // スイングの速さと、芯で捉えた度合い
   bat_speed:[95,130], squared:[60,100],
   // Run Value。打者は通算の点、投手は 100 球あたりの点
-  bat_rv:[-0.9,0.9], run_rv:[-0.06,0.12], field_rv:[-0.7,0.3],
+  bat_rv:[-0.9,0.9], run_rv:[-0.05,0.10], field_rv:[-0.7,0.3],
   pitch_rv:[-4.0,4.0], fast_rv:[-5.0,5.0], break_rv:[-5.0,5.0], off_rv:[-7.0,7.0],
   // 守備と走塁。いずれも 1 プレーあたりに直した値で見る
   range:[-0.25,0.25], arm_value:[-0.20,0.20], arm:[95,145],
@@ -1258,6 +1258,24 @@ const REACH_TIERS=[
 ];
 function reachTier(gap){
   return REACH_TIERS.find(t=>gap<=t.limit) || REACH_TIERS[REACH_TIERS.length-1];
+}
+
+/**
+ * 打球の系統から、どれだけ捕りやすいか。
+ *
+ * <p>battedType は「打ち出し角の帯 / 打球速度の帯」。
+ * 弱く上がった打球は誰でも追いつけ、速く低い打球は抜けていく。
+ * 実測でも LT100 の打球は到達率 50%、200+ は 0% だった。
+ */
+function battedEase(type){
+  const text=String(type||"");
+  const part=text.split("/");
+  const SPEED={"LT100":1.35, "100-125":1.15, "125-150":1.05,
+               "150-175":0.95, "175-200":0.80, "200+":0.65};
+  const ANGLE={"LT0":1.10, "0-15":0.90, "15-30":0.95, "30-45":1.05, "45+":1.15};
+  const speed=SPEED[part[1]] === undefined ? 1 : SPEED[part[1]];
+  const angle=ANGLE[part[0]] === undefined ? 1 : ANGLE[part[0]];
+  return speed*angle;
 }
 
 /** 同じ打球の行をまとめる鍵。 */
@@ -1442,7 +1460,8 @@ function fieldingLine(rows){
     if(gap===null || !ownsPlay(r)) return;
     const tier=reachTier(gap);
     chances++;
-    expected+=tier.expect;
+    // 打球の系統でも捕りやすさは変わる。弱いフライは易しく、速いライナーは難しい。
+    expected+=Math.max(0.02, Math.min(0.98, tier.expect*battedEase(r.battedtype)));
     tiers[tier.name]=tiers[tier.name] || {n:0, made:0};
     tiers[tier.name].n++;
     // 落球の起こりやすさは守備位置でそこまで変わらない。リーグ全体で見る。
@@ -1508,8 +1527,52 @@ function expectedAdvance(row){
   }
 }
 
+/**
+ * もう一つ先の塁を狙えたかの 5 段階。
+ *
+ * <p>守備が打球に触るまでの時間(touchTicks)で分ける。
+ * 触るのが遅い打球ほど、走者は次の塁へ行きやすい。
+ * 外野まで届くフライは 5〜6 秒、ライナーでも 4 秒はかかるので、
+ * 境目はそのあたりから上に置いてある。
+ *
+ * <p>expect はその段で進塁できて当たり前という割合。
+ * penalty は、行けたはずなのに止まったときに引く点。
+ */
+const RUN_TIERS=[
+  {limit:80,       name:"無理",           expect:0.05, penalty:0},
+  {limit:100,      name:"チャレンジ",     expect:0.25, penalty:0},
+  {limit:120,      name:"ごぶごぶ",       expect:0.50, penalty:0},
+  {limit:150,      name:"進塁できそう",   expect:0.75, penalty:0.25},
+  {limit:Infinity, name:"絶対進塁できる", expect:0.95, penalty:0.5}
+];
+
+/**
+ * 余分な塁を狙える打球か。
+ *
+ * <p>内野で止まるような当たりでは、どんなに足が速くても
+ * もう一つ先へは行けない。走者として出ているときも同じ。
+ */
+const RUN_MIN_DISTANCE=80;
+
+/**
+ * 塁に出ている走者の有利ぶん(tick)。
+ *
+ * <p>打者走者は振り終わってから走り出すが、塁上の走者は打った瞬間に
+ * もう動いている。先の塁にいるほどその差は積み上がるので、
+ * 1 つにつきこれだけ touchTicks に足して難易度を見る。
+ * 三塁走者が外野への当たりで還れないのは、打者が二塁を狙えないのとは
+ * 意味が違う。
+ */
+const RUN_HEAD_START=30;
+function runTier(touchTicks){
+  const t=touchTicks===null ? 0 : touchTicks;
+  return RUN_TIERS.find(one=>t<one.limit) || RUN_TIERS[RUN_TIERS.length-1];
+}
+
 function baserunLine(rows){
   let plays=0, extra=0, outs=0, sprint=0, sprintN=0, held=0;
+  let credit=0, penalty=0;
+  const tiers={};
   rows.forEach(r=>{
     const from=nz(r.startbase), to=nz(r.endbase);
     plays++;
@@ -1519,18 +1582,42 @@ function baserunLine(rows){
     if(r.outonplay===true && (kind==="TAG"||kind==="DOUBLED_OFF")) outs++;
     if(from===null||to===null) return;
     // 当たり前に進める分を引いた残りが、その人の走塁で稼いだ塁。
-    const gained=(to-from)-expectedAdvance(r);
-    if(gained>0) extra+=gained;
-    // 打った本人が、遠くへ飛ばしたのに一塁で止まった。足が遅い証拠として引く。
+    // 本塁より先は無いので、当たり前の分もそこで頭打ちにする。
+    const need=Math.min(expectedAdvance(r), 4-from);
+    const gained=(to-from)-need;
+    const touch=nz(r.touchticks);
     const far=nz(r.distance);
-    if(from===0 && to<=1 && r.outonplay!==true && far!==null && far>=70) held++;
+    // 本塁打と、誰も追わずに転がり続けた打球は走塁を測れない。
+    // 飛距離が足りない当たりも、そもそも余分な進塁ができない。
+    const judge=paResults()[String(r.pa)]!=="HOME_RUN"
+      && touch!==null && touch>0 && touch<=300
+      && far!==null && far>=RUN_MIN_DISTANCE;
+    if(!judge) return;
+    // 塁に出ているぶんだけ余裕がある。同じ打球でも三塁走者は還りやすい。
+    if(to>=4 && gained<=0){
+      // 生還した走者。それ以上進む塁が無いので、走塁の機会として数えない。
+      return;
+    }
+    const tier=runTier(touch + RUN_HEAD_START*Math.max(0, from));
+    const one=tiers[tier.name] || (tiers[tier.name]={n:0, made:0});
+    one.n++;
+    if(gained>0){
+      extra+=gained;
+      one.made++;
+      // 難しい場面で進めたほど大きく加点する
+      credit+=gained*(1-tier.expect);
+    }else if(to<4 && r.outonplay!==true && tier.penalty>0){
+      // 行けたはずの場面で止まった。ごぶごぶ以下は咎めない。
+      penalty+=tier.penalty;
+      held++;
+    }
   });
   return {
-    plays, extra, outs, held,
+    plays, extra, outs, held, tiers,
     sprint: sprintN ? sprint/sprintN : null,
-    // 1 つ余分に進めばおよそ 0.3 点、走塁死はおよそ 0.5 点の損。
-    // 長打性の当たりで止まったぶんも、進めなかった 1 つぶんとして引く。
-    runs: plays ? extra*0.3 - outs*0.5 - held*0.3 : null,
+    // 1 つ先の塁はおよそ 0.3 点、走塁死はおよそ 0.5 点の損。
+    // 難しい場面で進めたぶんは大きく、行けて当たり前を見送ったぶんは引く。
+    runs: plays ? credit*0.3 - penalty*0.3 - outs*0.5 : null,
     extraRate: plays ? 100*(extra-held)/plays : null
   };
 }

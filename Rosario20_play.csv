@@ -1,6 +1,6 @@
-game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
 2026091201,1,BOTTOM,2026091201#4,run,Rosario20,13,-1,163.0,4.2,27.4,0-15/150-175,0,1,false,0.00,,,,,,,,,,,,,,,false,,,,,R
-2026091201,1,BOTTOM,2026091201#5,run,Rosario20,-1,-1,179.2,34.5,,30-45/175-200,1,1,false,0.00,,,,,,,,,,,,,,,false,,,,,R
+2026091201,1,BOTTOM,2026091201#5,run,Rosario20,-1,-1,179.2,34.5,,30-45/175-200,1,4,false,0.00,,,,,,,,,,,,,,,false,,,,,R
 2026091201,2,TOP,,spot,Rosario20,,,,,,,,,,,FIRST_BASEMAN,,,,,,,,,,,,,,,,,,,R
 2026091201,2,BOTTOM,2026091201#12,run,Rosario20,2,40,167.5,-20.4,3.3,LT0/150-175,0,1,false,0.20,,,,,,,,,,,,,,,true,,,,,R
 2026091201,2,BOTTOM,2026091201#16,run,Rosario20,29,58,64.6,23.4,21.0,15-30/LT100,2,2,false,0.87,,,,,,,,,,,,,,,false,,,,,R
