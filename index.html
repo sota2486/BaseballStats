@@ -514,7 +514,14 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .bigface{flex:none; width:200px}
 .bigface .shot{width:200px; height:200px; border-radius:10px; overflow:hidden;
   background:var(--panel-2); display:flex; align-items:center; justify-content:center}
-.bigface .shot img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated}
+/* 写真は切り取らずに全体を入れる。切り取ると顔の一部だけが大きく出る */
+.bigface .shot .bigshot{width:100%; height:100%; max-width:100%;
+  object-fit:contain; image-rendering:pixelated; border-radius:0}
+.bigface .shot .bigph{width:100%; height:100%; display:flex; position:relative;
+  align-items:center; justify-content:center; overflow:hidden;
+  color:#fff; font-family:"Barlow Condensed",sans-serif; font-weight:700;
+  font-size:88px; line-height:1}
+.bigface .shot .bigph .bigshot{position:absolute; left:0; top:0}
 .bigface .shot .withface{gap:0}
 .bigface .shot .withface>span:last-child{display:none}
 .bigface .nm{font-size:22px; font-weight:800; padding:8px 2px 4px; line-height:1.2}
@@ -557,20 +564,8 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .gamelog td.when{text-align:left; font-weight:600}
 .gamelog td.when small{display:block; font-weight:400; color:var(--muted); font-size:10px}
 .gamelog th.pares,.gamelog td.pares{text-align:left; white-space:normal; min-width:240px}
-/* 打席結果の四角 */
-.pachip{display:inline-block; margin:1px 3px 1px 0; padding:1px 6px;
-  border-radius:4px; font-size:11px; font-weight:700; line-height:1.5;
-  border:1px solid transparent}
-.pachip.hr{background:#ffd9df; border-color:#f0a2b2; color:#8c1f36}
-.pachip.hit{background:#ffeccc; border-color:#f0c583; color:#8a5a12}
-.pachip.walk{background:#dff0d8; border-color:#a9d39a; color:#2f6b28}
-.pachip.so{background:#e2e6ec; border-color:#b8c0cc; color:#4a5464}
-.pachip.out{background:#f1f2f4; border-color:#d7dae0; color:#5c636e}
-:root[data-theme="dark"] .pachip.hr{background:#5b2030; border-color:#8c3348; color:#ffd9df}
-:root[data-theme="dark"] .pachip.hit{background:#5a441c; border-color:#8a6a2c; color:#ffeccc}
-:root[data-theme="dark"] .pachip.walk{background:#254b21; border-color:#3f7a38; color:#dff0d8}
-:root[data-theme="dark"] .pachip.so{background:#333a45; border-color:#4e5866; color:#dfe4ea}
-:root[data-theme="dark"] .pachip.out{background:#2d3139; border-color:#454b55; color:#d7dae0}
+/* 過去の試合に並べる打席結果。色は打席一覧と同じ */
+.rtag.inline{width:auto; margin:1px 3px 1px 0; padding:1px 7px}
 
 /* 球種別データ */
 .mixwrap{display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap}
@@ -969,6 +964,25 @@ function faceSrc(name){
 const SKIN_FACE=name => "https://mc-heads.net/avatar/"
   + encodeURIComponent(String(name)) + "/64.png";
 
+/**
+ * 選手ページに出す大きな写真。
+ *
+ * <p>手元に写真があればそれを、無ければスキンの全身を出す。
+ * 顔だけを引き伸ばすと、目のあたりだけが大写しになって誰か分からない。
+ */
+const SKIN_BODY=name => "https://mc-heads.net/player/"
+  + encodeURIComponent(String(name)) + "/220.png";
+
+function bigFace(name){
+  const src=faceSrc(name);
+  if(src) return `<img class="bigshot" src="${src}" alt="">`;
+  const ch=(String(name||"?").trim()[0]||"?").toUpperCase();
+  const skin=name
+    ? `<img class="bigshot" alt="" src="${esc(SKIN_BODY(name))}" onerror="this.remove()">`
+    : "";
+  return `<span class="bigph" style="background:${nameColor(name)}">${esc(ch)}${skin}</span>`;
+}
+
 /** 顔の画像。手元に無ければスキンの顔、それも駄目なら頭文字。 */
 function face(name, size){
   size=size||22;
@@ -1109,7 +1123,7 @@ const SCALE={
   // スイングの速さと、芯で捉えた度合い
   bat_speed:[95,130], squared:[60,100],
   // Run Value。打者は通算の点、投手は 100 球あたりの点
-  bat_rv:[-6,12], run_rv:[-1.5,4.0], field_rv:[-5.0,2.5],
+  bat_rv:[-0.8,1.6], run_rv:[-0.2,0.5], field_rv:[-0.6,0.4],
   pitch_rv:[-4.0,4.0], fast_rv:[-5.0,5.0], break_rv:[-5.0,5.0], off_rv:[-7.0,7.0],
   // 守備と走塁。いずれも 1 プレーあたりに直した値で見る
   range:[-0.25,0.25], arm_value:[-0.20,0.20], arm:[95,145],
@@ -2029,6 +2043,7 @@ function infieldHits(name){
  * 守備は追いつき・捕球・送球を足したもの。
  */
 function batterRunValues(name){
+  const each=gamesPlayed(name);
   const L=line(plateOf(name,"bat"));
   const lg=league();
   const w=wobaOf(L);
@@ -2043,7 +2058,18 @@ function batterRunValues(name){
     ? (B.runs||0) + infield*0.30 + legs : null;
   const field=F.chances
     ? (F.range||0)+(F.catchRuns||0)+(F.armValue||0) : null;
-  return {bat, run, field};
+  // 通算だと、出た試合が多い人ほど大きくなる。1 試合あたりに直して並べる。
+  const per=v=>v===null || !each ? null : v/each;
+  return {bat:per(bat), run:per(run), field:per(field)};
+}
+
+/** その選手が出た試合の数。打席と投球のどちらかがあれば 1 試合。 */
+function gamesPlayed(name){
+  const games=new Set();
+  DATA.plate.forEach(r=>{
+    if(r.batter===name || r.pitcher===name) games.add(String(r.game_id));
+  });
+  return games.size;
 }
 
 /* ------------------------------------------------------------- 表示 */
@@ -2822,7 +2848,7 @@ function leaderboardView(){
     <div class="lbbar">
       <div class="seg">${seg("side","bat","打者")}${seg("side","pit","投手")}</div>
       <span class="note">項目を押すと下の一覧がその項目に変わります。
-        率の項目は規定${LB.side==="bat" ? "打席 "+QUAL_PA : "投球回 "+QUAL_IP}以上が先です。</span>
+        ${LB.side==="bat" ? "規定打席は "+QUAL_PA+" 打席です。" : "規定投球回は "+QUAL_IP+" 回です。"}</span>
     </div>
     <div class="cards three">${cols.map(c=>leaderCard(c, rows, LB.side)).join("")}</div>
   </div></section>
@@ -4189,9 +4215,9 @@ function batterView(){
   const RV=batterRunValues(PLAYER);
   const rows=[
     ["#","Value"],
-    ["Batting Run Value","打撃で稼いだ点","bat_rv",RV.bat,f1],
-    ["Running Run Value","走塁で稼いだ点","run_rv",RV.run,f1],
-    ["Fielding Run Value","守備で防いだ点","field_rv",RV.field,f1],
+    ["Batting Run Value","1 試合あたりの点","bat_rv",RV.bat,f2],
+    ["Running Run Value","1 試合あたりの点","run_rv",RV.run,f2],
+    ["Fielding Run Value","1 試合あたりの点","field_rv",RV.field,f2],
     ["#","Hitting"],
     ["xwOBA","期待出塁率","xwoba",xwoba,f3],
     ["xBA","期待打率","xba",S.xba,f3],
@@ -4404,7 +4430,10 @@ function zoneGrid(rows){
   let html="";
   for(let z=1;z<=25;z++){
     const c=cell[z], avg=c.ab?c.h/c.ab:null;
-    const bg=c.pa===0?"var(--panel-2)":mix("--cold","--hot",Math.max(0,Math.min(1,(avg??0)/0.450)));
+    // 色はパーセンタイルの棒と同じ並び。真ん中で紫にならないよう、
+    // 青 → 灰 → 赤 と 2 段に分けて混ぜる。
+    const bg=c.pa===0 ? "var(--panel-2)"
+      : scoreColor(Math.max(0, Math.min(100, 100*(avg??0)/0.450)));
     const whiff=c.swings ? Math.round(100*c.whiffs/c.swings) : null;
     html+=`<div class="z${ZONE_IN.has(z)?" in":""}" style="background:${bg}"
       title="ゾーン ${z} / ${c.pa} 打席 / ${c.swings} スイング ${c.whiffs} 空振り"><b>${c.ab?f3(avg):""}</b>
@@ -5305,7 +5334,7 @@ function positionsOf(name){
 /** 上部の顔写真と素性。写真の高さは 300px。 */
 function playerFace(name, role){
   return `<div class="bigface">
-    <div class="shot">${face(name,300)}</div>
+    <div class="shot">${bigFace(name)}</div>
     <div class="nm">${esc(name)}</div>
     <dl>
       <dt>投打</dt><dd>${handsText(name, true)}</dd>
@@ -5409,7 +5438,8 @@ function sprayFan(name){
     const fill=share>=25 ? "#f7b6c7" : (share<15 ? "#a8cfe0" : "#f2f2f2");
     const mid=(from+to)/2;
     svg+=arc(from, to, inner, outer, fill);
-    const at=pos(mid, (inner+outer)/2);
+    // 中心に近いほど扇が細いので、文字は外寄りに置く
+    const at=pos(mid, inner + (outer-inner)*0.72);
     svg+=`<text x="${at[0]}" y="${at[1]}" text-anchor="middle"
       dominant-baseline="central" font-size="14" fill="#333">${share.toFixed(1)}%</text>`;
     svg+=arc(from, to, outer+5, outer+42, "#e6e6e6");
@@ -5431,19 +5461,15 @@ function sprayFan(name){
 }
 
 /* ------------------------------------------------------- 過去の試合 */
-/** 打席結果の色分け。安打・出塁・アウトで分ける。 */
-function resultTone(result){
-  if(result==="HOME_RUN") return "hr";
-  if(HIT.has(result)) return "hit";
-  if(result==="WALK" || result==="HIT_BY_PITCH") return "walk";
-  if(result==="STRIKE_OUT") return "so";
-  return "out";
-}
-
-/** 打席結果を四角で囲って並べる。 */
+/**
+ * 打席結果を四角で囲って並べる。
+ *
+ * <p>色は打席一覧と同じ {@link resultClass} を使う。
+ * 同じ結果が場所によって違う色になると読み替えが要る。
+ */
 function paTexts(rows){
   return rows.map(r=>
-    `<span class="pachip ${resultTone(r.result)}">${esc(JA[r.result] || r.result || "—")}</span>`
+    `<span class="rtag inline ${resultClass(r.result)}">${esc(JA[r.result] || r.result || "—")}</span>`
   ).join("");
 }
 
@@ -5477,7 +5503,7 @@ function gameLogPitcher(name){
     const L=pitcherLine(mine);
     const pitches=pitchOf(name,"pit").filter(r=>String(r.game)===g).length;
     return `<tr><td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
-      <td>${pitches}</td>
+      <td>${pitches ? pitches : "—"}</td>
       <td>${ipText(L.outs)}</td><td>${L.h}</td><td>${L.hr}</td><td>${L.runs}</td>
       <td>${L.so}</td><td>${L.bb}</td><td>${f2(L.era)}</td></tr>`;
   }).join("");
