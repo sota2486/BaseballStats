@@ -1123,7 +1123,7 @@ const SCALE={
   // スイングの速さと、芯で捉えた度合い
   bat_speed:[95,130], squared:[60,100],
   // Run Value。打者は通算の点、投手は 100 球あたりの点
-  bat_rv:[-0.8,1.6], run_rv:[-0.2,0.5], field_rv:[-0.6,0.4],
+  bat_rv:[-0.9,0.9], run_rv:[-0.06,0.12], field_rv:[-0.7,0.3],
   pitch_rv:[-4.0,4.0], fast_rv:[-5.0,5.0], break_rv:[-5.0,5.0], off_rv:[-7.0,7.0],
   // 守備と走塁。いずれも 1 プレーあたりに直した値で見る
   range:[-0.25,0.25], arm_value:[-0.20,0.20], arm:[95,145],
@@ -1478,8 +1478,38 @@ function fieldingLine(rows){
  * <p>進塁は「1 つ先までは当たり前、2 つ以上進めたら上積み」。
  * 走塁死(タッチアウト・飛び出し)は引く。封殺は走者のせいではないので数えない。
  */
+/** 打席 ID → 打席結果。1 球ごとの記録から引く。 */
+let PA_RESULT=null, PA_RESULT_N=-1;
+function paResults(){
+  if(PA_RESULT && PA_RESULT_N===DATA.pitch.length) return PA_RESULT;
+  const box={};
+  DATA.pitch.forEach(r=>{
+    if(r.result && r.pa) box[String(r.pa)]=String(r.result);
+  });
+  PA_RESULT=box; PA_RESULT_N=DATA.pitch.length;
+  return box;
+}
+
+/**
+ * その打席で、走者が当たり前に進める塁の数。
+ *
+ * <p>二塁打を打った打者が二塁まで行くのは打撃の成果であって走塁ではない。
+ * ここを引いておかないと、長打を打つ人ほど走塁がうまいことになってしまう。
+ */
+function expectedAdvance(row){
+  const result=paResults()[String(row.pa)] || "";
+  switch(result){
+    case "HOME_RUN": return 4;
+    case "TRIPLE": return 3;
+    case "DOUBLE": case "GROUND_RULE_DOUBLE": return 2;
+    case "SINGLE": case "WALK": case "HIT_BY_PITCH": case "ERROR": return 1;
+    case "": return 1;              // 結果が分からない。単打と同じ扱い
+    default: return 0;              // アウトになった打席。進めれば走塁の手柄
+  }
+}
+
 function baserunLine(rows){
-  let plays=0, extra=0, outs=0, sprint=0, sprintN=0;
+  let plays=0, extra=0, outs=0, sprint=0, sprintN=0, held=0;
   rows.forEach(r=>{
     const from=nz(r.startbase), to=nz(r.endbase);
     plays++;
@@ -1488,14 +1518,20 @@ function baserunLine(rows){
     const kind=String(r.outkind||"");
     if(r.outonplay===true && (kind==="TAG"||kind==="DOUBLED_OFF")) outs++;
     if(from===null||to===null) return;
-    if(to-from>=2) extra+=(to-from)-1;
+    // 当たり前に進める分を引いた残りが、その人の走塁で稼いだ塁。
+    const gained=(to-from)-expectedAdvance(r);
+    if(gained>0) extra+=gained;
+    // 打った本人が、遠くへ飛ばしたのに一塁で止まった。足が遅い証拠として引く。
+    const far=nz(r.distance);
+    if(from===0 && to<=1 && r.outonplay!==true && far!==null && far>=70) held++;
   });
   return {
-    plays, extra, outs,
+    plays, extra, outs, held,
     sprint: sprintN ? sprint/sprintN : null,
-    // 1 つ余分に進めばおよそ 0.3 点、走塁死はおよそ 0.5 点の損
-    runs: plays ? extra*0.3 - outs*0.5 : null,
-    extraRate: plays ? 100*extra/plays : null
+    // 1 つ余分に進めばおよそ 0.3 点、走塁死はおよそ 0.5 点の損。
+    // 長打性の当たりで止まったぶんも、進めなかった 1 つぶんとして引く。
+    runs: plays ? extra*0.3 - outs*0.5 - held*0.3 : null,
+    extraRate: plays ? 100*(extra-held)/plays : null
   };
 }
 
@@ -4215,9 +4251,9 @@ function batterView(){
   const RV=batterRunValues(PLAYER);
   const rows=[
     ["#","Value"],
-    ["Batting Run Value","1 試合あたりの点","bat_rv",RV.bat,f2],
-    ["Running Run Value","1 試合あたりの点","run_rv",RV.run,f2],
-    ["Fielding Run Value","1 試合あたりの点","field_rv",RV.field,f2],
+    ["Batting Run Value","打撃で増やした得点 / 試合","bat_rv",RV.bat,f2],
+    ["Running Run Value","走塁で増やした得点 / 試合","run_rv",RV.run,f2],
+    ["Fielding Run Value","守備で防いだ失点 / 試合","field_rv",RV.field,f2],
     ["#","Hitting"],
     ["xwOBA","期待出塁率","xwoba",xwoba,f3],
     ["xBA","期待打率","xba",S.xba,f3],
