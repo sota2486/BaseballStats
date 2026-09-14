@@ -511,8 +511,8 @@ col.c-num{width:50px} col.c-flag{width:66px}
 /* ------------------------------------------------ 選手成績 */
 /* 上部。左に顔写真、右に通算成績の枠 */
 .profile{display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap}
-.bigface{flex:none; width:230px}
-.bigface .shot{width:230px; height:300px; border-radius:10px; overflow:hidden;
+.bigface{flex:none; width:200px}
+.bigface .shot{width:200px; height:200px; border-radius:10px; overflow:hidden;
   background:var(--panel-2); display:flex; align-items:center; justify-content:center}
 .bigface .shot img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated}
 .bigface .shot .withface{gap:0}
@@ -528,8 +528,8 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .statgrid{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px}
 .statbox{border:1px solid var(--line); border-radius:8px; background:var(--panel-2);
   padding:7px 6px; text-align:center; min-width:0}
-.statbox i{display:block; font-style:normal; font-size:11px; color:var(--muted);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.statbox i{display:block; font-style:normal; font-size:12.5px; font-weight:700;
+  color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .statbox b{display:block; font-family:"Barlow Condensed",sans-serif;
   font-variant-numeric:tabular-nums; font-size:26px; font-weight:700; line-height:1.15}
 
@@ -556,13 +556,27 @@ col.c-num{width:50px} col.c-flag{width:66px}
   text-align:center; white-space:nowrap}
 .gamelog td.when{text-align:left; font-weight:600}
 .gamelog td.when small{display:block; font-weight:400; color:var(--muted); font-size:10px}
-.gamelog th.pares,.gamelog td.pares{text-align:left; white-space:normal; min-width:220px}
+.gamelog th.pares,.gamelog td.pares{text-align:left; white-space:normal; min-width:240px}
+/* 打席結果の四角 */
+.pachip{display:inline-block; margin:1px 3px 1px 0; padding:1px 6px;
+  border-radius:4px; font-size:11px; font-weight:700; line-height:1.5;
+  border:1px solid transparent}
+.pachip.hr{background:#ffd9df; border-color:#f0a2b2; color:#8c1f36}
+.pachip.hit{background:#ffeccc; border-color:#f0c583; color:#8a5a12}
+.pachip.walk{background:#dff0d8; border-color:#a9d39a; color:#2f6b28}
+.pachip.so{background:#e2e6ec; border-color:#b8c0cc; color:#4a5464}
+.pachip.out{background:#f1f2f4; border-color:#d7dae0; color:#5c636e}
+:root[data-theme="dark"] .pachip.hr{background:#5b2030; border-color:#8c3348; color:#ffd9df}
+:root[data-theme="dark"] .pachip.hit{background:#5a441c; border-color:#8a6a2c; color:#ffeccc}
+:root[data-theme="dark"] .pachip.walk{background:#254b21; border-color:#3f7a38; color:#dff0d8}
+:root[data-theme="dark"] .pachip.so{background:#333a45; border-color:#4e5866; color:#dfe4ea}
+:root[data-theme="dark"] .pachip.out{background:#2d3139; border-color:#454b55; color:#d7dae0}
 
 /* 球種別データ */
 .mixwrap{display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap}
-.mixtable{flex:1 1 440px; min-width:0; overflow-x:auto}
-table.mix{width:100%; border-collapse:collapse; font-size:12px}
-table.mix th,table.mix td{border:1px solid var(--line-soft); padding:5px 7px;
+.mixtable{flex:1 1 380px; min-width:0; max-width:620px; overflow-x:auto}
+table.mix{width:100%; border-collapse:collapse; font-size:11.5px}
+table.mix th,table.mix td{border:1px solid var(--line-soft); padding:4px 5px;
   text-align:center; white-space:nowrap}
 table.mix thead th{background:var(--panel-2); font-weight:700}
 table.mix th small{display:block; font-weight:400; font-size:10px; color:var(--muted)}
@@ -2363,7 +2377,7 @@ function topView(){
     <div class="head" style="margin-top:14px">投手ランキング<small>上位 3 人</small></div>
     <div class="cards">${pitCards}</div>
     <p class="note" style="padding:8px 0 0">
-      率の項目は規定打席 ${QUAL_PA} / 規定投球回 ${QUAL_IP} 以上の選手だけを並べています。</p>
+      規定打席は ${QUAL_PA} 打席、規定投球回は ${QUAL_IP} 回です。</p>
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">ベストプレー<small>上位 5</small></div>
@@ -5177,7 +5191,7 @@ function pitchMix(name){
       <td>${pc(100*t.n/total)}%</td>
       <td>${toLeft?pc(100*left/toLeft)+"%":"—"}</td>
       <td>${toRight?pc(100*right/toRight)+"%":"—"}</td>
-      <td>${allK?pc(100*so/allK)+"%":"—"} (${so})</td>
+      <td>${so}</td>
       <td>${t.swings?pc(100*t.whiffs/t.swings)+"%":"—"}</td>
       <td>${ab?f3(hits/ab):"—"} (${hr})</td>
     </tr>`;
@@ -5200,7 +5214,7 @@ function pitchMix(name){
     <div class="mixtable"><table class="mix">
       <thead>
         <tr><th rowspan="2">球種</th><th colspan="2">球速(km/h)</th>
-          <th colspan="3">投球割合</th><th rowspan="2">奪三振内訳<small>(奪三振)</small></th>
+          <th colspan="3">投球割合</th><th rowspan="2">奪三振</th>
           <th rowspan="2">空振り率</th><th rowspan="2">被打率<small>(被本塁打)</small></th></tr>
         <tr><th>最高</th><th>平均</th><th>全体</th><th>対左</th><th>対右</th></tr>
       </thead>
@@ -5315,12 +5329,12 @@ function batterBoxes(name){
   const risp=line(pa.filter(r=>r.base2===true || r.base3===true));
   const wrc=wrcPlus(L);
   return statBoxes([
-    ["試合", games], ["打席", L.pa], ["打数", L.ab], ["安打", L.h],
-    ["本塁打", L.hr], ["塁打", L.tb],
-    ["二塁打", L.d2], ["三塁打", L.d3], ["打点", L.rbi],
-    ["得点", runsOf(name)], ["四球", L.bb], ["三振", L.so],
-    ["打率", f3(L.avg)], ["出塁率", f3(L.obp)], ["長打率", f3(L.slg)],
-    ["OPS", f3(L.ops)], ["得点圏打率", f3(risp.avg)],
+    ["試合", games], ["打席", L.pa], ["打数", L.ab],
+    ["打率", f3(L.avg)], ["本塁打", L.hr], ["打点", L.rbi],
+    ["安打", L.h], ["二塁打", L.d2], ["三塁打", L.d3],
+    ["塁打", L.tb], ["得点", runsOf(name)], ["得点圏", f3(risp.avg)],
+    ["四球", L.bb], ["三振", L.so], ["出塁率", f3(L.obp)],
+    ["長打率", f3(L.slg)], ["OPS", f3(L.ops)],
     ["wRC+", wrc===null ? "—" : Math.round(wrc)]
   ]);
 }
@@ -5337,10 +5351,11 @@ function pitcherBoxes(name){
   return statBoxes([
     ["登板", games], ["防御率", f2(L.era)], ["投球回", ipText(L.outs)],
     ["勝", win], ["敗", lose], ["勝率", decided ? f3(win/decided) : "—"],
+    ["完投", cg.cg], ["完封", cg.sho],
     ["セーブ", reliefTotal(name,"save")], ["ホールド", reliefTotal(name,"hold")],
-    ["完投", cg.cg], ["完封", cg.sho], ["奪三振", L.so], ["与四球", L.bb],
-    ["奪三振率", k5===null ? "—" : f2(k5)], ["被打率", f3(L.avg)],
-    ["被打席", L.pa], ["被本塁打", L.hr],
+    ["奪三振", L.so], ["与四球", L.bb],
+    ["奪三振率", k5===null ? "—" : f2(k5)], ["被打席", L.pa],
+    ["被打率", f3(L.avg)], ["被本塁打", L.hr],
     ["被OPS", f3(L.ops)], ["WHIP", f2(L.whip)]
   ]);
 }
@@ -5374,7 +5389,7 @@ function sprayFan(name){
   });
   const total=box.reduce((n,one)=>n+one.n,0);
   if(!total) return '<div class="empty">打球の記録がありません</div>';
-  const W=420, H=250, cx=W/2, cy=H-14, outer=H-60, inner=outer*0.58;
+  const W=420, H=250, cx=W/2, cy=H-14, outer=H-60, inner=0;
   // 画面の左がフィールドの左。角度は真上を 0 度として左右へ開く。
   const pos=(deg, r)=>{
     const rad=(deg-90)*Math.PI/180;
@@ -5416,9 +5431,20 @@ function sprayFan(name){
 }
 
 /* ------------------------------------------------------- 過去の試合 */
-/** 打席結果を日本語で並べる。 */
+/** 打席結果の色分け。安打・出塁・アウトで分ける。 */
+function resultTone(result){
+  if(result==="HOME_RUN") return "hr";
+  if(HIT.has(result)) return "hit";
+  if(result==="WALK" || result==="HIT_BY_PITCH") return "walk";
+  if(result==="STRIKE_OUT") return "so";
+  return "out";
+}
+
+/** 打席結果を四角で囲って並べる。 */
 function paTexts(rows){
-  return rows.map(r=>JA[r.result] || r.result || "—").join("、");
+  return rows.map(r=>
+    `<span class="pachip ${resultTone(r.result)}">${esc(JA[r.result] || r.result || "—")}</span>`
+  ).join("");
 }
 
 /** 打者の試合ごとの成績。4 試合ぶん見えてスクロールする。 */
@@ -5432,7 +5458,7 @@ function gameLog(name){
     return `<tr><td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
       <td>${L.pa}</td><td>${L.h}</td><td>${L.hr}</td><td>${L.rbi}</td>
       <td>${runsOfGame(name,g)}</td><td>${L.so}</td><td>${L.bb}</td>
-      <td class="pares">${esc(paTexts(mine))}</td></tr>`;
+      <td class="pares">${paTexts(mine)}</td></tr>`;
   }).join("");
   return `<div class="gamelog"><table>
     <thead><tr><th class="when">試合</th><th>打席</th><th>安打</th><th>本塁打</th>
@@ -5449,15 +5475,16 @@ function gameLogPitcher(name){
   const body=games.map(g=>{
     const mine=pa.filter(r=>String(r.game_id)===g);
     const L=pitcherLine(mine);
+    const pitches=pitchOf(name,"pit").filter(r=>String(r.game)===g).length;
     return `<tr><td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
+      <td>${pitches}</td>
       <td>${ipText(L.outs)}</td><td>${L.h}</td><td>${L.hr}</td><td>${L.runs}</td>
-      <td>${L.so}</td><td>${L.bb}</td><td>${f2(L.era)}</td>
-      <td class="pares">${esc(paTexts(mine))}</td></tr>`;
+      <td>${L.so}</td><td>${L.bb}</td><td>${f2(L.era)}</td></tr>`;
   }).join("");
   return `<div class="gamelog"><table>
-    <thead><tr><th class="when">試合</th><th>投球回</th><th>被安打</th><th>被本塁打</th>
-      <th>失点</th><th>奪三振</th><th>与四球</th><th>防御率</th>
-      <th class="pares">打席結果</th></tr></thead>
+    <thead><tr><th class="when">試合</th><th>球数</th><th>投球回</th><th>被安打</th>
+      <th>被本塁打</th><th>失点</th><th>奪三振</th><th>与四球</th>
+      <th>防御率</th></tr></thead>
     <tbody>${body}</tbody></table></div>`;
 }
 
@@ -6655,7 +6682,9 @@ async function bootFromData(){
     ingest(SAMPLE_RECORD);
     bootFailed("manifest は読めたが、中のファイルを 1 つも読めなかった", missing);
   }else if(missing.length){
-    bootFailed(DATA.files.length+" 件は読めたが、読めなかったものがある", missing);
+    // 一部が置かれていないのは普通のこと。画面には出さず、
+    // 中身を見たいときのために開発者ツールへだけ残す。
+    console.info("読めなかったファイル:", missing);
   }
   applyAliases();
   render();
