@@ -1212,7 +1212,8 @@ function rankValues(key){
 /**
  * 打撃の Run Value の目盛り。wRC+ に合わせて置く。
  *
- * <p>wRC+ 100(リーグ平均)が 50 点、150 が 70 点、200 が 90 点になる。
+ * <p>wRC+ 100(リーグ平均)が 50 点、190 が 92 点になるように置く。
+ * 150 なら 73 点、200 なら 97 点。
  * 打撃だけは他の選手の出来に左右されず、いつ見ても同じ物差しで読める。
  *
  * <p>Run Value は「wRC+ が 100 増えると、1 打席あたりの得点ぶんだけ増える」
@@ -1223,8 +1224,11 @@ function battingScale(){
   if(lg.rpa===null || !isFinite(lg.rpa)) return null;
   const step=lg.rpa*leaguePaPerGame();
   if(!(step>0)) return null;
-  // 50 点から 90 点までが step なので、0 点と 100 点は 1.25 step 先
-  return [-1.25*step, 1.25*step];
+  // 合わせる点: wRC+ 190(1 段の 0.9 のところ)で 92 点。
+  // 50 点からの伸びしろは 42 点ぶんなので、そこから半幅を逆算する。
+  const at=0.90, gain=(92-50)/100;
+  const half=step*at/(2*gain);
+  return [-half, half];
 }
 
 /** 並んだ値の中から、下から q の割合のところを取る。 */
