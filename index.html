@@ -111,6 +111,7 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 /* 名前を押すとその選手の画面へ */
 .plink{cursor:pointer}
 .plink:hover span{text-decoration:underline}
+.card ol.small li:hover .sub,.card ol.small li:hover b{text-decoration:none}
 .withface span{overflow:hidden; text-overflow:ellipsis}
 .who .facebig{margin-bottom:6px}
 
@@ -448,10 +449,17 @@ section.span{grid-column:1/-1}
   main:not(.wide){grid-template-columns:minmax(0,1fr); gap:8px}
   main:not(.wide) section{min-width:0}
   main:not(.wide) .pad{padding:7px 8px}
-  /* パーセンタイルの棒は太く短く。細長いと指で追いにくい */
-  .prow,main:not(.wide) .prow{grid-template-columns:88px minmax(0,110px) 32px;
-    gap:6px; padding:3px 6px; justify-content:start}
-  .prow .nm,main:not(.wide) .prow .nm{font-size:10px}
+  /* パーセンタイルは棒を画面いっぱいに伸ばす。
+     POOR / AVERAGE / GREAT の見出しが棒の真上に来るよう、
+     凡例も同じ列・同じ隙間・同じ余白にする */
+  .prow,main:not(.wide) .prow,
+  .legend,main:not(.wide) .legend{grid-template-columns:78px minmax(0,1fr) 30px;
+    gap:6px}
+  .prow,main:not(.wide) .prow{padding:3px 8px}
+  .legend,main:not(.wide) .legend{padding:0 8px 3px; font-size:9px;
+    letter-spacing:.04em}
+  .prow .nm,main:not(.wide) .prow .nm{font-size:10px; white-space:normal;
+    line-height:1.2}
   .prow .nm small,main:not(.wide) .prow .nm small{display:none}
   .prow .val,main:not(.wide) .prow .val{font-size:10.5px}
   .bar,main:not(.wide) .bar{height:22px; border-radius:3px}
@@ -743,16 +751,19 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 .card ol.tied li::before{content:none}
 .card ol.tied li .rank{font-style:normal; width:14px; flex:none; text-align:center;
   color:var(--muted); font-family:"Roboto Mono",monospace; font-size:10.5px}
-/* ベストプレー。1 行に収める。場面が長いときは字を細かくして押し込む */
-.card ol.small li{gap:5px; padding:3px 9px; font-size:11.5px; line-height:1.35;
-  flex-wrap:nowrap}
+/* ベストプレー。1 行に収める。場面が長いときは字を細かくして押し込む。
+   行の高さはランキングの札と同じ。中身が何であれ 1 行ぶんに抑える */
+.card ol.small li{gap:5px; padding:3px 9px; font-size:11.5px; line-height:1.25;
+  flex-wrap:nowrap; align-items:center; height:26px; box-sizing:border-box}
+.card ol.small li > *{align-self:center}
 .card ol.small li .who{display:inline-flex; align-items:center; gap:5px;
-  flex:none; white-space:nowrap; cursor:pointer}
+  flex:none; white-space:nowrap; cursor:pointer; line-height:1.25;
+  text-decoration:none}
 .card ol.small li .who:hover{text-decoration:underline}
 .card ol.small li .sub{flex:1 1 auto; min-width:0; color:var(--muted);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.25}
 .card ol.small li b{flex:none; margin-left:auto; padding-left:3px;
-  font-size:12px; white-space:nowrap}
+  font-size:12px; white-space:nowrap; line-height:1.25}
 .card ol.small li b .unit{font-style:normal; font-family:inherit;
   font-size:9.5px; color:var(--muted); margin-right:3px}
 .tiedrest{font-style:normal; font-size:10.5px; color:var(--muted); margin-left:5px;
@@ -766,6 +777,12 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
   aspect-ratio:16/9; border-radius:10px; overflow:hidden;
   border:1px solid var(--line-soft); background:#000}
 .gamevideo iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
+
+/* 過去の試合の行。押すとその試合の画面へ */
+tr.jumpgame{cursor:pointer}
+tr.jumpgame:hover{background:var(--panel-2)}
+tr.jumpgame .when{text-decoration:underline; text-decoration-style:dotted;
+  text-underline-offset:2px}
 
 tr.jumppa{cursor:pointer}
 tr.jumppa:hover{background:var(--panel-2)}
@@ -6727,7 +6744,8 @@ function gameLog(name){
   const body=games.map(g=>{
     const mine=pa.filter(r=>String(r.game_id)===g);
     const L=line(mine);
-    return `<tr><td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
+    return `<tr class="jumpgame" ${jumpMark(g, -1)}>
+      <td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
       <td>${L.pa}</td><td>${L.h}</td><td>${L.hr}</td><td>${L.rbi}</td>
       <td>${runsOfGame(name,g)}</td><td>${L.so}</td><td>${L.bb}</td>
       <td>${winShareText(name,g,"bat")}</td>
@@ -6749,7 +6767,8 @@ function gameLogPitcher(name){
     const mine=pa.filter(r=>String(r.game_id)===g);
     const L=pitcherLine(mine);
     const pitches=pitchOf(name,"pit").filter(r=>String(r.game)===g).length;
-    return `<tr><td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
+    return `<tr class="jumpgame" ${jumpMark(g, -1)}>
+      <td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
       <td>${pitches ? pitches : "—"}</td>
       <td>${ipText(L.outs)}</td><td>${L.h}</td><td>${L.hr}</td><td>${L.runs}</td>
       <td>${L.so}</td><td>${L.bb}</td><td>${f2(L.era)}</td>
