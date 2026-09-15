@@ -590,6 +590,63 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
   .bigface,.bigface .shot{width:100%}
 }
 
+
+/* ------------------------------------------------ 打席詳細 */
+.padetail{display:flex; flex-direction:column; gap:10px}
+.pacard{display:grid; grid-template-columns:minmax(0,1.1fr) 230px minmax(0,1.3fr);
+  gap:12px; align-items:start; border:1px solid var(--line-soft);
+  border-radius:9px; padding:10px 12px; background:var(--panel-2)}
+.pahead .paat{font-size:15px; font-weight:800}
+.pahead .pascore{font-size:12.5px; color:var(--muted); padding:1px 0 5px}
+.pahead dl{display:grid; grid-template-columns:auto 1fr; gap:3px 8px; margin:0;
+  font-size:12px; align-items:center}
+.pahead dt{color:var(--muted)}
+.pahead dd{margin:0; min-width:0}
+.pares2{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:7px}
+.pazone{display:block; max-width:230px}
+.pazone .zbox{fill:none; stroke:var(--line); stroke-width:2}
+.pazone .zline{stroke:var(--line-soft); stroke-width:1}
+.pazone .shadow{fill:var(--muted); opacity:.22}
+.pazone .pd{stroke:#fff; stroke-width:1.5}
+.pazone .pd.strike{fill:#f5c518}
+.pazone .pd.ball{fill:#2f9e4f}
+.pazone .pd.inplay{fill:#d9463f}
+.pazone .pd.hit{fill:#1f6fd0}
+.pazone .pn{font-size:12px; font-weight:700; fill:#11161d;
+  font-family:"Barlow Condensed",sans-serif}
+.palist2{list-style:none; margin:0; padding:0; display:flex;
+  flex-direction:column; gap:3px; font-size:12px}
+.palist2 li{display:grid; grid-template-columns:22px minmax(0,1fr) 34px minmax(0,1.1fr);
+  gap:7px; align-items:center}
+.palist2 li.none{display:block; color:var(--muted)}
+.pdot{width:20px; height:20px; border-radius:99px; display:flex; flex:none;
+  align-items:center; justify-content:center; color:#11161d;
+  font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:12px;
+  font-style:normal; border:1.5px solid #fff}
+.pdot.strike{background:#f5c518}
+.pdot.ball{background:#2f9e4f; color:#fff}
+.pdot.inplay{background:#d9463f; color:#fff}
+.pdot.hit{background:#1f6fd0; color:#fff}
+.palist2 .ptype{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.palist2 .pspd{font-family:"Roboto Mono",monospace; text-align:right}
+.palist2 .pwhat{color:var(--muted); white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis}
+
+/* アウトカウントの丸 */
+.outdots{display:inline-flex; gap:3px; align-items:center}
+.outdots i{width:9px; height:9px; border-radius:99px; display:inline-block;
+  border:1.5px solid var(--line); background:transparent}
+.outdots i.on{background:var(--hot); border-color:var(--hot)}
+
+/* スコアボードの回。押すとその回まで移動する */
+.board td.jump{cursor:pointer}
+.board td.jump:hover{text-decoration:underline}
+
+@media (max-width:900px){
+  .pacard{grid-template-columns:minmax(0,1fr)}
+  .pazone{max-width:230px; margin:0 auto}
+}
+
 /* ------------------------------------------------------------ zone */
 .zonewrap{display:flex; gap:11px; align-items:flex-start; flex-wrap:wrap}
 /* 打者の影。捕手目線なので、右打者は左(三塁側)に立つ */
@@ -1158,9 +1215,114 @@ function belowScale(raw){
   return Math.max(1, 20*(1-under));
 }
 
+/**
+ * Run Value の目盛りは、リーグの散らばりから作る。
+ *
+ * <p>ほかの項目は「この値なら何点」という固定の目盛りで足りるが、
+ * Run Value は得点の入りやすさで桁が変わる。固定にすると、
+ * よく打っている人がまとめて真ん中に寄ってしまう。
+ *
+ * <p>目盛りを作るのは、ある程度の打席を重ねた人だけ。
+ * 数試合だけ出て飛び抜けた人を基準にすると、
+ * 長く出ている上位の打者がその下に押し込められてしまう。
+ */
+const RANK_KEYS=new Set(["bat_rv","run_rv","field_rv",
+  "pitch_rv","fast_rv","break_rv","off_rv"]);
+
+/**
+ * Run Value の目盛りを作るのに要る打席数(被打席数)。
+ *
+ * <p>規定打席の倍。数試合だけの人は目盛りの基準にしない。
+ */
+const VALUE_QUAL_PA=QUAL_PA*2;
+
+let RANK_LIST=null, RANK_LIST_N=-1;
+function rankValues(key){
+  if(RANK_LIST && RANK_LIST_N===DATA.plate.length){
+    if(RANK_LIST[key]) return RANK_LIST[key];
+  }else{
+    RANK_LIST={}; RANK_LIST_N=DATA.plate.length;
+  }
+  const out=[];
+  const batting=key==="bat_rv" || key==="run_rv" || key==="field_rv";
+  playerNames().forEach(name=>{
+    let v=null;
+    if(batting){
+      // 数打席しか立っていない人を混ぜると、両端が極端な値で埋まる。
+      // 規定打席に届いた人の中で順位を出す。
+      if(plateOf(name,"bat").length < VALUE_QUAL_PA) return;
+      const R=batterRunValues(name);
+      v=key==="bat_rv" ? R.bat : key==="run_rv" ? R.run : R.field;
+    }else{
+      const pa=plateOf(name,"pit");
+      const ps=pitchOf(name,"pit");
+      if(!ps.length || pa.length < VALUE_QUAL_PA) return;
+      const R=pitchRunValues(ps);
+      v=key==="pitch_rv" ? R.pitching : key==="fast_rv" ? R.fast
+        : key==="break_rv" ? R.breaking : R.offspeed;
+    }
+    if(v!==null && isFinite(v)) out.push(v);
+  });
+  out.sort((a,b)=>a-b);
+  RANK_LIST[key]=out;
+  return out;
+}
+
+/**
+ * 打撃の Run Value の目盛り。wRC+ に合わせて置く。
+ *
+ * <p>wRC+ 100(リーグ平均)が 50 点、190 が 92 点になるように置く。
+ * 150 なら 73 点、200 なら 97 点。
+ * 打撃だけは他の選手の出来に左右されず、いつ見ても同じ物差しで読める。
+ *
+ * <p>Run Value は「wRC+ が 100 増えると、1 打席あたりの得点ぶんだけ増える」
+ * という関係なので、その 1 段ぶんを step として目盛りを組み立てる。
+ */
+function battingScale(){
+  const lg=league();
+  if(lg.rpa===null || !isFinite(lg.rpa)) return null;
+  const step=lg.rpa*leaguePaPerGame();
+  if(!(step>0)) return null;
+  // 合わせる点: wRC+ 190(1 段の 0.9 のところ)で 92 点。
+  // 50 点からの伸びしろは 42 点ぶんなので、そこから半幅を逆算する。
+  const at=0.90, gain=(92-50)/100;
+  const half=step*at/(2*gain);
+  return [-half, half];
+}
+
+/** 並んだ値の中から、下から q の割合のところを取る。 */
+function quantile(list, q){
+  if(!list.length) return null;
+  const at=(list.length-1)*q;
+  const low=Math.floor(at), high=Math.ceil(at);
+  return list[low] + (list[high]-list[low])*(at-low);
+}
+
+/**
+ * リーグの散らばりから作った目盛りに当てる。
+ *
+ * <p>下から 10% を 0 点、上から 15% のところを 100 点に置く。
+ * 上位を 1 人の飛び抜けた値で決めると、そのすぐ下の人まで
+ * 大きく下がってしまうので、上の端は少し内側に取る。
+ */
+function rankScore(key, value){
+  // 打撃だけは wRC+ に合わせた目盛りを使う
+  const fixed=key==="bat_rv" ? battingScale() : null;
+  const list=fixed ? null : rankValues(key);
+  if(!fixed && (!list || list.length<3)) return null;
+  const lo=fixed ? fixed[0] : quantile(list, 0.10);
+  const hi=fixed ? fixed[1] : quantile(list, 0.85);
+  if(hi===lo) return 50;
+  const raw=(value-lo)/(hi-lo)*100;
+  if(raw<0) return Math.round(belowScale(raw));
+  return Math.round(softLow(Math.min(100,raw)));
+}
+
 function score(key,value){
+  if(value===null||!isFinite(value)) return null;
+  if(RANK_KEYS.has(key)) return rankScore(key, value);
   const s=SCALE[key];
-  if(!s||value===null||!isFinite(value)) return null;
+  if(!s) return null;
   const [lo,hi]=s;
   const raw=(value-lo)/(hi-lo)*100;
   if(raw<0) return Math.round(belowScale(raw));
@@ -1648,14 +1810,16 @@ function summarize(rows){
   const whiffs=rows.filter(r=>r.whiff===true).length;
   const outZone=rows.filter(r=>r.in_zone===false);
   const chase=outZone.filter(r=>r.swing===true).length;
-  let xba=0,xslg=0,barrel=0,hard=0,sweet=0,ev=0,gb=0;
+  let xba=0,xslg=0,barrel=0,hard=0,sweet=0,ev=0,gb=0,fly=0;
   bip.forEach(r=>{
     const e=Number(r.exit_velocity), l=Number(r.launch_angle), x=battedExpectation(e,l);
     xba+=x.ba; xslg+=x.tb; ev+=e;
     if(isBarrel(e,l)) barrel++;
     if(e>=153) hard++;
     if(l>=8&&l<=32) sweet++;
+    // 10 度未満がゴロ、25 度以上がフライ。その間はライナーでどちらでもない。
     if(l<10) gb++;
+    if(l>=25) fly++;
   });
   // バットスピード。ゲージ 0% で 85km/h、100% で 135km/h。
   // そこへ使っていたバットのパワーを掛ける。
@@ -1690,7 +1854,7 @@ function summarize(rows){
     pa:ended.length, bb, hbp, so, ab,
     xba:ab?xba/ab:null, xslg:ab?xslg/ab:null, ev:n?ev/n:null,
     barrel:n?100*barrel/n:null, hard:n?100*hard/n:null,
-    sweet:n?100*sweet/n:null, gb:n?100*gb/n:null,
+    sweet:n?100*sweet/n:null, gb:n?100*gb/n:null, fly:n?100*fly/n:null,
     chase:outZone.length?100*chase/outZone.length:null,
     whiff:swings?100*whiffs/swings:null};
 }
@@ -2170,8 +2334,11 @@ function batterRunValues(name){
   const L=line(plateOf(name,"bat"));
   const lg=league();
   const w=wobaOf(L);
+  // 打撃は打席あたりの良さで見て、1 試合ぶんの打席数に直す。
+  // 出た試合で割ると、打順が上で打席の多い人だけが得をしてしまい、
+  // OPS の並びと食い違う。
   const bat=(w===null || lg.woba===null || !L.pa) ? null
-    : (w-lg.woba)/1.25*L.pa;
+    : (w-lg.woba)/1.25*leaguePaPerGame();
   const B=baserunLine(playOf(name,"run"));
   const F=fieldingLine(playOf(name,"field"));
   const infield=infieldHits(name);
@@ -2181,9 +2348,22 @@ function batterRunValues(name){
     ? (B.runs||0) + infield*0.30 + legs : null;
   const field=F.chances
     ? (F.range||0)+(F.catchRuns||0)+(F.armValue||0) : null;
-  // 通算だと、出た試合が多い人ほど大きくなる。1 試合あたりに直して並べる。
+  // 走塁と守備は積み上げた点なので、出た試合で割って揃える。
+  // 打撃はもともと打席あたりで出しているので、そのまま。
   const per=v=>v===null || !each ? null : v/each;
-  return {bat:per(bat), run:per(run), field:per(field)};
+  return {bat, run:per(run), field:per(field)};
+}
+
+/** リーグの 1 試合あたりの打席数。打撃の点を試合の単位に直すのに使う。 */
+let LEAGUE_PA_GAME=null, LEAGUE_PA_GAME_N=-1;
+function leaguePaPerGame(){
+  if(LEAGUE_PA_GAME!==null && LEAGUE_PA_GAME_N===DATA.plate.length) return LEAGUE_PA_GAME;
+  const games=gameIds().length;
+  // 1 試合には両チームぶんの打席が入っているので、打者 1 人ぶんへ均す
+  const perSide=games ? DATA.plate.length/games/9 : 4;
+  LEAGUE_PA_GAME=Math.max(1, perSide);
+  LEAGUE_PA_GAME_N=DATA.plate.length;
+  return LEAGUE_PA_GAME;
 }
 
 /** その選手が出た試合の数。打席と投球のどちらかがあれば 1 試合。 */
@@ -2756,7 +2936,7 @@ function batterColumns(mode){
     {key:"bspd",  head:"Bat Speed", get:d=>d.S.batSpeed, fmt:f1, rate:true},
     {key:"sqd",   head:"Squared Up%", get:d=>d.S.squared, fmt:pc, rate:true},
     {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
-    {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true},
+    {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true, low:true},
     {key:"k",     head:"K%",     get:d=>d.L.kRate,  fmt:pc, rate:true, low:true},
     {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, rate:true}
   ];
@@ -2794,8 +2974,7 @@ function pitcherColumns(mode){
     {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
     {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true},
     {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc, rate:true},
-    {key:"fly",   head:"FLY%",   get:d=>d.S.gb===null?null:100-d.S.gb, fmt:pc,
-      low:true, rate:true},
+    {key:"fly",   head:"FLY%",   get:d=>d.S.fly, fmt:pc, low:true, rate:true},
     {key:"baa",   head:"被打率",  get:d=>d.L.avg,    fmt:f3, low:true, rate:true},
     // 奪三振率と与四球率は 5 回あたり。このイベントは 5 回制。
     {key:"k5",    head:"奪三振率", get:d=>d.L.outs ? GAME_INNINGS*3*d.L.so/d.L.outs : null,
@@ -3142,6 +3321,10 @@ function resultView(){
     ${winChart(rows)}
   </div></section>
   <section class="span"><div class="pad">
+    <div class="head">打席詳細<small>1 打席ごとの投球</small></div>
+    ${paDetail(rows)}
+  </div></section>
+  <section class="span"><div class="pad">
     <div class="head">打席結果<small>${rows.length} 打席</small></div>
     ${inningTables(rows)}
   </div></section>`;
@@ -3168,7 +3351,10 @@ function scoreBoard(rows){
     <td class="team">${esc(names[side])}</td>
     ${Array.from({length:innings},(_,k)=>{
       const i=k+1;
-      return `<td>${played[side][i] ? runs[side][i] : "-"}</td>`;
+      // 押すとその回の打席結果まで移動する
+      return played[side][i]
+        ? `<td class="jump" data-jump="inning-${i}-${side}">${runs[side][i]}</td>`
+        : "<td>-</td>";
     }).join("")}
     <td class="big">${total(side)}</td><td class="big">${totalH(side)}</td>
   </tr>`;
@@ -3416,8 +3602,250 @@ function winChart(rows){
   </div>`;
 }
 
+
+/* ============================================ 打席結果の書き方と打席詳細 */
+
+/** 打球がどちらへ飛んだか。負が左。 */
+function sprayName(angle){
+  if(!isFinite(angle)) return "";
+  if(angle < -15) return "左";
+  if(angle > 15) return "右";
+  return "中";
+}
+
+/**
+ * 打球を処理したであろう守備位置。
+ *
+ * <p>打ち出し角と方向から見当をつける。角度が取れていなければ空。
+ */
+function fielderName(rec){
+  if(!rec) return "";
+  const la=Number(rec.launch_angle), a=Number(rec.spray_angle);
+  if(!isFinite(la) || !isFinite(a)) return "";
+  const far=distanceOf(rec);
+  if(la >= 25 || far >= 60){
+    // 上がった打球か外野まで届いた打球
+    return a < -15 ? "レフト" : (a > 15 ? "ライト" : "センター");
+  }
+  if(far < 12) return Math.abs(a) < 20 ? "ピッチャー" : "キャッチャー";
+  if(a < -28) return "サード";
+  if(a < -8) return "ショート";
+  if(a > 28) return "ファースト";
+  if(a > 8) return "セカンド";
+  return "ピッチャー";
+}
+
+/**
+ * 打席結果の書き方。どこへ飛んだかが分かればそれを添える。
+ *
+ * <p>アウトは「セカンドゴロ」「ライトフライ」、安打は「右安打」「中二塁打」。
+ * 打球の記録が無ければこれまでどおりの言い方。
+ */
+function resultText(result, rec){
+  const plain=JA[result] || result || "";
+  if(!rec) return plain;
+  const a=Number(rec.spray_angle);
+  const hit=rec.contact===true && rec.call==="IN_PLAY";
+  if(!hit) return plain;
+  const where=fielderName(rec);
+  if(result==="GROUND_OUT") return where ? where+"ゴロ" : plain;
+  if(result==="FLY_OUT"){
+    const la=Number(rec.launch_angle);
+    const kind=isFinite(la) && la < 25 ? "ライナー" : "フライ";
+    return where ? where+kind : plain;
+  }
+  if(result==="DOUBLE_PLAY") return where ? where+"ゴロ併殺" : plain;
+  const side=sprayName(a);
+  if(!side) return plain;
+  if(result==="SINGLE") return side+"安打";
+  if(result==="DOUBLE") return side+"二塁打";
+  if(result==="TRIPLE") return side+"三塁打";
+  if(result==="HOME_RUN") return side+"本塁打";
+  return plain;
+}
+
+/** アウトカウントを丸で出す。 */
+function outMark(outs){
+  const mark=n => `<i class="${n < outs ? "on" : ""}"></i>`;
+  return `<span class="outdots">${mark(0)}${mark(1)}</span>`;
+}
+
+/**
+ * 打席が始まった時点のアウト数。
+ *
+ * <p>result の outs 列は「その打席で増えたアウト」なので、
+ * 同じ回の前の打席ぶんを足し上げる。
+ */
+function outsBefore(rows){
+  const box=new Map();
+  const count={};
+  rows.forEach(r=>{
+    const key=[String(r.game_id), r.inning, isBottom(r)?"B":"T"].join("|");
+    const before=count[key] || 0;
+    box.set(r, Math.min(2, before));
+    count[key]=before + (Number(r.outs)||0);
+  });
+  return box;
+}
+
+/* ------------------------------------------------------------ 打席詳細 */
+
+/** 球の色。ストライク=黄、ボール=緑、インプレーのアウト=赤、安打=青。 */
+function pitchTone(row, last, result){
+  const call=String(row.call||"");
+  if(call==="IN_PLAY" || (last && row.contact===true)){
+    return HIT.has(result) ? "hit" : "inplay";
+  }
+  if(call==="BALL") return "ball";
+  return "strike";
+}
+
+/**
+ * 打席詳細。1 打席ぶんの投球をゾーンの上に並べる。
+ *
+ * <p>左に場面、中にコース、右に 1 球ずつの中身。
+ * 球の形はパワプロの変化の向きに合わせて、上へ伸びる球は丸、
+ * それ以外は五角形。左投手なら左右を裏返す。
+ */
+function paDetail(rows){
+  const index=paPitchIndex();
+  const outs=outsBefore(rows);
+  const sides=teamSides(rows);
+  let run=[0,0];
+  const cards=rows.map(r=>{
+    const side=isBottom(r)?1:0;
+    const before=[run[0], run[1]];
+    run[side]+=Number(r.runs)||0;
+    const key=[String(r.game_id), r.inning, isBottom(r)?"B":"T", r.batter, r.result].join("|");
+    const pitches=index.get(key) || [];
+    return paCard(r, before, outs.get(r)||0, pitches, sides);
+  });
+  return `<div class="padetail">${cards.join("")}</div>`;
+}
+
+/** 打席 → その打席の投球(順番どおり)。 */
+let PA_PITCH=null, PA_PITCH_N=-1;
+function paPitchIndex(){
+  if(PA_PITCH && PA_PITCH_N===DATA.pitch.length) return PA_PITCH;
+  const box=new Map();
+  DATA.pitch.forEach(r=>{
+    if(r.side==="Pitching") return;          // 打者側の記録だけ使う
+    const pa=String(r.pa||"");
+    if(!pa) return;
+    (box.get(pa) || box.set(pa,[]).get(pa)).push(r);
+  });
+  // 打席 ID は result に無いので、試合・回・打者・結果で引けるように移し替える
+  const out=new Map();
+  box.forEach(list=>{
+    list.sort((a,b)=>(Number(a.pitch_no)||0)-(Number(b.pitch_no)||0));
+    const last=list[list.length-1];
+    const result=list.map(r=>r.result).filter(Boolean).pop() || "";
+    const key=[String(last.game), last.inning, isBottom(last)?"B":"T",
+      last.batter, result].join("|");
+    out.set(key, list);
+  });
+  PA_PITCH=out; PA_PITCH_N=DATA.pitch.length;
+  return out;
+}
+
+/** 1 打席ぶんの札。 */
+function paCard(row, before, outs, pitches, sides){
+  const side=isBottom(row)?1:0;
+  const names=teamNames(DATA.plate.filter(r=>String(r.game_id)===String(row.game_id)));
+  const score=`${esc(names[0])} ${before[0]}-${before[1]} ${esc(names[1])}`;
+  const lefty=throwHandOf(row.pitcher)==="L";
+  const rec=pitches.length ? pitches[pitches.length-1] : null;
+  const list=pitches.map((p,i)=>{
+    const tone=pitchTone(p, i===pitches.length-1, row.result);
+    const speed=Number(p.velocity);
+    const what=tone==="ball" ? "ボール"
+      : p.call==="FOUL" ? "ファウル"
+      : p.call==="SWINGING_STRIKE" ? "空振り"
+      : p.call==="CALLED_STRIKE" ? "見逃し"
+      : resultText(row.result, p);
+    return `<li><i class="pdot ${tone}">${i+1}</i>
+      <span class="ptype">${esc(p.type||"")}</span>
+      <span class="pspd">${isFinite(speed)&&speed>0?speed.toFixed(0):"—"}</span>
+      <span class="pwhat">${esc(what)}</span></li>`;
+  }).join("");
+  return `<div class="pacard">
+    <div class="pahead">
+      <div class="paat">${row.inning} 回${side?"裏":"表"}</div>
+      <div class="pascore">${score}</div>
+      <dl>
+        <dt>投手</dt><dd>${withTeamFace(row.pitcher, sides[row.pitcher], 20)}</dd>
+        <dt>打者</dt><dd>${withTeamFace(row.batter, sides[row.batter], 20)}</dd>
+      </dl>
+      <div class="pares2">
+        <span class="rtag inline ${resultClass(row.result)}">${esc(resultText(row.result, rec))}</span>
+        ${baseMark(row)}${outMark(outs)}
+      </div>
+    </div>
+    ${paZone(pitches, row, lefty)}
+    <ol class="palist2">${list || '<li class="none">投球の記録がありません</li>'}</ol>
+  </div>`;
+}
+
+/**
+ * 1 打席ぶんのコース。ゾーンの上に球を順番の数字で置く。
+ *
+ * <p>位置は本塁を通ったときのずれ(plate_x / plate_y)。
+ * 左投手は左右を裏返して、打者から見た向きに揃える。
+ */
+function paZone(pitches, row, lefty){
+  const W=210, H=230, cx=W/2, cy=H/2;
+  // ストライクゾーンの箱。1 ブロックを何ピクセルで描くか。
+  // 記録を見ると、ゾーンに入った球は横 -0.5〜0.6、縦 0.5〜1.7 の範囲。
+  // 縦の真ん中は 1.1 あたりなので、そこを箱の中心に置く。
+  const scale=46, middle=1.1;
+  const zw=scale*1.2, zh=scale*1.2;
+  const stance=stanceOf(row.batter)==="L";
+  let dots="";
+  pitches.forEach((p,i)=>{
+    const x=Number(p.plate_x), y=Number(p.plate_y);
+    if(!isFinite(x) || !isFinite(y) || (x===0 && y===0)) return;
+    const px=cx + (lefty ? -x : x)*scale;
+    const py=cy - (y-middle)*scale;
+    const tone=pitchTone(p, i===pitches.length-1, row.result);
+    // 上へ伸びる球は丸、それ以外は五角形
+    const up=STRAIGHT.indexOf(String(p.type||""))>=0;
+    dots+= up
+      ? `<circle class="pd ${tone}" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="12"/>`
+      : `<polygon class="pd ${tone}" points="${pentagon(px,py,13)}"/>`;
+    dots+=`<text class="pn" x="${px.toFixed(1)}" y="${py.toFixed(1)}"
+      text-anchor="middle" dominant-baseline="central">${i+1}</text>`;
+  });
+  return `<svg class="pazone" viewBox="0 0 ${W} ${H}" width="100%">
+    <g class="shadow" transform="translate(${stance ? W-18 : 18},${cy-92}) scale(${stance?-0.34:0.34},0.34)">
+      <rect x="26" y="10" width="30" height="30" rx="3"/>
+      <rect x="24" y="46" width="34" height="58" rx="4"/>
+      <rect x="10" y="52" width="14" height="44" rx="6"/>
+      <rect x="24" y="104" width="34" height="44" rx="4"/>
+      <rect x="25" y="148" width="14" height="100" rx="4"/>
+      <rect x="43" y="148" width="14" height="100" rx="4"/>
+    </g>
+    <rect class="zbox" x="${cx-zw/2}" y="${cy-zh/2}" width="${zw}" height="${zh}"/>
+    <line class="zline" x1="${cx-zw/6}" y1="${cy-zh/2}" x2="${cx-zw/6}" y2="${cy+zh/2}"/>
+    <line class="zline" x1="${cx+zw/6}" y1="${cy-zh/2}" x2="${cx+zw/6}" y2="${cy+zh/2}"/>
+    <line class="zline" x1="${cx-zw/2}" y1="${cy-zh/6}" x2="${cx+zw/2}" y2="${cy-zh/6}"/>
+    <line class="zline" x1="${cx-zw/2}" y1="${cy+zh/6}" x2="${cx+zw/2}" y2="${cy+zh/6}"/>
+    ${dots}
+  </svg>`;
+}
+
+/** 五角形の点。上が尖った形にする。 */
+function pentagon(cx, cy, r){
+  const out=[];
+  for(let i=0;i<5;i++){
+    const a=(-90 + i*72)*Math.PI/180;
+    out.push((cx + r*Math.cos(a)).toFixed(1) + "," + (cy + r*Math.sin(a)).toFixed(1));
+  }
+  return out.join(" ");
+}
+
 function inningTables(rows){
   const index=recordIndex();
+  const outs=outsBefore(rows);
   const sides=teamSides(rows);
   const order=orderNumbers(rows);
   const innings=Math.max(1,...rows.map(r=>Number(r.inning)||1));
@@ -3426,12 +3854,12 @@ function inningTables(rows){
     for(const side of [0,1]){
       const half=rows.filter(r=>Number(r.inning)===i && (isBottom(r)?1:0)===side);
       if(!half.length) continue;
-      html+=`<div class="inninghead">${i} 回${side?"裏":"表"}</div>
+      html+=`<div class="inninghead" id="inning-${i}-${side}">${i} 回${side?"裏":"表"}</div>
       <div class="scroll"><table class="pa2">
-      <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-b"><col class="c-r"><col class="c-s">
+      <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-b"><col class="c-b"><col class="c-r"><col class="c-s">
         <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-k"><col class="c-s"></colgroup>
       <thead><tr>
-        <th>打順</th><th class="nm">打者</th><th class="nm">投手</th><th>塁</th>
+        <th>打順</th><th class="nm">打者</th><th class="nm">投手</th><th>塁</th><th>アウト</th>
         <th class="nm">結果</th><th>打点</th>
         <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th>
       </tr></thead><tbody>${half.map(r=>{
@@ -3446,7 +3874,8 @@ function inningTables(rows){
           <td class="nm">${withTeamFace(r.batter,sides[r.batter],20)}</td>
           <td class="nm">${withTeamFace(r.pitcher,sides[r.pitcher],20)}</td>
           <td class="bases">${baseMark(r)}</td>
-          <td class="res"><span class="rtag ${resultClass(r.result)}">${JA[r.result]||r.result||""}</span></td>
+          <td class="bases">${outMark(outs.get(r)||0)}</td>
+          <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, rec))}</span></td>
           <td class="${rbi?"rbi":""}">${rbi||""}</td>
           <td>${hit?f1(ev):"–"}</td>
           <td>${hit?f1(la)+"°":"–"}</td>
@@ -6965,6 +7394,13 @@ document.getElementById("app").addEventListener("click",e=>{
     render();
     return;
   }
+  // スコアボードの回を押したら、その回の打席結果まで移動する
+  const jump=e.target.closest("[data-jump]");
+  if(jump){
+    const at=document.getElementById(jump.dataset.jump);
+    if(at) at.scrollIntoView({behavior:"smooth", block:"start"});
+    return;
+  }
   // 名前を押したらその選手の画面へ
   const who=e.target.closest("[data-who]");
   if(who && who.dataset.who){
@@ -6972,6 +7408,8 @@ document.getElementById("app").addEventListener("click",e=>{
     PAWA_PLAYER=PLAYER;
     VIEW="split";
     render();
+    // 前に見ていた位置のまま出ると、選手の顔より下から始まってしまう
+    window.scrollTo({top:0, behavior:"auto"});
   }
 });
 document.getElementById("parkPick").addEventListener("change",e=>{ PARK=e.target.value; render(); });
