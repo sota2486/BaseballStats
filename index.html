@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23fff' stroke='%23c9ccd1' stroke-width='1'/><path d='M7 3.5c3.5 3.6 4.6 9 3.4 12.5C9.2 19.5 6.4 24 7 28.5' fill='none' stroke='%23e0322d' stroke-width='2.2' stroke-linecap='round'/><path d='M25 3.5c-3.5 3.6-4.6 9-3.4 12.5 1.2 3.5 4 8 3.4 12.5' fill='none' stroke='%23e0322d' stroke-width='2.2' stroke-linecap='round'/></svg>">
 <title>SBG Stats</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SBG Stats</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap">
 <style>
@@ -69,9 +70,10 @@ button,label.filebtn,#parkPick{font:inherit; font-size:12.5px; color:var(--text)
   border:1px solid var(--line); border-radius:3px; padding:5px 11px; cursor:pointer}
 button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 #parkPick{max-width:230px}
-#playerPick{font:inherit; font-size:13px; color:var(--text); background:var(--panel-2);
-  border:1px solid var(--line); border-radius:99px; padding:5px 12px; cursor:pointer;
-  max-width:260px}
+/* 選手を選ぶ一覧。狭い画面でだけ使う */
+#playerPick{display:none; font:inherit; font-size:13px; color:var(--text);
+  background:var(--panel-2); border:1px solid var(--line); border-radius:99px;
+  padding:5px 12px; cursor:pointer; max-width:100%}
 #playerPick:hover{border-color:var(--rule)}
 :focus-visible{outline:2px solid var(--rule); outline-offset:2px}
 /* 選手のタブは多くなると横スクロールする。
@@ -390,13 +392,12 @@ main:not(.wide) section{border-radius:6px}
 main:not(.wide) .title{font-size:13px; padding:7px 12px}
 main:not(.wide) .who{padding:8px 12px 6px}
 main:not(.wide) .who .meta{font-size:11px}
-main:not(.wide) .prow{grid-template-columns:118px minmax(0,190px) 40px; gap:7px;
-  padding:2px 11px}
+main:not(.wide) .prow{grid-template-columns:118px 1fr 40px; gap:7px; padding:2px 11px}
 main:not(.wide) .prow .nm{font-size:11px}
 main:not(.wide) .prow .nm small{font-size:9px}
 main:not(.wide) .prow .val{font-size:11px}
-main:not(.wide) .bar{height:21px}
-main:not(.wide) .bar .num{width:21px; height:21px; font-size:10px; border-width:2px}
+main:not(.wide) .bar{height:16px}
+main:not(.wide) .bar .num{width:18px; height:18px; font-size:9px; border-width:2px}
 main:not(.wide) .pgroup{font-size:9.5px; padding:6px 11px 2px}
 main:not(.wide) .zone{grid-template-columns:repeat(5,52px); grid-auto-rows:41px}
 main:not(.wide) .z b{font-size:11px}
@@ -440,6 +441,23 @@ section.span{grid-column:1/-1}
   .posgrid .pos i{font-size:13px}
   .skills{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
   .skill{font-size:11px !important; min-height:26px}
+
+  /* 選手は一覧から選ぶ。名前を並べると横へ延びて読めない */
+  #playerPick{display:block}
+  #tabs .tab{display:none}
+
+  /* パーセンタイルの棒は太く短く。細長いと指で追いにくい */
+  .prow,main:not(.wide) .prow{grid-template-columns:96px minmax(0,1fr) 34px;
+    gap:6px; padding:3px 8px}
+  .prow .nm,main:not(.wide) .prow .nm{font-size:10.5px}
+  .prow .val,main:not(.wide) .prow .val{font-size:10.5px}
+  .bar,main:not(.wide) .bar{height:24px; border-radius:3px}
+  .bar .num,main:not(.wide) .bar .num{width:24px; height:24px; font-size:11px}
+
+  /* 打席詳細も縦に積む */
+  .pacard{grid-template-columns:minmax(0,1fr)}
+  .pazonebox{max-width:320px; margin:0 auto}
+  .panav button{padding:7px 14px; font-size:13px}
 }
 @media (max-width:1280px){main{grid-template-columns:1fr 1fr}}
 @media (max-width:860px){main{grid-template-columns:1fr}}
@@ -516,8 +534,8 @@ col.c-num{width:50px} col.c-flag{width:66px}
   border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid currentColor}
 .poor{color:var(--cold)} .avg{color:var(--mid)} .great{color:var(--hot)}
 
-.prow{display:grid; grid-template-columns:126px minmax(0,220px) 44px; gap:8px;
-  align-items:center; padding:3px 14px}
+.prow{display:grid; grid-template-columns:126px 1fr 44px; gap:8px; align-items:center;
+  padding:3px 14px}
 .prow + .prow{border-top:1px dashed var(--line-soft)}
 /* パーセンタイルのくくりの見出し */
 .pgroup{font-size:10.5px; font-weight:700; letter-spacing:.10em; text-transform:uppercase;
@@ -526,12 +544,12 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .pgroup + .prow{border-top:0}
 .prow .nm{font-size:12.5px; font-weight:600; text-align:right; line-height:1.15}
 .prow .nm small{display:block; font-weight:400; color:var(--muted); font-size:10px}
-.bar{position:relative; height:24px; background:var(--track); border-radius:3px}
+.bar{position:relative; height:19px; background:var(--track); border-radius:2px}
 .bar .fill{position:absolute; inset:0 auto 0 0; border-radius:2px}
 .bar .tickmid{position:absolute; top:0; bottom:0; left:50%; width:1px; background:var(--panel);
   opacity:.85}
 .bar .num{position:absolute; top:50%; transform:translate(-50%,-50%);
-  width:24px; height:24px; border-radius:99px; border:2px solid var(--panel);
+  width:21px; height:21px; border-radius:99px; border:2px solid var(--panel);
   display:flex; align-items:center; justify-content:center; color:#fff;
   font-family:"Roboto Mono",monospace; font-size:10px; font-weight:500;
   box-shadow:0 1px 2px rgba(0,0,0,.25)}
@@ -624,14 +642,15 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 
 /* ------------------------------------------------ 打席詳細 */
 /* 前後の送り */
-.panav{display:flex; align-items:center; justify-content:flex-end; gap:10px;
-  padding:0 0 8px; font-size:12.5px; color:var(--muted)}
-.panav button{font:inherit; padding:4px 12px; border-radius:99px; cursor:pointer;
-  border:1px solid var(--line); background:var(--panel); color:var(--ink)}
-.panav button:hover:not(:disabled){background:var(--panel-2)}
+.panav{display:flex; align-items:center; justify-content:flex-end; gap:12px;
+  padding:0 0 10px; font-size:13px; color:var(--muted)}
+.panav button{font:inherit; font-size:14px; font-weight:700; padding:8px 20px;
+  border-radius:99px; cursor:pointer; border:1px solid var(--rule);
+  background:var(--rule); color:#fff}
+.panav button:hover:not(:disabled){filter:brightness(1.12)}
 .panav button:disabled{opacity:.4; cursor:default}
 
-.pacard{display:grid; grid-template-columns:minmax(0,1fr) 340px minmax(0,1.2fr);
+.pacard{display:grid; grid-template-columns:minmax(0,1fr) 320px minmax(0,1.2fr);
   gap:12px; align-items:start}
 /* 項目ごとの枠 */
 .pabox{border:1px solid var(--line-soft); border-radius:9px;
@@ -650,6 +669,7 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
   border:1.5px solid var(--line); background:transparent}
 .bscount i.on.ball{background:#2f9e4f; border-color:#2f9e4f}
 .bscount i.on.strike{background:#f5c518; border-color:#f5c518}
+.bscount i.on.out{background:var(--hot); border-color:var(--hot)}
 .paside dl{display:grid; grid-template-columns:auto 1fr; gap:4px 9px; margin:0;
   font-size:12.5px; align-items:center}
 .paside dt{color:var(--muted)}
@@ -685,10 +705,10 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
   gap:8px; align-items:center}
 .palist2 li.none{display:block; color:var(--muted)}
 .pdot{width:22px; height:22px; min-width:22px; max-width:22px; flex:none;
-  box-sizing:border-box; border-radius:99px; display:inline-block;
-  justify-self:center; align-self:center; text-align:center; line-height:19px;
-  color:#11161d; font-family:"Barlow Condensed",sans-serif; font-weight:700;
-  font-size:13px; font-style:normal; border:1.5px solid #fff; overflow:hidden}
+  box-sizing:border-box; border-radius:99px; display:grid; place-items:center;
+  justify-self:center; align-self:center; line-height:1; padding:0;
+  color:#11161d; font-family:"Source Sans 3",sans-serif; font-weight:700;
+  font-size:11px; font-style:normal; border:1.5px solid #fff}
 .pdot.strike{background:#f5c518}
 .pdot.ball{background:#2f9e4f; color:#fff}
 .pdot.inplay{background:#d9463f; color:#fff}
@@ -2559,12 +2579,14 @@ function renderTabs(){
   if(PLAYER && !list.includes(PLAYER)) PLAYER="";
   if(PAWA_PLAYER && !list.includes(PAWA_PLAYER)) PAWA_PLAYER="";
   // 選手成績と選手統計は上に名前を並べる。能力画面は横の名札を使う。
-  // 名前が増えると横へ延びて読めないので、一覧から選ぶ形にする
+  // 広い画面は名前を並べる。狭い画面では横へ延びて読めないので、
+  // 一覧から選ぶ形に切り替える(見せ分けは CSS で行う)。
   document.getElementById("tabs").innerHTML = VIEW==="pawa" ? "" :
     `<select id="playerPick" title="選手を選ぶ">
       <option value="">選手を選択してください</option>
       ${list.map(n=>`<option value="${esc(n)}" ${n===PLAYER?"selected":""}>${esc(n)}</option>`).join("")}
-    </select>`;
+    </select>`
+    + list.map(n=>`<div class="tab" data-name="${esc(n)}" aria-selected="${n===PLAYER}">${esc(n)}</div>`).join("");
   document.getElementById("sideTabs").innerHTML=
     `<div class="tab" data-side="bat" aria-selected="${SIDE==="bat"}">打者</div>
      <div class="tab" data-side="pit" aria-selected="${SIDE==="pit"}">投手</div>`;
@@ -3776,8 +3798,8 @@ function pitchTone(row, last, result){
   return "strike";
 }
 
-/** ボールとストライクを丸で出す。 */
-function countMark(text){
+/** ボール・ストライク・アウトを丸で縦に並べる。 */
+function countMark(text, outs){
   const part=String(text||"0-0").split("-");
   const dots=(n, max, tone)=>{
     let out="";
@@ -3787,6 +3809,7 @@ function countMark(text){
   return `<span class="bscount">
     <span><b>B</b>${dots(Number(part[0])||0, 3, "ball")}</span>
     <span><b>S</b>${dots(Number(part[1])||0, 2, "strike")}</span>
+    <span><b>O</b>${dots(outs||0, 2, "out")}</span>
   </span>`;
 }
 
@@ -3908,8 +3931,8 @@ function paCard(row, before, outs, pitches, sides){
       </div>
       <div class="pabox pares2">
         <span class="rtag inline ${resultClass(row.result)}">${esc(resultText(row.result, rec))}</span>
-        ${countMark(finalCount(pitches))}
-        ${baseMark(row)}${outMark(outs)}
+        ${countMark(finalCount(pitches), outs)}
+        ${baseMark(row)}
         ${rbi ? `<span class="parbi">${rbi} 打点</span>` : ""}
       </div>
       <div class="pabox pafacts">${batted.map(one=>
@@ -3934,7 +3957,8 @@ function paCard(row, before, outs, pitches, sides){
 function paZone(pitches, row, lefty){
   // ストライクゾーンの箱。選手統計の投球位置と同じ寸法。
   const ZW=0.6, ZB=0.5, ZT=1.7;
-  const W=380, H=330, cx=W/2, cy=150, scale=76;
+  // 1 ブロックあたりの大きさを上げて、そのぶん枠の左右を詰める
+  const W=320, H=300, cx=W/2, cy=130, scale=105;
   const X=x=>cx+x*scale, Y=y=>cy-(y-(ZB+ZT)/2)*scale;
   const box={l:X(-ZW), r:X(ZW), t:Y(ZT), b:Y(ZB)};
   const stance=stanceOf(row.batter)==="L";
@@ -3954,8 +3978,8 @@ function paZone(pitches, row, lefty){
   g+=`<path class="zplate" d="M ${cx-30} ${hp} L ${cx+30} ${hp} L ${cx+30} ${hp+11}
       L ${cx} ${hp+19} L ${cx-30} ${hp+11} Z"/>`;
   // 打者の影。打席の左右に立たせる
-  const sx=stance ? W-30 : 30;
-  g+=`<g class="shadow" transform="translate(${sx},${box.t-58}) scale(${stance?-0.78:0.78},0.78)">
+  const sx=stance ? W-16 : 16;
+  g+=`<g class="shadow" transform="translate(${sx},${box.t-56}) scale(${stance?-0.7:0.7},0.7)">
       <rect x="26" y="10" width="30" height="30" rx="3"/>
       <rect x="24" y="46" width="34" height="58" rx="4"/>
       <rect x="10" y="52" width="14" height="44" rx="6"/>
@@ -3967,8 +3991,8 @@ function paZone(pitches, row, lefty){
     const rawX=Number(p.plate_x), rawY=Number(p.plate_y);
     if(!isFinite(rawX) || !isFinite(rawY) || (rawX===0 && rawY===0)) return;
     // 大きく外れた球は枠の中へ寄せる。外へ出ると見えなくなる。
-    const x=Math.max(-2.2, Math.min(2.2, lefty ? -rawX : rawX));
-    const y=Math.max(-0.9, Math.min(3.1, rawY));
+    const x=Math.max(-1.35, Math.min(1.35, lefty ? -rawX : rawX));
+    const y=Math.max(-0.2, Math.min(2.4, rawY));
     const px=X(x), py=Y(y);
     const tone=pitchTone(p, i===pitches.length-1, row.result);
     const name=String(p.type||"");
