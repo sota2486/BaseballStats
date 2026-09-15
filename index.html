@@ -437,19 +437,8 @@ section.span{grid-column:1/-1}
   .namelist{flex-direction:row; flex-wrap:wrap; height:auto; position:static;
     gap:4px; padding:0 0 4px}
   .nameplate{font-size:12px; min-height:30px; padding:5px 8px; border-width:1.5px}
-  .abwrap{grid-template-columns:1fr; gap:8px}
-  .pawa .card.ab{min-height:0}
-  .abrow{gap:5px; padding:3px 5px 3px 3px; margin:2px 0; border-radius:7px}
-  .abrow .nm{width:98px; height:34px; font-size:11px !important; border-width:1.5px}
-  .abrow .rank{font-size:21px}
-  .abrow .num{font-size:21px}
-  .abrow .num.left{padding-left:8px}
-  .pawa .dhead{font-size:11px; padding:0 2px 4px}
-  .posgrid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px}
-  .posgrid .pos{font-size:12px; padding:4px 2px}
-  .posgrid .pos i{font-size:13px}
-  .skills{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
-  .skill{font-size:11px !important; min-height:26px}
+  /* 能力画面は折り返さず、まるごと縮めて収める(fitPawa) */
+  .pawafit{overflow:hidden}
 
   /* 選手は一覧から選ぶ。名前を並べると横へ延びて読めない */
   #playerPick{display:block}
@@ -740,6 +729,7 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 .card ol.tied li::before{content:none}
 .card ol.tied li .rank{font-style:normal; width:14px; flex:none; text-align:center;
   color:var(--muted); font-family:"Roboto Mono",monospace; font-size:10.5px}
+.tiedrest{padding:0 10px 5px 31px; font-size:11px; color:var(--muted)}
 
 /* スコアボードの回と、打席結果の行。押すと移動する */
 .board td.jump{cursor:pointer}
@@ -1139,10 +1129,11 @@ const SKIN_BODY=name => "https://mc-heads.net/player/"
 
 function bigFace(name){
   const src=faceSrc(name);
-  if(src) return `<img class="bigshot" src="${src}" alt="">`;
+  if(src) return `<img class="bigshot" src="${src}" alt="" loading="lazy" decoding="async">`;
   const ch=(String(name||"?").trim()[0]||"?").toUpperCase();
   const skin=name
-    ? `<img class="bigshot" alt="" src="${esc(SKIN_BODY(name))}" onerror="this.remove()">`
+    ? `<img class="bigshot" alt="" src="${esc(SKIN_BODY(name))}"
+        loading="lazy" decoding="async" onerror="this.remove()">`
     : "";
   return `<span class="bigph" style="background:${nameColor(name)}">${esc(ch)}${skin}</span>`;
 }
@@ -1152,10 +1143,12 @@ function face(name, size){
   size=size||22;
   const src=faceSrc(name);
   const box=`width:${size}px;height:${size}px`;
-  if(src) return `<img class="face" src="${src}" alt="" style="${box}">`;
+  if(src) return `<img class="face" src="${src}" alt="" style="${box}"
+    loading="lazy" decoding="async">`;
   const ch=(String(name||"?").trim()[0]||"?").toUpperCase();
   const skin=name
-    ? `<img alt="" src="${esc(SKIN_FACE(name))}" onerror="this.remove()">`
+    ? `<img alt="" src="${esc(SKIN_FACE(name))}"
+        loading="lazy" decoding="async" onerror="this.remove()">`
     : "";
   return `<span class="face ph" style="${box};background:${nameColor(name)};font-size:${Math.round(size*0.52)}px">${esc(ch)}${skin}</span>`;
 }
@@ -1892,11 +1885,38 @@ function baserunLine(rows){
 }
 
 /* ------------------------------------------------------------- 集計 */
-const plateOf=(n,s)=>DATA.plate.filter(r=>r[s==="bat"?"batter":"pitcher"]===n);
-const pitchOf=(n,s)=>{
-  const want=s==="bat"?"Batting":"Pitching", key=s==="bat"?"batter":"pitcher";
-  return DATA.pitch.filter(r=>r[key]===n && (r.side===want||!r.side));
-};
+/**
+ * 選手ごとの行を覚えておく。
+ *
+ * <p>打席も投球も、毎回すべての記録を端から見ていた。
+ * 画面を移るたびに数え直すと、記録が増えるほど待たされる。
+ * 1 度だけ選手ごとに束ねて、読み込みが変わったら作り直す。
+ */
+let BY_PLAYER=null, BY_PLAYER_N=-1;
+function byPlayer(){
+  if(BY_PLAYER && BY_PLAYER_N===DATA.plate.length+DATA.pitch.length) return BY_PLAYER;
+  const box={plate:{bat:new Map(), pit:new Map()},
+             pitch:{bat:new Map(), pit:new Map()}};
+  const add=(map, key, row)=>{
+    if(!key) return;
+    (map.get(key) || map.set(key, []).get(key)).push(row);
+  };
+  DATA.plate.forEach(r=>{
+    add(box.plate.bat, r.batter, r);
+    add(box.plate.pit, r.pitcher, r);
+  });
+  DATA.pitch.forEach(r=>{
+    if(r.side==="Pitching") add(box.pitch.pit, r.pitcher, r);
+    else if(r.side==="Batting") add(box.pitch.bat, r.batter, r);
+    else { add(box.pitch.bat, r.batter, r); add(box.pitch.pit, r.pitcher, r); }
+  });
+  BY_PLAYER=box;
+  BY_PLAYER_N=DATA.plate.length+DATA.pitch.length;
+  return box;
+}
+const NO_ROWS=[];
+const plateOf=(n,s)=>byPlayer().plate[s==="bat"?"bat":"pit"].get(n) || NO_ROWS;
+const pitchOf=(n,s)=>byPlayer().pitch[s==="bat"?"bat":"pit"].get(n) || NO_ROWS;
 function line(rows){
   const c={}; rows.forEach(r=>{c[r.result]=(c[r.result]||0)+1;});
   const pa=rows.length;
@@ -2564,9 +2584,11 @@ function render(){
     const body=safely(make, PLAYER + " の能力");
     const list=nameList(PLAYER);
     PLAYER=keep;
-    app.innerHTML=`<div class="withlist">${list}<div class="listmain">${body}</div></div>`;
+    app.innerHTML=`<div class="withlist">${list}
+      <div class="listmain"><div class="pawafit">${body}</div></div></div>`;
     const after=document.querySelector(".namelist");
     if(after) after.scrollTop=at;
+    fitPawa();
     return;
   }
   app.innerHTML = safely(SIDE==="bat" ? batterView : pitcherView, PLAYER + " の成績");
@@ -2607,6 +2629,32 @@ function renderTabs(){
     `<div class="tab" data-side="bat" aria-selected="${SIDE==="bat"}">打者</div>
      <div class="tab" data-side="pit" aria-selected="${SIDE==="pit"}">投手</div>`;
 }
+
+/**
+ * 狭い画面で、能力画面を折り返さずに縮めて収める。
+ *
+ * <p>この画面は左右 2 枚の札で 1 つの絵になっているので、
+ * 折り返すと読み方が変わってしまう。並びはそのままに、
+ * 入る大きさまで縮める。
+ */
+const PAWA_DESIGN_WIDTH=980;
+function fitPawa(){
+  const box=document.querySelector(".pawafit");
+  if(!box) return;
+  const room=box.parentElement ? box.parentElement.clientWidth : 0;
+  box.style.width="";
+  box.style.transform="";
+  box.style.height="";
+  if(!room || room>=PAWA_DESIGN_WIDTH) return;
+  const k=room/PAWA_DESIGN_WIDTH;
+  box.style.width=PAWA_DESIGN_WIDTH+"px";
+  box.style.transformOrigin="top left";
+  box.style.transform="scale("+k.toFixed(4)+")";
+  // 縮めても場所取りは元の大きさのままなので、下に余白が残る。高さを詰める。
+  box.style.height=(box.firstElementChild
+    ? box.firstElementChild.offsetHeight*k : 0)+"px";
+}
+window.addEventListener("resize", ()=>{ if(VIEW==="pawa") fitPawa(); });
 
 /** 能力画面で選んでいる選手。Savant とは別に覚える。 */
 let PAWA_PLAYER="";
@@ -3227,11 +3275,15 @@ function leaderCard(col, rows, side){
     if(last===null || Math.abs(v-last)>1e-9){ place=i+1; last=v; }
     return {d, v, place};
   });
-  const list=ranked.filter(one=>one.place<=3);
+  const within=ranked.filter(one=>one.place<=3);
+  const list=within.slice(0,3);
+  // 3 人で切れた先に同じ順位の人がいたら、名前ではなく人数で添える
+  const rest=within.length-list.length;
   const body=list.length
     ? `<ol class="tied">${list.map(one=>`<li class="plink" data-who="${esc(one.d.name)}">
         <i class="rank">${one.place}</i>${face(one.d.name,20)}
-        <span>${esc(one.d.name)}</span><b>${col.fmt(one.v)}</b></li>`).join("")}</ol>`
+        <span>${esc(one.d.name)}</span><b>${col.fmt(one.v)}</b></li>`).join("")}</ol>
+      ${rest ? `<div class="tiedrest">${esc(list[list.length-1].d.name)} ほか ${rest} 人</div>` : ""}`
     : '<div class="empty">記録がありません</div>';
   return `<div class="card lbcard" data-lb-key="${col.key}">
     <h4>${col.head}</h4>${body}</div>`;
@@ -3993,7 +4045,7 @@ function paZone(pitches, row, lefty){
   // ストライクゾーンの箱。選手統計の投球位置と同じ寸法。
   const ZW=0.6, ZB=0.5, ZT=1.7;
   // 1 ブロックあたりの大きさを上げて、そのぶん枠の左右を詰める
-  const W=320, H=300, cx=W/2, cy=130, scale=105;
+  const W=320, H=300, cx=W/2, cy=120, scale=105;
   const X=x=>cx+x*scale, Y=y=>cy-(y-(ZB+ZT)/2)*scale;
   const box={l:X(-ZW), r:X(ZW), t:Y(ZT), b:Y(ZB)};
   const stance=stanceOf(row.batter)==="L";
@@ -4008,15 +4060,17 @@ function paZone(pitches, row, lefty){
     g+=`<line class="zline" x1="${x.toFixed(1)}" y1="${box.t}" x2="${x.toFixed(1)}" y2="${box.b}"/>`;
     g+=`<line class="zline" x1="${box.l}" y1="${y.toFixed(1)}" x2="${box.r}" y2="${y.toFixed(1)}"/>`;
   }
-  // 本塁ベース
-  const hp=box.b+62;
-  g+=`<path class="zplate" d="M ${cx-30} ${hp} L ${cx+30} ${hp} L ${cx+30} ${hp+11}
-      L ${cx} ${hp+19} L ${cx-30} ${hp+11} Z"/>`;
-  // 打者の影。打席の左右に立たせる
-  // 影の背丈は 248。ゾーンの上端が肩、下端が膝あたりに来るように置く。
-  const tall=(box.b-box.t)*1.55/248;
+  // 打者の影。形の中では 肩=46 膝=198 足=248 の高さにある。
+  // 肩をゾーンの上端、膝を下端に合わせると、背丈と置き場所が決まる。
+  const tall=(box.b-box.t)/152;
+  const headY=box.t-46*tall;          // 影の原点(頭の上)
+  const feetY=headY+248*tall;         // 足の先
   const sx=stance ? W-14 : 14;
-  g+=`<g class="shadow" transform="translate(${sx},${(box.t-58*tall).toFixed(1)})
+  // 本塁ベースは足の先と同じ高さに引く
+  g+=`<path class="zplate" d="M ${cx-30} ${feetY.toFixed(1)} L ${cx+30} ${feetY.toFixed(1)}
+      L ${cx+30} ${(feetY+11).toFixed(1)} L ${cx} ${(feetY+19).toFixed(1)}
+      L ${cx-30} ${(feetY+11).toFixed(1)} Z"/>`;
+  g+=`<g class="shadow" transform="translate(${sx},${headY.toFixed(1)})
       scale(${(stance?-tall:tall).toFixed(3)},${tall.toFixed(3)})">
       <rect x="26" y="10" width="30" height="30" rx="3"/>
       <rect x="24" y="46" width="34" height="58" rx="4"/>
