@@ -438,7 +438,7 @@ section.span{grid-column:1/-1}
     gap:4px; padding:0 0 4px}
   .nameplate{font-size:12px; min-height:30px; padding:5px 8px; border-width:1.5px}
   /* 能力画面は折り返さず、まるごと縮めて収める(fitPawa) */
-  .pawafit{overflow:hidden}
+  .pawafit{overflow:visible}
 
   /* 選手は一覧から選ぶ。名前を並べると横へ延びて読めない */
   #playerPick{display:block}
@@ -729,7 +729,8 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 .card ol.tied li::before{content:none}
 .card ol.tied li .rank{font-style:normal; width:14px; flex:none; text-align:center;
   color:var(--muted); font-family:"Roboto Mono",monospace; font-size:10.5px}
-.tiedrest{padding:0 10px 5px 31px; font-size:11px; color:var(--muted)}
+.tiedrest{font-style:normal; font-size:10.5px; color:var(--muted); margin-left:5px;
+  white-space:nowrap}
 
 /* スコアボードの回と、打席結果の行。押すと移動する */
 .board td.jump{cursor:pointer}
@@ -2650,9 +2651,17 @@ function fitPawa(){
   box.style.width=PAWA_DESIGN_WIDTH+"px";
   box.style.transformOrigin="top left";
   box.style.transform="scale("+k.toFixed(4)+")";
-  // 縮めても場所取りは元の大きさのままなので、下に余白が残る。高さを詰める。
-  box.style.height=(box.firstElementChild
-    ? box.firstElementChild.offsetHeight*k : 0)+"px";
+  // 縮めても場所取りは元の大きさのままなので、下に余白が残る。
+  // 高さは 980px 幅で組んだときの中身の高さ × 倍率。
+  // 組み終わってから測らないと、下(特殊能力のあたり)が切れる。
+  const fix=()=>{
+    const tall=Math.max(box.scrollHeight,
+      box.firstElementChild ? box.firstElementChild.scrollHeight : 0);
+    box.style.height=Math.ceil(tall*k)+"px";
+  };
+  fix();
+  // 描き終わってからもう一度測る。字の読み込みで高さが変わることがある。
+  if(typeof requestAnimationFrame==="function") requestAnimationFrame(fix);
 }
 window.addEventListener("resize", ()=>{ if(VIEW==="pawa") fitPawa(); });
 
@@ -2922,10 +2931,20 @@ function sameBatted(a,b){
   return a.game===b.game && a.inning===b.inning && a.pa===b.pa
       && a.pitch_no===b.pitch_no && a.batter===b.batter;
 }
+/** その打球がその試合の何打席目か。打席 ID の "#" の後ろがその番号。 */
+function paNumber(row){
+  const m=String(row.pa||"").match(/#(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
+
 function playCard(title, rows, fmt){
-  const body=rows.length ? `<ol>${rows.map(r=>`<li class="plink" data-who="${esc(r.batter||"")}">${face(r.batter,20)}
-      <span>${esc(r.batter||"?")}<small style="color:var(--muted)"> ${esc(gameLabel(r.game))}</small></span>
-      <b>${fmt(r)}</b></li>`).join("")}</ol>`
+  const body=rows.length ? `<ol>${rows.map(r=>{
+      const at=paNumber(r);
+      return `<li class="plink" data-who="${esc(r.batter||"")}">${face(r.batter,20)}
+      <span>${esc(r.batter||"?")}<small style="color:var(--muted)"> ${esc(gameLabel(r.game))}${
+        at ? " " + at + "打席目" : ""}</small></span>
+      <b>${fmt(r)}</b></li>`;
+    }).join("")}</ol>`
     : '<div class="empty">打球の記録がありません</div>';
   return `<div class="card"><h4>${title}</h4>${body}</div>`;
 }
@@ -3280,10 +3299,11 @@ function leaderCard(col, rows, side){
   // 3 人で切れた先に同じ順位の人がいたら、名前ではなく人数で添える
   const rest=within.length-list.length;
   const body=list.length
-    ? `<ol class="tied">${list.map(one=>`<li class="plink" data-who="${esc(one.d.name)}">
+    ? `<ol class="tied">${list.map((one,i)=>`<li class="plink" data-who="${esc(one.d.name)}">
         <i class="rank">${one.place}</i>${face(one.d.name,20)}
-        <span>${esc(one.d.name)}</span><b>${col.fmt(one.v)}</b></li>`).join("")}</ol>
-      ${rest ? `<div class="tiedrest">${esc(list[list.length-1].d.name)} ほか ${rest} 人</div>` : ""}`
+        <span>${esc(one.d.name)}${
+          rest && i===list.length-1 ? `<em class="tiedrest">ほか ${rest} 人</em>` : ""
+        }</span><b>${col.fmt(one.v)}</b></li>`).join("")}</ol>`
     : '<div class="empty">記録がありません</div>';
   return `<div class="card lbcard" data-lb-key="${col.key}">
     <h4>${col.head}</h4>${body}</div>`;
@@ -3878,7 +3898,14 @@ function pitchTone(row, last, result){
     return HIT.has(result) ? "hit" : "inplay";
   }
   if(call==="BALL") return "ball";
-  return "strike";
+  if(call) return "strike";
+  // 判定が残っていない球。打席を決めた 1 球なら、結果から色を決める。
+  // 四球の決め球を黄色(ストライク)で出すと、見た目が食い違う。
+  if(!last) return "strike";
+  if(result==="WALK" || result==="HIT_BY_PITCH") return "ball";
+  if(HIT.has(result)) return "hit";
+  if(result==="STRIKE_OUT") return "strike";
+  return "inplay";
 }
 
 /** ボール・ストライク・アウトを丸で縦に並べる。 */
