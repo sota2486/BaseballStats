@@ -521,10 +521,12 @@ tr.total td:first-child{font-weight:700; color:var(--text)}
 .palist{max-height:320px; overflow:auto}
 .palist thead th{position:sticky; top:0; background:var(--panel); z-index:2;
   text-align:center}
-table.pafix{table-layout:fixed; min-width:584px}
+table.pafix{table-layout:fixed; min-width:760px}
 table.pafix th,table.pafix td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 col.c-game{width:136px} col.c-name{width:112px} col.c-res{width:92px}
-col.c-num{width:50px} col.c-flag{width:66px}
+col.c-num{width:50px} col.c-flag{width:66px} col.c-wpt{width:76px}
+table.pafix td.wcell,table.pafix td.bases{text-align:center}
+table.pafix td.rbi{font-weight:700}
 .palist td.nm,.palist td.res{font-family:"Source Sans 3",sans-serif; text-align:left}
 .palist td.nm{color:var(--text)}
 .palist td.nm .none{color:var(--muted)}
@@ -767,6 +769,12 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
   font-size:12px; white-space:nowrap; line-height:1.25}
 .card ol.small li b .unit{font-style:normal; font-family:inherit;
   font-size:9.5px; color:var(--muted); margin-right:3px}
+/* 勝利ポイント。上がったら青、下がったら赤 */
+.wpt{font-family:"Roboto Mono",monospace; font-size:11.5px; font-weight:700;
+  white-space:nowrap}
+.wup{color:#1f6fd0} .wdn{color:#d9463f}
+.pares2 .wpt{font-size:12.5px}
+
 .tiedrest{font-style:normal; font-size:10.5px; color:var(--muted); margin-left:5px;
   white-space:nowrap}
 
@@ -861,6 +869,8 @@ tr.jumppa:hover{background:var(--panel-2)}
 .spraylegend span{display:flex; align-items:center; gap:6px; letter-spacing:.04em}
 .dotmark{width:11px; height:11px; border-radius:99px; flex:none}
 .empty{padding:24px 14px; text-align:center; color:var(--muted); font-size:12.5px}
+table.pa2 col.c-w{width:104px}
+table.pa2 td.wcell{text-align:center}
 table.pa2 col.c-o{width:40px}
 table.pa2 col.c-b{width:44px}
 table.pa2 td.bases{text-align:center}
@@ -3299,6 +3309,66 @@ function winShareCard(){
   return `<div class="card"><h4>勝利関与</h4>${body}</div>`;
 }
 
+/* ------------------------------------------------ 打席ごとの勝利ポイント */
+
+/** 打席の行から、その打席で動いた勝利確率を引く。 */
+let WIN_BY_ROW=null, WIN_BY_ROW_N=-1;
+function winMoveOf(row){
+  if(!WIN_BY_ROW || WIN_BY_ROW_N!==DATA.plate.length){
+    WIN_BY_ROW=new Map();
+    winMoves().forEach(m=>WIN_BY_ROW.set(m.row, m));
+    WIN_BY_ROW_N=DATA.plate.length;
+  }
+  return WIN_BY_ROW.get(row) || null;
+}
+
+/** 打席が始まる前のアウト数。試合をまたいで一度に数えておく。 */
+let OUTS_BEFORE=null, OUTS_BEFORE_N=-1;
+function outsBeforeAll(){
+  if(!OUTS_BEFORE || OUTS_BEFORE_N!==DATA.plate.length){
+    OUTS_BEFORE=outsBefore(DATA.plate);
+    OUTS_BEFORE_N=DATA.plate.length;
+  }
+  return OUTS_BEFORE;
+}
+
+/** 1 球ずつの記録から、その打席の結果の行を引く。 */
+let PLATE_INDEX=null, PLATE_INDEX_N=-1;
+function plateIndex(){
+  if(PLATE_INDEX && PLATE_INDEX_N===DATA.plate.length) return PLATE_INDEX;
+  const map=new Map();
+  DATA.plate.forEach(r=>{
+    const k=[String(r.game_id), r.inning, isBottom(r)?"B":"T", r.batter, r.result].join("|");
+    if(!map.has(k)) map.set(k, r);
+  });
+  PLATE_INDEX=map; PLATE_INDEX_N=DATA.plate.length;
+  return map;
+}
+function plateRowOf(rec){
+  if(!rec) return null;
+  const half=String(rec.half||"").toUpperCase().startsWith("B") ? "B" : "T";
+  return plateIndex().get(
+    [String(rec.game), rec.inning, half, rec.batter, rec.result].join("|")) || null;
+}
+
+/**
+ * その打席で動いた勝利ポイント。
+ *
+ * <p>ふだんは攻撃側が主語。「後攻 +12.0pt」の形で、
+ * 上がったら青、下がったら赤。投手の画面だけは主語を投手にする。
+ *
+ * @param opts team を渡すとチーム名を頭に付ける。pit:true で投手から見た向き
+ */
+function winPtText(row, opts){
+  const m=row ? winMoveOf(row) : null;
+  if(!m) return "";
+  const at=opts||{};
+  const v=(at.pit ? -m.forBatting : m.forBatting)*100;
+  const head=at.team ? esc(at.team)+" " : "";
+  return `<span class="wpt ${v>=0?"wup":"wdn"}">${head}${
+    v>=0?"+":"−"}${Math.abs(v).toFixed(1)}pt</span>`;
+}
+
 /** 表に出す勝利関与。kind は "bat" か "pit"、省くと投打まとめて。 */
 function winShareText(name, game, kind){
   const v=winShareOf(name, game, kind);
@@ -4448,6 +4518,7 @@ function paCard(row, before, outs, pitches, sides){
         ${countMark(finalCount(pitches), outs)}
         ${baseMark(row)}
         ${rbi ? `<span class="parbi">${rbi} 打点</span>` : ""}
+        ${winPtText(row, {team:names[side]})}
       </div>
       <div class="pabox pafacts">${batted.map(one=>
         `<span><i>${one[0]}</i><b>${one[1]}</b></span>`).join("")}</div>
@@ -4551,6 +4622,7 @@ function pitchTip(cx, cy, r, deg){
 }
 
 function inningTables(rows){
+  const names=teamNames(rows);
   const index=recordIndex();
   const outs=outsBefore(rows);
   const sides=teamSides(rows);
@@ -4564,10 +4636,11 @@ function inningTables(rows){
       html+=`<div class="inninghead" id="inning-${i}-${side}">${i} 回${side?"裏":"表"}</div>
       <div class="scroll"><table class="pa2">
       <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-b"><col class="c-b"><col class="c-r"><col class="c-s">
+        <col class="c-w">
         <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-k"><col class="c-s"></colgroup>
       <thead><tr>
         <th>打順</th><th class="nm">打者</th><th class="nm">投手</th><th>塁</th><th>アウト</th>
-        <th class="nm">結果</th><th>打点</th>
+        <th class="nm">結果</th><th>打点</th><th>勝利pt</th>
         <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th>
       </tr></thead><tbody>${half.map(r=>{
         const rec=index.get([GAME,r.inning,side?"B":"T",r.batter,r.result].join("|"));
@@ -4584,6 +4657,7 @@ function inningTables(rows){
           <td class="bases">${outMark(outs.get(r)||0)}</td>
           <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, rec))}</span></td>
           <td class="${rbi?"rbi":""}">${rbi||""}</td>
+          <td class="wcell">${winPtText(r, {team:names[side]}) || "–"}</td>
           <td>${hit?f1(ev):"–"}</td>
           <td>${hit?f1(la)+"°":"–"}</td>
           <td>${hit?f1(distanceOf(rec)):"–"}</td>
@@ -5619,10 +5693,12 @@ function paTable(rows, other, plate){
   if(!ended.length) return '<div class="empty">打席の記録がありません</div>';
   return `<div class="palist"><table class="pafix">
     <colgroup><col class="c-game"><col class="c-name"><col class="c-res">
+      <col class="c-num"><col class="c-num"><col class="c-wpt">
       <col class="c-num"><col class="c-num"><col class="c-num">
       <col class="c-flag"><col class="c-num"><col class="c-num"></colgroup>
     <thead><tr>
       <th>試合</th><th>${other==="pitcher"?"投手":"打者"}</th><th>結果</th>
+      <th>アウト</th><th>打点</th><th>勝利pt</th>
       <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th><th>HR球場</th>
     </tr></thead><tbody>
     ${ended.map(r=>{
@@ -5635,10 +5711,16 @@ function paTable(rows, other, plate){
       // 登録してある球場のうち、この打球が柵を越える数
       const parkNames=hit ? hrParkNames(Number(r.spray_angle), distanceOf(r)) : null;
       const name=String(r[other]??"").trim();
+      // 結果の行から、アウト数・打点・勝利ポイントを引く
+      const plate2=plateRowOf(r);
+      const rbi2=plate2 ? (Number(plate2.rbi)||0) : 0;
       return `<tr>
         <td>${esc(gameLabel(r.game))}</td>
         <td class="nm">${withFace(name,20)}</td>
         <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, r))}</span></td>
+        <td class="bases">${plate2 ? outMark(outsBeforeAll().get(plate2)||0) : "–"}</td>
+        <td class="${rbi2?"rbi":""}">${rbi2||""}</td>
+        <td class="wcell">${winPtText(plate2, {pit:other==="batter"}) || "–"}</td>
         <td>${hit?f1(ev):"–"}</td>
         <td>${hit?f1(la)+"°":"–"}</td>
         <td>${hit?f1(distanceOf(r)):"–"}</td>
