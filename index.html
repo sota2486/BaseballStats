@@ -112,6 +112,7 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 .plink{cursor:pointer}
 .plink:hover span{text-decoration:underline}
 .card ol.small li:hover .sub,.card ol.small li:hover b{text-decoration:none}
+.card ol.small li .nmlink{text-decoration:none}
 .withface span{overflow:hidden; text-overflow:ellipsis}
 .who .facebig{margin-bottom:6px}
 
@@ -754,12 +755,12 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 /* ベストプレー。1 行に収める。場面が長いときは字を細かくして押し込む。
    行の高さはランキングの札と同じ。中身が何であれ 1 行ぶんに抑える */
 .card ol.small li{gap:5px; padding:3px 9px; font-size:11.5px; line-height:1.25;
-  flex-wrap:nowrap; align-items:center; height:26px; box-sizing:border-box}
-.card ol.small li > *{align-self:center}
-.card ol.small li .who{display:inline-flex; align-items:center; gap:5px;
+  flex-wrap:nowrap; align-items:center}
+.card ol.small li > *{align-self:center; border:0; padding-top:0; padding-bottom:0}
+.card ol.small li .nmlink{display:inline-flex; align-items:center; gap:5px;
   flex:none; white-space:nowrap; cursor:pointer; line-height:1.25;
-  text-decoration:none}
-.card ol.small li .who:hover{text-decoration:underline}
+  padding:0; border:0; text-align:left}
+.card ol.small li .nmlink:hover{text-decoration:underline}
 .card ol.small li .sub{flex:1 1 auto; min-width:0; color:var(--muted);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.25}
 .card ol.small li b{flex:none; margin-left:auto; padding-left:3px;
@@ -1081,7 +1082,7 @@ function videoBox(id){
   const at=videoOf(id);
   if(!at) return "";
   return `<section class="span"><div class="pad">
-    <div class="head">動画</div>
+    <div class="head">映像</div>
     <div class="gamevideo"><iframe src="${esc(at)}" title="試合の動画"
       loading="lazy" allowfullscreen
       allow="accelerometer; encrypted-media; picture-in-picture; fullscreen"
@@ -2984,7 +2985,7 @@ function topView(){
       規定打席は ${QUAL_PA} 打席、規定投球回は ${QUAL_IP} 回です。</p>
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">ベストプレー<small>上位 3</small></div>
+    <div class="head">ベストプレー</div>
     <div class="cards">
       ${playCard("打球速度", topBatted("exit_velocity"), r=>f1(Number(r.exit_velocity))+" km/h")}
       ${playCard("飛距離", topBatted("distance"), r=>f1(distanceOf(r))+" m")}
@@ -3179,7 +3180,7 @@ function subSize(text, name){
 function bestRow(rank, name, where, value, gameId, at){
   return `<li class="plink" ${jumpMark(gameId, at)}>
     <i class="rank">${rank}</i>
-    <span class="who" data-who="${esc(name||"")}">${face(name,20)}${esc(name||"?")}</span>
+    <span class="nmlink" data-who="${esc(name||"")}">${face(name,20)}${esc(name||"?")}</span>
     <small class="sub" style="font-size:${subSize(where, name)}px">${where}</small>
     <b>${value}</b></li>`;
 }
@@ -6753,7 +6754,7 @@ function gameLog(name){
   }).join("");
   return `<div class="gamelog"><table>
     <thead><tr><th class="when">試合</th><th>打席</th><th>安打</th><th>本塁打</th>
-      <th>打点</th><th>得点</th><th>三振</th><th>四球</th><th>打撃関与</th>
+      <th>打点</th><th>得点</th><th>三振</th><th>四球</th><th>打撃貢献</th>
       <th class="pares">打席結果</th></tr></thead>
     <tbody>${body}</tbody></table></div>`;
 }
@@ -6777,7 +6778,7 @@ function gameLogPitcher(name){
   return `<div class="gamelog"><table>
     <thead><tr><th class="when">試合</th><th>球数</th><th>投球回</th><th>被安打</th>
       <th>被本塁打</th><th>失点</th><th>奪三振</th><th>与四球</th>
-      <th>防御率</th><th>投球関与</th></tr></thead>
+      <th>防御率</th><th>投球貢献</th></tr></thead>
     <tbody>${body}</tbody></table></div>`;
 }
 
