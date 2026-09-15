@@ -743,6 +743,16 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 .card ol.tied li::before{content:none}
 .card ol.tied li .rank{font-style:normal; width:14px; flex:none; text-align:center;
   color:var(--muted); font-family:"Roboto Mono",monospace; font-size:10.5px}
+/* ベストプレー。名前・場面・数字の 3 つに分ける */
+.card ol.small li{font-size:11.5px; gap:5px}
+.card ol.small li .who{display:inline-flex; align-items:center; gap:5px;
+  white-space:nowrap; cursor:pointer}
+.card ol.small li .who:hover{text-decoration:underline}
+.card ol.small li .sub{color:var(--muted); min-width:0; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; font-size:10.5px}
+.card ol.small li b{font-size:12px; white-space:nowrap}
+.card ol.small li b .unit{font-style:normal; font-family:inherit;
+  font-size:9.5px; color:var(--muted); margin-right:3px}
 .tiedrest{font-style:normal; font-size:10.5px; color:var(--muted); margin-left:5px;
   white-space:nowrap}
 
@@ -1492,11 +1502,15 @@ function reachGap(r){
   if(sx===null||sz===null||lx===null||lz===null) return null;
   const home=homeOf(r.game);
   const hang=nz(r.hangticks)||0, la=nz(r.launchangle)||0, ev=nz(r.exitvelocity)||0;
-  // 上がった打球。落ちてくるところへ走って間に合えば捕れる
-  if(la>=15 && hang>=25){
+  // 上がった打球。落ちてくるところへ走って間に合えば捕れる。
+  // ただし落ちたあとに拾ってアウトにしたなら、やっていることはゴロと同じ。
+  // そちらで見ないと、ふつうの小飛球が「追いつけない打球」になってしまう。
+  if(flyBall(r) && !afterBounce(r)){
     return Math.hypot(sx-lx, sz-lz)/FIELD_SPEED - hang/20;
   }
-  if(!home) return null;
+  if(!home){
+    return flyBall(r) ? Math.hypot(sx-lx, sz-lz)/FIELD_SPEED - hang/20 : null;
+  }
   let ux=lx-home.x, uz=lz-home.z;
   const carry=Math.hypot(ux,uz);
   if(carry<0.5) return null;
@@ -1517,6 +1531,27 @@ function reachGap(r){
     ticks=hang+t;
   }
   return perp/FIELD_SPEED - ticks/20;
+}
+
+/** 空中で捕るかどうかを問う打球か。 */
+function flyBall(r){
+  return (nz(r.launchangle)||0)>=15 && (nz(r.hangticks)||0)>=25;
+}
+
+/** 上がった打球を、落ちたあとに拾ってアウトにしたか。 */
+function afterBounce(r){
+  return r.caughtonfly!==true && (r.gotout===true || r.assist===true);
+}
+
+/**
+ * その打球をアウトにできたか。
+ *
+ * <p>空中で捕る打球は捕れたかどうか。落ちてから処理する打球は、
+ * 追いついて、なおかつ落とさなければ成功。
+ */
+function convertedPlay(r){
+  if(flyBall(r) && !afterBounce(r)) return r.caughtonfly===true;
+  return reachedBall(r) && (r.fumbled!==true || recovered(r));
 }
 
 /**
@@ -1743,10 +1778,9 @@ function fieldingLine(rows){
     tiers[tier.name].n++;
     // 落球の起こりやすさは守備位置でそこまで変わらない。リーグ全体で見る。
     dropExpected+=base.all.drop;
-    // 追いついて、なおかつ落とさなければ成功。
+    // 空中で捕る打球は捕れたか、落ちてから処理する打球は追いつけたか。
     // 弾いても拾い直したゴロは失敗にしない。
-    const clean=r.fumbled!==true || recovered(r);
-    if(reachedBall(r) && clean){ made++; tiers[tier.name].made++; }
+    if(convertedPlay(r)){ made++; tiers[tier.name].made++; }
   });
   // 機会が少ないうちは、平均どおりの人が 16 機会ぶん先にいるものとして混ぜる。
   // 寄せ先はその人が守った位置の平均。外野と内野では来る打球が違う。
@@ -2982,12 +3016,11 @@ function paNumber(row){
 }
 
 function playCard(title, rows, fmt){
-  const body=rows.length ? `<ol>${rows.map(r=>{
+  const body=rows.length ? `<ol class="tied small">${rows.map((r,i)=>{
       const at=paNumber(r);
-      return `<li class="plink" data-who="${esc(r.batter||"")}">${face(r.batter,20)}
-      <span>${esc(r.batter||"?")}<small style="color:var(--muted)"> ${esc(gameLabel(r.game))}${
-        at ? " " + at + "打席目" : ""}</small></span>
-      <b>${fmt(r)}</b></li>`;
+      const where=esc(gameLabel(r.game))+(at ? " "+at+"打席目" : "");
+      return bestRow(i+1, r.batter, where, fmt(r), r.game,
+        plateIndexOfPa(r.game, r.pa));
     }).join("")}</ol>`
     : '<div class="empty">打球の記録がありません</div>';
   return `<div class="card"><h4>${title}</h4>${body}</div>`;
@@ -3010,10 +3043,18 @@ function winMoves(){
     const rows=DATA.plate.filter(r=>String(r.game_id)===game);
     const path=winPath(rows);
     rows.forEach((r,i)=>{
-      const before=path[i].p, after=path[i+1] ? path[i+1].p : before;
+      const at=path[i], next=path[i+1];
+      const isTop=!isBottom(r), runs=Number(r.runs)||0;
+      const before=at.p, after=next ? next.p : before;
       // 先攻から見た確率なので、後攻の攻撃では向きを裏返す
-      const forBatting=(after-before)*(isBottom(r) ? -1 : 1);
-      out.push({row:r, game, before, after, swing:after-before, forBatting});
+      const forBatting=(after-before)*(isTop ? 1 : -1);
+      // 点差を抜きにした値打ち。塁と アウトから見た得点期待値の動きで見る。
+      // 勝利確率だけだと、走者のいない場面で取ったアウトが 0 になってしまう。
+      const sameHalf=next && next.r && next.inning===at.inning && next.isTop===at.isTop;
+      const reAfter=sameHalf ? runExpect(next.bases, next.outs) : 0;
+      const flat=(runs + reAfter - runExpect(at.bases, at.outs)) * WIN_PER_RUN;
+      out.push({row:r, game, before, after, swing:after-before, forBatting, flat,
+        at:i, index:i});
     });
   });
   WIN_MOVES=out; WIN_MOVES_N=DATA.plate.length;
@@ -3043,32 +3084,65 @@ function plateNumber(row){
   return v===undefined ? null : v;
 }
 
+/** その試合の打席並びの中で、その打席行が何番目か。 */
+function plateIndexOf(gameId, row){
+  return DATA.plate.filter(r=>String(r.game_id)===String(gameId)).indexOf(row);
+}
+
+/** 打席 ID(2026091201#16)から、その試合の何番目の打席かを出す。 */
+function plateIndexOfPa(gameId, pa){
+  const n=Number(String(pa||"").split("#")[1]);
+  if(!isFinite(n) || n<1) return -1;
+  const all=DATA.plate.filter(r=>String(r.game_id)===String(gameId));
+  return n<=all.length ? n-1 : -1;
+}
+
+/** 押したらその打席まで飛ぶ印。at が負なら試合の先頭まで。 */
+function jumpMark(gameId, at){
+  return `data-jump-pa="${esc(String(gameId))}" data-jump-at="${at}"`;
+}
+
+/** ベストプレーの 1 行。名前だけは選手ページ、それ以外は試合へ飛ぶ。 */
+function bestRow(rank, name, where, value, gameId, at){
+  return `<li class="plink" ${jumpMark(gameId, at)}>
+    <i class="rank">${rank}</i>
+    <span class="who" data-who="${esc(name||"")}">${face(name,20)}${esc(name||"?")}</span>
+    <small class="sub">${where}</small>
+    <b>${value}</b></li>`;
+}
+
 /** 決定打。打撃で勝利確率をいちばん動かした打席。 */
 function clutchCard(){
   const list=winMoves()
     .filter(m=>m.forBatting>0 && m.row.batter)
     .sort((a,b)=>b.forBatting-a.forBatting)
-    .slice(0,3);
+    .slice(0,5);
   const index=recordIndex();
-  const body=list.length ? `<ol class="tied">${list.map((m,i)=>{
+  const body=list.length ? `<ol class="tied small">${list.map((m,i)=>{
     const r=m.row;
     const rec=index.get([String(r.game_id), r.inning, isBottom(r)?"B":"T",
       r.batter, r.result].join("|"));
     const at=plateNumber(r);
-    return `<li class="plink" data-who="${esc(r.batter)}">
-      <i class="rank">${i+1}</i>${face(r.batter,20)}
-      <span>${esc(r.batter)}<small style="color:var(--muted)">
-        ${esc(gameLabel(r.game_id))} ${r.inning}回${isBottom(r)?"裏":"表"}${
-        at ? " "+at+"打席目" : ""} ${esc(resultText(r.result, rec))}</small></span>
-      <b>+${(m.forBatting*100).toFixed(1)}pt</b></li>`;
+    const where=`${esc(gameLabel(r.game_id))} ${r.inning}回${isBottom(r)?"裏":"表"}${
+      at ? " "+at+"打席目" : ""} ${esc(resultText(r.result, rec))}`;
+    return bestRow(i+1, r.batter, where, "+"+(m.forBatting*100).toFixed(1)+"pt",
+      r.game_id, plateIndexOf(r.game_id, r));
   }).join("")}</ol>` : '<div class="empty">打席の記録がありません</div>';
-  return `<div class="card"><h4>決定打<small>勝利確率をどれだけ動かしたか</small></h4>${body}</div>`;
+  return `<div class="card"><h4>決定打</h4>${body}</div>`;
 }
 
-/** 守備位置の日本語。 */
-const POS_JA={PITCHER:"投手", CATCHER:"捕手", FIRST_BASEMAN:"一塁手",
-  SECOND_BASEMAN:"二塁手", THIRD_BASEMAN:"三塁手", SHORTSTOP:"遊撃手",
-  LEFT_FIELDER:"左翼手", CENTER_FIELDER:"中堅手", RIGHT_FIELDER:"右翼手"};
+/** 守備位置の呼び名。打球の言い方に合わせる。 */
+const POS_JA={PITCHER:"ピッチャー", CATCHER:"キャッチャー", FIRST_BASEMAN:"ファースト",
+  SECOND_BASEMAN:"セカンド", THIRD_BASEMAN:"サード", SHORTSTOP:"ショート",
+  LEFT_FIELDER:"レフト", CENTER_FIELDER:"センター", RIGHT_FIELDER:"ライト"};
+
+/** 「ショートゴロ」「ライトフライ」のような呼び方。 */
+function playName(r){
+  const at=POS_JA[String(r.position)] || "";
+  const la=nz(r.launchangle)||0;
+  const kind=r.caughtonfly===true ? (la<25 ? "ライナー" : "フライ") : "ゴロ";
+  return at ? at+kind : kind;
+}
 
 /**
  * ファインプレー。追いつけて当たり前でない打球を処理したもの。
@@ -3080,29 +3154,25 @@ function fineCard(){
   const plays=[];
   DATA.play.forEach(r=>{
     if(r.kind!=="field" || !r.player) return;
-    if(!reachedBall(r) || (r.fumbled===true && !recovered(r))) return;
+    if(!convertedPlay(r)) return;             // アウトにできた打球だけ
     const gap=reachGap(r);
     if(gap===null || !ownsPlay(r)) return;
     const tier=reachTier(gap);
     const ease=battedEase(r.battedtype);
-    // その難しさで処理できて当たり前という割合。低いほど値打ちがある。
-    const expect=Math.max(0.02, Math.min(0.98, tier.expect*ease));
-    plays.push({r, tier, value:1-expect});
+    // その難しさなら、リーグは何割アウトにできるか。低いほど値打ちがある。
+    const rate=Math.max(0.02, Math.min(0.98, tier.expect*ease));
+    plays.push({r, tier, rate, value:1-rate});
   });
-  const list=plays.sort((a,b)=>b.value-a.value).slice(0,3);
-  const body=list.length ? `<ol class="tied">${list.map((one,i)=>{
+  const list=plays.sort((a,b)=>b.value-a.value).slice(0,5);
+  const body=list.length ? `<ol class="tied small">${list.map((one,i)=>{
     const r=one.r;
-    const kind=r.caughtonfly===true ? "フライ"
-      : (r.assist===true || r.threwtobase===true) ? "ゴロ" : "打球";
-    return `<li class="plink" data-who="${esc(r.player)}">
-      <i class="rank">${i+1}</i>${face(r.player,20)}
-      <span>${esc(r.player)}<small style="color:var(--muted)">
-        ${esc(gameLabel(r.game))} ${r.inning}回${
-        String(r.half).toUpperCase().startsWith("B")?"裏":"表"}
-        ${esc(POS_JA[String(r.position)]||"")}の${kind}</small></span>
-      <b>${(one.value*100).toFixed(0)}</b></li>`;
+    const where=`${esc(gameLabel(r.game))} ${r.inning}回${
+      String(r.half).toUpperCase().startsWith("B")?"裏":"表"} ${esc(playName(r))}`;
+    return bestRow(i+1, r.player, where,
+      `<em class="unit">アウト率</em>${(one.rate*100).toFixed(0)}%`,
+      r.game, plateIndexOfPa(r.game, r.pa));
   }).join("")}</ol>` : '<div class="empty">守備の記録がありません</div>';
-  return `<div class="card"><h4>ファインプレー<small>捕れて当たり前でない打球</small></h4>${body}</div>`;
+  return `<div class="card"><h4>ファインプレー</h4>${body}</div>`;
 }
 
 /**
@@ -3112,53 +3182,64 @@ function fineCard(){
  * 1 人の力だけで勝てば 1.00。大差の場面はほとんど動かないので、
  * 僅差の終盤で働いた人ほど大きくなる。負け試合でも働けば正になる。
  */
+/**
+ * 場面の重み。1 に近いほど、その試合の点差をそのまま効かせる。
+ *
+ * <p>点差がついた場面ほど勝利確率は動かないので、そのまま足すと
+ * 大差の試合で投げ抜いた人の働きが消えてしまう。
+ * 「0 対 0 だったら」で見た動きを混ぜて、重みづけを弱めてある。
+ */
+const WIN_SPOT=0.45;
+
 function winShare(){
   const box={};
-  const add=(name, game, value)=>{
+  const add=(name, game, bat, pit)=>{
     if(!name) return;
     const key=name+"|"+game;
-    box[key]=(box[key]||0)+value;
+    const at=box[key] || (box[key]={bat:0, pit:0});
+    at.bat+=bat; at.pit+=pit;
   };
   winMoves().forEach(m=>{
     const r=m.row;
+    // 実際の場面での動きと、点差を消した動きを混ぜる
+    const v=m.forBatting*WIN_SPOT + m.flat*(1-WIN_SPOT);
     // 打者は攻撃側から見た動き、投手はその裏返し
-    add(r.batter, m.game, m.forBatting);
-    add(r.pitcher, m.game, -m.forBatting);
+    add(r.batter, m.game, v, 0);
+    add(r.pitcher, m.game, 0, -v);
   });
-  return Object.entries(box).map(([key,value])=>{
+  return Object.entries(box).map(([key,at])=>{
     const part=key.split("|");
-    return {name:part[0], game:part[1], value};
+    return {name:part[0], game:part[1], bat:at.bat, pit:at.pit,
+      value:at.bat+at.pit};
   });
 }
 
 function winShareCard(){
-  const list=winShare().sort((a,b)=>b.value-a.value).slice(0,3);
-  const body=list.length ? `<ol class="tied">${list.map((one,i)=>
-    `<li class="plink" data-who="${esc(one.name)}">
-      <i class="rank">${i+1}</i>${face(one.name,20)}
-      <span>${esc(one.name)}<small style="color:var(--muted)">
-        ${esc(gameLabel(one.game))}</small></span>
-      <b>${one.value>=0?"+":""}${one.value.toFixed(2)}</b></li>`).join("")}</ol>`
+  const list=winShare().sort((a,b)=>b.value-a.value).slice(0,5);
+  const body=list.length ? `<ol class="tied small">${list.map((one,i)=>
+    bestRow(i+1, one.name, esc(gameLabel(one.game)),
+      (one.value>=0?"+":"")+one.value.toFixed(2), one.game, -1)).join("")}</ol>`
     : '<div class="empty">記録がありません</div>';
-  return `<div class="card"><h4>勝利関与<small>1 人で勝たせたら 1.00</small></h4>${body}</div>`;
+  return `<div class="card"><h4>勝利関与</h4>${body}</div>`;
 }
 
-/** 表に出す勝利関与。記録が無ければ棒。 */
-function winShareText(name, game){
-  const v=winShareOf(name, game);
+/** 表に出す勝利関与。kind は "bat" か "pit"、省くと投打まとめて。 */
+function winShareText(name, game, kind){
+  const v=winShareOf(name, game, kind);
   return v===null ? "—" : (v>=0?"+":"")+v.toFixed(2);
 }
 
 /** その選手のその試合の勝利関与。過去の試合に出す。 */
 let WIN_SHARE=null, WIN_SHARE_N=-1;
-function winShareOf(name, game){
+function winShareOf(name, game, kind){
   if(!WIN_SHARE || WIN_SHARE_N!==DATA.plate.length){
     WIN_SHARE={};
-    winShare().forEach(one=>{ WIN_SHARE[one.name+"|"+one.game]=one.value; });
+    winShare().forEach(one=>{ WIN_SHARE[one.name+"|"+one.game]=one; });
     WIN_SHARE_N=DATA.plate.length;
   }
-  const v=WIN_SHARE[name+"|"+String(game)];
-  return v===undefined ? null : v;
+  const at=WIN_SHARE[name+"|"+String(game)];
+  if(at===undefined) return null;
+  return kind==="bat" ? at.bat : kind==="pit" ? at.pit : at.value;
 }
 
 /** 1 試合で最も空振りを奪った投手。上位 5 つ。 */
@@ -3175,9 +3256,8 @@ function whiffCard(){
   const rows=Object.entries(count)
     .map(([k,n])=>({name:k.split("|")[0], game:k.split("|")[1], n}))
     .sort((a,b)=>b.n-a.n).slice(0,5);
-  const body=rows.length ? `<ol>${rows.map(r=>`<li class="plink" data-who="${esc(r.name)}">${face(r.name,20)}
-      <span>${esc(r.name)}<small style="color:var(--muted)"> ${esc(gameLabel(r.game))}</small></span>
-      <b>${r.n}</b></li>`).join("")}</ol>`
+  const body=rows.length ? `<ol class="tied small">${rows.map((r,i)=>
+      bestRow(i+1, r.name, esc(gameLabel(r.game)), r.n, r.game, -1)).join("")}</ol>`
     : '<div class="empty">投球の記録がありません</div>';
   return `<div class="card"><h4>空振り</h4>${body}</div>`;
 }
@@ -3828,6 +3908,19 @@ const RUN_EXPECT={
   "011":[1.95,1.38,0.58], "111":[2.28,1.55,0.75]
 };
 
+/** その場面の得点期待値。3 アウトなら 0。 */
+function runExpect(bases, outs){
+  if(outs>=3) return 0;
+  return (RUN_EXPECT[bases] || RUN_EXPECT["000"])[Math.min(2, outs)];
+}
+
+/**
+ * 1 点がどれだけ勝ちに近いか。
+ *
+ * <p>同点の場面で 1 点動くと、勝つ見込みはおよそ 1 割動く。
+ */
+const WIN_PER_RUN=0.11;
+
 /** 正規分布の累積。勝利確率に直すのに使う。 */
 function normalCdf(z){
   // 誤差関数の近似(Abramowitz and Stegun 7.1.26)
@@ -3848,9 +3941,14 @@ function normalCdf(z){
  * @param outs   アウト数
  */
 function winProb(top, bottom, inning, isTop, bases, outs){
-  // 残りの半イニング。今の回のぶんは、アウト数で目減りさせる。
+  // 済んだ半イニング。今の回のぶんは、アウト数で目減りさせる。
   const done=(inning-1)*2 + (isTop ? 0 : 1);
-  const left=Math.max(0, GAME_INNINGS*2-done) - Math.min(2, outs)/3;
+  let left=Math.max(0, GAME_INNINGS*2-done) - Math.min(2, outs)/3;
+  // 延長。同点で最終回まで来たので、残りは今の半イニングと、
+  // 表ならそのあとの裏のぶん。ここを 0 にすると決着したことになってしまう。
+  if(done>=GAME_INNINGS*2) left=(isTop ? 2 : 1) - Math.min(2, outs)/3;
+  // 最終回の裏に入った時点で後攻が勝っていれば、もう試合は終わっている。
+  if(!isTop && done>=GAME_INNINGS*2-1 && bottom>top) return 0;
   if(left<=0.05){
     return top===bottom ? 0.5 : (top>bottom ? 1 : 0);
   }
@@ -3863,22 +3961,34 @@ function winProb(top, bottom, inning, isTop, bases, outs){
   return Math.max(0.01, Math.min(0.99, normalCdf((top-bottom+edge)/sd)));
 }
 
-/** 1 打席ごとの勝利確率の並び。打席が始まる前の値を出す。 */
+/**
+ * 1 打席ごとの勝利確率の並び。打席が始まる前の値を出す。
+ *
+ * <p>result の outs 列はその打席で増えたアウトなので、
+ * 打席が始まる前のアウト数はこちらで数え直す。
+ *
+ * <p>点差を 0 とみなした値(pn)も一緒に出す。勝利関与で、
+ * 大差の場面の重みを弱めるのに使う。
+ */
 function winPath(rows){
-  let top=0, bottom=0;
+  let top=0, bottom=0, outs=0, half="";
   const out=[];
   rows.forEach(r=>{
     const isTop=!isBottom(r);
+    const inning=Number(r.inning)||1;
+    const key=inning+(isTop?"T":"B");
+    if(key!==half){ half=key; outs=0; }
     const bases=(r.base1===true?"1":"0")+(r.base2===true?"1":"0")+(r.base3===true?"1":"0");
-    out.push({
-      p:winProb(top, bottom, Number(r.inning)||1, isTop, bases, Number(r.outs)||0),
-      r, top, bottom
-    });
+    const at={r, top, bottom, inning, isTop, bases, outs:Math.min(2,outs)};
+    at.p =winProb(top, bottom, inning, isTop, bases, at.outs);
+    at.pn=winProb(0,   0,      inning, isTop, bases, at.outs);
+    out.push(at);
     const runs=Number(r.runs)||0;
     if(isTop) top+=runs; else bottom+=runs;
+    outs+=Number(r.outs)||0;
   });
   // 最後に決着した時点も入れる
-  out.push({p:top===bottom?0.5:(top>bottom?1:0), r:null, top, bottom});
+  out.push({p:top===bottom?0.5:(top>bottom?1:0), pn:0.5, r:null, top, bottom});
   return out;
 }
 
@@ -6561,12 +6671,12 @@ function gameLog(name){
     return `<tr><td class="when">${esc(gameLabel(g))}<small>${esc(venueOf(g)||"")}</small></td>
       <td>${L.pa}</td><td>${L.h}</td><td>${L.hr}</td><td>${L.rbi}</td>
       <td>${runsOfGame(name,g)}</td><td>${L.so}</td><td>${L.bb}</td>
-      <td>${winShareText(name,g)}</td>
+      <td>${winShareText(name,g,"bat")}</td>
       <td class="pares">${paTexts(mine)}</td></tr>`;
   }).join("");
   return `<div class="gamelog"><table>
     <thead><tr><th class="when">試合</th><th>打席</th><th>安打</th><th>本塁打</th>
-      <th>打点</th><th>得点</th><th>三振</th><th>四球</th><th>勝利関与</th>
+      <th>打点</th><th>得点</th><th>三振</th><th>四球</th><th>打撃関与</th>
       <th class="pares">打席結果</th></tr></thead>
     <tbody>${body}</tbody></table></div>`;
 }
@@ -6584,12 +6694,12 @@ function gameLogPitcher(name){
       <td>${pitches ? pitches : "—"}</td>
       <td>${ipText(L.outs)}</td><td>${L.h}</td><td>${L.hr}</td><td>${L.runs}</td>
       <td>${L.so}</td><td>${L.bb}</td><td>${f2(L.era)}</td>
-      <td>${winShareText(name,g)}</td></tr>`;
+      <td>${winShareText(name,g,"pit")}</td></tr>`;
   }).join("");
   return `<div class="gamelog"><table>
     <thead><tr><th class="when">試合</th><th>球数</th><th>投球回</th><th>被安打</th>
       <th>被本塁打</th><th>失点</th><th>奪三振</th><th>与四球</th>
-      <th>防御率</th><th>勝利関与</th></tr></thead>
+      <th>防御率</th><th>投球関与</th></tr></thead>
     <tbody>${body}</tbody></table></div>`;
 }
 
@@ -7938,6 +8048,21 @@ document.getElementById("app").addEventListener("click",e=>{
     render();
     window.scrollTo({top:0, behavior:"auto"});
     return;
+  }
+  // ベストプレーの行。名前以外を押したら、その試合のその打席へ飛ぶ
+  const best=e.target.closest("[data-jump-pa]");
+  if(best){
+    const to=String(best.dataset.jumpPa||"");
+    const at=Number(best.dataset.jumpAt);
+    if(to){
+      VIEW="result"; GAME=to; PA_GAME=to;
+      if(isFinite(at) && at>=0) PA_AT=at;
+      render();
+      const box=(isFinite(at) && at>=0) ? document.getElementById("padetail") : null;
+      if(box) box.scrollIntoView({behavior:"smooth", block:"start"});
+      else window.scrollTo({top:0, behavior:"auto"});
+      return;
+    }
   }
   // 打席詳細の前後送り、打席結果の行押し
   const pa=e.target.closest("[data-pa]");
