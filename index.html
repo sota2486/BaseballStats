@@ -516,15 +516,20 @@ td{font-family:"Roboto Mono",monospace; font-variant-numeric:tabular-nums}
 tr.total td{background:var(--panel-2); font-weight:700; border-bottom:0}
 tr.total td:first-child{font-weight:700; color:var(--text)}
 .scroll{overflow-x:auto}
-/* 打席の一覧。多くなるのでスクロールさせる。
+/* 打席の一覧。字を詰めて、中でスクロールせずに全部出す。
    投手名が空の行があっても列がずれないよう、幅は固定にする */
-.palist{max-height:320px; overflow:auto}
+.palist{overflow-x:auto}
 .palist thead th{position:sticky; top:0; background:var(--panel); z-index:2;
-  text-align:center}
-table.pafix{table-layout:fixed; min-width:760px}
-table.pafix th,table.pafix td{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-col.c-game{width:136px} col.c-name{width:112px} col.c-res{width:92px}
-col.c-num{width:50px} col.c-flag{width:66px} col.c-wpt{width:76px}
+  text-align:center; font-size:9px}
+table.pafix{table-layout:fixed; min-width:620px; font-size:10.5px}
+table.pafix th,table.pafix td{overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; padding:1px 4px}
+table.pafix td.nm .face{width:16px !important; height:16px !important}
+table.pafix .rtag{font-size:9.5px; padding:1px 4px}
+table.pafix .outdots i{width:7px; height:7px; border-width:1px}
+table.pafix .wpt{font-size:10px}
+col.c-game{width:96px} col.c-name{width:86px} col.c-res{width:76px}
+col.c-num{width:40px} col.c-flag{width:54px} col.c-wpt{width:62px}
 table.pafix td.wcell,table.pafix td.bases{text-align:center}
 table.pafix td.rbi{font-weight:700}
 .palist td.nm,.palist td.res{font-family:"Source Sans 3",sans-serif; text-align:left}
@@ -769,6 +774,10 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
   font-size:12px; white-space:nowrap; line-height:1.25}
 .card ol.small li b .unit{font-style:normal; font-family:inherit;
   font-size:9.5px; color:var(--muted); margin-right:3px}
+/* 見出しに添える注釈 */
+.head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
+  color:var(--muted); margin-left:8px; letter-spacing:0; text-transform:none}
+
 /* 勝利ポイント。上がったら青、下がったら赤 */
 .wpt{font-family:"Roboto Mono",monospace; font-size:11.5px; font-weight:700;
   white-space:nowrap}
@@ -3960,7 +3969,8 @@ function resultView(){
     ${paDetail(rows)}
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">打席結果<small>${rows.length} 打席</small></div>
+    <div class="head">打席結果<small>${rows.length} 打席</small>
+      <em class="headnote">勝利pt は攻撃側から見た勝ちやすさの増減</em></div>
     ${inningTables(rows)}
   </div></section>`;
 }
@@ -4518,7 +4528,7 @@ function paCard(row, before, outs, pitches, sides){
         ${countMark(finalCount(pitches), outs)}
         ${baseMark(row)}
         ${rbi ? `<span class="parbi">${rbi} 打点</span>` : ""}
-        ${winPtText(row, {team:names[side]})}
+        ${winPtText(row)}
       </div>
       <div class="pabox pafacts">${batted.map(one=>
         `<span><i>${one[0]}</i><b>${one[1]}</b></span>`).join("")}</div>
@@ -4622,7 +4632,6 @@ function pitchTip(cx, cy, r, deg){
 }
 
 function inningTables(rows){
-  const names=teamNames(rows);
   const index=recordIndex();
   const outs=outsBefore(rows);
   const sides=teamSides(rows);
@@ -4657,7 +4666,7 @@ function inningTables(rows){
           <td class="bases">${outMark(outs.get(r)||0)}</td>
           <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, rec))}</span></td>
           <td class="${rbi?"rbi":""}">${rbi||""}</td>
-          <td class="wcell">${winPtText(r, {team:names[side]}) || "–"}</td>
+          <td class="wcell">${winPtText(r) || "–"}</td>
           <td>${hit?f1(ev):"–"}</td>
           <td>${hit?f1(la)+"°":"–"}</td>
           <td>${hit?f1(distanceOf(rec)):"–"}</td>
