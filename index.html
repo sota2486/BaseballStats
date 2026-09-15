@@ -421,7 +421,16 @@ section.span{grid-column:1/-1}
    能力画面は横 1540px を前提に組んであるので、そのままでは収まらない。
    横幅を画面に合わせ、字と枠もそのぶん縮める。 */
 @media (max-width:640px){
-  main{padding:10px 10px}
+  /* 横へはみ出すものがあると、画面全体が縮んで表示される。
+     はみ出しそうなものは画面幅で頭打ちにする。 */
+  html,body{overflow-x:hidden}
+  main{padding:10px 10px; max-width:100%}
+  .pawa,.pawa *{max-width:100%}
+  .pawa svg{max-width:100%; height:auto}
+  header{padding:8px 10px 0}
+  .wordmark{font-size:22px}
+  .tabs{gap:2px}
+  .tab{font-size:13px; padding:5px 10px 6px}
   main.wide.pawawide{max-width:100%}
   .pawa{padding:8px; border-radius:8px}
   .withlist{grid-template-columns:1fr; gap:8px}
@@ -701,18 +710,19 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 
 .palist2{list-style:none; margin:0; padding:0; display:flex;
   flex-direction:column; gap:5px; font-size:12.5px}
-.palist2 li{display:grid; grid-template-columns:22px minmax(0,1fr) auto auto;
-  gap:8px; align-items:center}
+.palist2 li{display:grid; grid-template-columns:26px minmax(0,1fr) auto auto;
+  gap:9px; align-items:center}
 .palist2 li.none{display:block; color:var(--muted)}
-.pdot{width:22px; height:22px; min-width:22px; max-width:22px; flex:none;
+/* 球の番号。球種の色の帯(.pdot)とは別の名前にする */
+.pnum{width:26px; height:26px; min-width:26px; max-width:26px;
   box-sizing:border-box; border-radius:99px; display:grid; place-items:center;
   justify-self:center; align-self:center; line-height:1; padding:0;
   color:#11161d; font-family:"Source Sans 3",sans-serif; font-weight:700;
-  font-size:11px; font-style:normal; border:1.5px solid #fff}
-.pdot.strike{background:#f5c518}
-.pdot.ball{background:#2f9e4f; color:#fff}
-.pdot.inplay{background:#d9463f; color:#fff}
-.pdot.hit{background:#1f6fd0; color:#fff}
+  font-size:12px; font-style:normal; border:2px solid #fff}
+.pnum.strike{background:#f5c518}
+.pnum.ball{background:#2f9e4f; color:#fff}
+.pnum.inplay{background:#d9463f; color:#fff}
+.pnum.hit{background:#1f6fd0; color:#fff}
 .palist2 .ptype{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .palist2 .pspd{font-family:"Roboto Mono",monospace; font-size:11.5px;
   text-align:right; white-space:nowrap}
@@ -724,6 +734,12 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 .outdots i{width:9px; height:9px; border-radius:99px; display:inline-block;
   border:1.5px solid var(--line); background:transparent}
 .outdots i.on{background:var(--hot); border-color:var(--hot)}
+
+/* ランキングの札。同率なら同じ順位を出す */
+.card ol.tied{counter-reset:none}
+.card ol.tied li::before{content:none}
+.card ol.tied li .rank{font-style:normal; width:14px; flex:none; text-align:center;
+  color:var(--muted); font-family:"Roboto Mono",monospace; font-size:10.5px}
 
 /* スコアボードの回と、打席結果の行。押すと移動する */
 .board td.jump{cursor:pointer}
@@ -3203,10 +3219,19 @@ function leaderSorted(rows, col, side){
 /** 項目 1 つぶんのカード。上位 3 人。率の項目は規定に届いた人だけ。 */
 function leaderCard(col, rows, side){
   const all=leaderSorted(rows, col, side);
-  const list=(col.rate ? all.filter(d=>d.qualified) : all).slice(0,3);
+  const pool=col.rate ? all.filter(d=>d.qualified) : all;
+  // 同じ値なら同じ順位。3 位が並んだらその人数ぶんまで出す。
+  let place=0, last=null;
+  const ranked=pool.map((d,i)=>{
+    const v=col.get(d);
+    if(last===null || Math.abs(v-last)>1e-9){ place=i+1; last=v; }
+    return {d, v, place};
+  });
+  const list=ranked.filter(one=>one.place<=3);
   const body=list.length
-    ? `<ol>${list.map(d=>`<li class="plink" data-who="${esc(d.name)}">${face(d.name,20)}
-        <span>${esc(d.name)}</span><b>${col.fmt(col.get(d))}</b></li>`).join("")}</ol>`
+    ? `<ol class="tied">${list.map(one=>`<li class="plink" data-who="${esc(one.d.name)}">
+        <i class="rank">${one.place}</i>${face(one.d.name,20)}
+        <span>${esc(one.d.name)}</span><b>${col.fmt(one.v)}</b></li>`).join("")}</ol>`
     : '<div class="empty">記録がありません</div>';
   return `<div class="card lbcard" data-lb-key="${col.key}">
     <h4>${col.head}</h4>${body}</div>`;
@@ -3743,6 +3768,12 @@ function resultText(result, rec){
   const plain=JA[result] || result || "";
   if(!rec) return plain;
   const a=Number(rec.spray_angle);
+  // 決め球の判定が分かれば、三振の種類まで書く
+  if(result==="STRIKE_OUT"){
+    if(rec.call==="SWINGING_STRIKE") return "空振り三振";
+    if(rec.call==="CALLED_STRIKE") return "見逃し三振";
+    return plain;
+  }
   const hit=rec.contact===true && rec.call==="IN_PLAY";
   if(!hit) return plain;
   const where=fielderName(rec);
@@ -3896,12 +3927,16 @@ function paCard(row, before, outs, pitches, sides){
   const list=pitches.map((p,i)=>{
     const tone=pitchTone(p, i===pitches.length-1, row.result);
     const speed=Number(p.velocity);
-    const what=tone==="ball" ? "ボール"
+    // 打席を決めた球だけは、結果まで書く
+    const last=i===pitches.length-1;
+    const strikeOut=last && row.result==="STRIKE_OUT";
+    const walked=last && (row.result==="WALK" || row.result==="HIT_BY_PITCH");
+    const what=p.call==="SWINGING_STRIKE" ? (strikeOut ? "空振り三振" : "空振り")
+      : p.call==="CALLED_STRIKE" ? (strikeOut ? "見逃し三振" : "見逃し")
+      : tone==="ball" ? (walked ? JA[row.result] : "ボール")
       : p.call==="FOUL" ? "ファウル"
-      : p.call==="SWINGING_STRIKE" ? "空振り"
-      : p.call==="CALLED_STRIKE" ? "見逃し"
       : resultText(row.result, p);
-    return `<li><i class="pdot ${tone}">${i+1}</i>
+    return `<li><i class="pnum ${tone}">${i+1}</i>
       <span class="ptype">${esc(p.type||"")}</span>
       <span class="pspd">${isFinite(speed)&&speed>0?speed.toFixed(0)+" km/h":"—"}</span>
       <span class="pwhat">${esc(what)}</span></li>`;
@@ -3978,8 +4013,11 @@ function paZone(pitches, row, lefty){
   g+=`<path class="zplate" d="M ${cx-30} ${hp} L ${cx+30} ${hp} L ${cx+30} ${hp+11}
       L ${cx} ${hp+19} L ${cx-30} ${hp+11} Z"/>`;
   // 打者の影。打席の左右に立たせる
-  const sx=stance ? W-16 : 16;
-  g+=`<g class="shadow" transform="translate(${sx},${box.t-56}) scale(${stance?-0.7:0.7},0.7)">
+  // 影の背丈は 248。ゾーンの上端が肩、下端が膝あたりに来るように置く。
+  const tall=(box.b-box.t)*1.55/248;
+  const sx=stance ? W-14 : 14;
+  g+=`<g class="shadow" transform="translate(${sx},${(box.t-58*tall).toFixed(1)})
+      scale(${(stance?-tall:tall).toFixed(3)},${tall.toFixed(3)})">
       <rect x="26" y="10" width="30" height="30" rx="3"/>
       <rect x="24" y="46" width="34" height="58" rx="4"/>
       <rect x="10" y="52" width="14" height="44" rx="6"/>
@@ -5120,7 +5158,7 @@ function paTable(rows, other, plate){
       return `<tr>
         <td>${esc(gameLabel(r.game))}</td>
         <td class="nm">${withFace(name,20)}</td>
-        <td class="res"><span class="rtag ${resultClass(r.result)}">${JA[r.result]||r.result}</span></td>
+        <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, r))}</span></td>
         <td>${hit?f1(ev):"–"}</td>
         <td>${hit?f1(la)+"°":"–"}</td>
         <td>${hit?f1(distanceOf(r)):"–"}</td>
@@ -6206,11 +6244,17 @@ function sprayFan(name){
  *
  * <p>色は打席一覧と同じ {@link resultClass} を使う。
  * 同じ結果が場所によって違う色になると読み替えが要る。
+ *
+ * <p>どこへ飛んだかが分かる打席は「セカンドゴロ」「右安打」まで書く。
  */
 function paTexts(rows){
-  return rows.map(r=>
-    `<span class="rtag inline ${resultClass(r.result)}">${esc(JA[r.result] || r.result || "—")}</span>`
-  ).join("");
+  const index=recordIndex();
+  return rows.map(r=>{
+    const rec=index.get([String(r.game_id), r.inning, isBottom(r)?"B":"T",
+      r.batter, r.result].join("|"));
+    return `<span class="rtag inline ${resultClass(r.result)}">${
+      esc(resultText(r.result, rec))}</span>`;
+  }).join("");
 }
 
 /** 打者の試合ごとの成績。4 試合ぶん見えてスクロールする。 */
