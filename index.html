@@ -69,6 +69,10 @@ button,label.filebtn,#parkPick{font:inherit; font-size:12.5px; color:var(--text)
   border:1px solid var(--line); border-radius:3px; padding:5px 11px; cursor:pointer}
 button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
 #parkPick{max-width:230px}
+#playerPick{font:inherit; font-size:13px; color:var(--text); background:var(--panel-2);
+  border:1px solid var(--line); border-radius:99px; padding:5px 12px; cursor:pointer;
+  max-width:260px}
+#playerPick:hover{border-color:var(--rule)}
 :focus-visible{outline:2px solid var(--rule); outline-offset:2px}
 /* 選手のタブは多くなると横スクロールする。
    打者/投手の切り替えは巻き込まれないよう外に出して常に見せる */
@@ -386,12 +390,13 @@ main:not(.wide) section{border-radius:6px}
 main:not(.wide) .title{font-size:13px; padding:7px 12px}
 main:not(.wide) .who{padding:8px 12px 6px}
 main:not(.wide) .who .meta{font-size:11px}
-main:not(.wide) .prow{grid-template-columns:118px 1fr 40px; gap:7px; padding:2px 11px}
+main:not(.wide) .prow{grid-template-columns:118px minmax(0,190px) 40px; gap:7px;
+  padding:2px 11px}
 main:not(.wide) .prow .nm{font-size:11px}
 main:not(.wide) .prow .nm small{font-size:9px}
 main:not(.wide) .prow .val{font-size:11px}
-main:not(.wide) .bar{height:16px}
-main:not(.wide) .bar .num{width:18px; height:18px; font-size:9px; border-width:2px}
+main:not(.wide) .bar{height:21px}
+main:not(.wide) .bar .num{width:21px; height:21px; font-size:10px; border-width:2px}
 main:not(.wide) .pgroup{font-size:9.5px; padding:6px 11px 2px}
 main:not(.wide) .zone{grid-template-columns:repeat(5,52px); grid-auto-rows:41px}
 main:not(.wide) .z b{font-size:11px}
@@ -410,6 +415,32 @@ main.wide{grid-template-columns:minmax(0,1fr); max-width:1180px; margin-inline:a
 /* 能力画面は名札のぶんと中身のぶん、1.3 倍ほど広く取る */
 main.wide.pawawide{max-width:1540px}
 section.span{grid-column:1/-1}
+
+/* ----------------------------------------------- 狭い画面(スマホ)
+   能力画面は横 1540px を前提に組んであるので、そのままでは収まらない。
+   横幅を画面に合わせ、字と枠もそのぶん縮める。 */
+@media (max-width:640px){
+  main{padding:10px 10px}
+  main.wide.pawawide{max-width:100%}
+  .pawa{padding:8px; border-radius:8px}
+  .withlist{grid-template-columns:1fr; gap:8px}
+  .namelist{flex-direction:row; flex-wrap:wrap; height:auto; position:static;
+    gap:4px; padding:0 0 4px}
+  .nameplate{font-size:12px; min-height:30px; padding:5px 8px; border-width:1.5px}
+  .abwrap{grid-template-columns:1fr; gap:8px}
+  .pawa .card.ab{min-height:0}
+  .abrow{gap:5px; padding:3px 5px 3px 3px; margin:2px 0; border-radius:7px}
+  .abrow .nm{width:98px; height:34px; font-size:11px !important; border-width:1.5px}
+  .abrow .rank{font-size:21px}
+  .abrow .num{font-size:21px}
+  .abrow .num.left{padding-left:8px}
+  .pawa .dhead{font-size:11px; padding:0 2px 4px}
+  .posgrid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px}
+  .posgrid .pos{font-size:12px; padding:4px 2px}
+  .posgrid .pos i{font-size:13px}
+  .skills{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+  .skill{font-size:11px !important; min-height:26px}
+}
 @media (max-width:1280px){main{grid-template-columns:1fr 1fr}}
 @media (max-width:860px){main{grid-template-columns:1fr}}
 .col{display:flex; flex-direction:column; gap:12px}
@@ -485,8 +516,8 @@ col.c-num{width:50px} col.c-flag{width:66px}
   border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid currentColor}
 .poor{color:var(--cold)} .avg{color:var(--mid)} .great{color:var(--hot)}
 
-.prow{display:grid; grid-template-columns:126px 1fr 44px; gap:8px; align-items:center;
-  padding:3px 14px}
+.prow{display:grid; grid-template-columns:126px minmax(0,220px) 44px; gap:8px;
+  align-items:center; padding:3px 14px}
 .prow + .prow{border-top:1px dashed var(--line-soft)}
 /* パーセンタイルのくくりの見出し */
 .pgroup{font-size:10.5px; font-weight:700; letter-spacing:.10em; text-transform:uppercase;
@@ -495,12 +526,12 @@ col.c-num{width:50px} col.c-flag{width:66px}
 .pgroup + .prow{border-top:0}
 .prow .nm{font-size:12.5px; font-weight:600; text-align:right; line-height:1.15}
 .prow .nm small{display:block; font-weight:400; color:var(--muted); font-size:10px}
-.bar{position:relative; height:19px; background:var(--track); border-radius:2px}
+.bar{position:relative; height:24px; background:var(--track); border-radius:3px}
 .bar .fill{position:absolute; inset:0 auto 0 0; border-radius:2px}
 .bar .tickmid{position:absolute; top:0; bottom:0; left:50%; width:1px; background:var(--panel);
   opacity:.85}
 .bar .num{position:absolute; top:50%; transform:translate(-50%,-50%);
-  width:21px; height:21px; border-radius:99px; border:2px solid var(--panel);
+  width:24px; height:24px; border-radius:99px; border:2px solid var(--panel);
   display:flex; align-items:center; justify-content:center; color:#fff;
   font-family:"Roboto Mono",monospace; font-size:10px; font-weight:500;
   box-shadow:0 1px 2px rgba(0,0,0,.25)}
@@ -592,45 +623,81 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
 
 
 /* ------------------------------------------------ 打席詳細 */
-.padetail{display:flex; flex-direction:column; gap:10px}
-.pacard{display:grid; grid-template-columns:minmax(0,1.1fr) 230px minmax(0,1.3fr);
-  gap:12px; align-items:start; border:1px solid var(--line-soft);
-  border-radius:9px; padding:10px 12px; background:var(--panel-2)}
-.pahead .paat{font-size:15px; font-weight:800}
-.pahead .pascore{font-size:12.5px; color:var(--muted); padding:1px 0 5px}
-.pahead dl{display:grid; grid-template-columns:auto 1fr; gap:3px 8px; margin:0;
-  font-size:12px; align-items:center}
-.pahead dt{color:var(--muted)}
-.pahead dd{margin:0; min-width:0}
-.pares2{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:7px}
-.pazone{display:block; max-width:230px}
-.pazone .zbox{fill:none; stroke:var(--line); stroke-width:2}
-.pazone .zline{stroke:var(--line-soft); stroke-width:1}
-.pazone .shadow{fill:var(--muted); opacity:.22}
-.pazone .pd{stroke:#fff; stroke-width:1.5}
+/* 前後の送り */
+.panav{display:flex; align-items:center; justify-content:flex-end; gap:10px;
+  padding:0 0 8px; font-size:12.5px; color:var(--muted)}
+.panav button{font:inherit; padding:4px 12px; border-radius:99px; cursor:pointer;
+  border:1px solid var(--line); background:var(--panel); color:var(--ink)}
+.panav button:hover:not(:disabled){background:var(--panel-2)}
+.panav button:disabled{opacity:.4; cursor:default}
+
+.pacard{display:grid; grid-template-columns:minmax(0,1fr) 340px minmax(0,1.2fr);
+  gap:12px; align-items:start}
+/* 項目ごとの枠 */
+.pabox{border:1px solid var(--line-soft); border-radius:9px;
+  background:var(--panel-2); padding:10px 12px}
+.paside{display:flex; flex-direction:column; gap:10px; min-width:0}
+.paat{font-size:17px; font-weight:800}
+.pascore{font-size:13px; color:var(--muted); padding:2px 0 7px}
+.pascore b{color:var(--ink); font-family:"Barlow Condensed",sans-serif; font-size:16px}
+.pascore .t-first{color:var(--team-first); font-weight:700}
+.pascore .t-second{color:var(--team-second); font-weight:700}
+/* ボールとストライクの丸 */
+.bscount{display:inline-flex; flex-direction:column; gap:2px; font-size:10.5px}
+.bscount span{display:flex; align-items:center; gap:3px}
+.bscount b{width:10px; color:var(--muted); font-size:10px}
+.bscount i{width:9px; height:9px; border-radius:99px; display:inline-block;
+  border:1.5px solid var(--line); background:transparent}
+.bscount i.on.ball{background:#2f9e4f; border-color:#2f9e4f}
+.bscount i.on.strike{background:#f5c518; border-color:#f5c518}
+.paside dl{display:grid; grid-template-columns:auto 1fr; gap:4px 9px; margin:0;
+  font-size:12.5px; align-items:center}
+.paside dt{color:var(--muted)}
+.paside dd{margin:0; min-width:0}
+.pares2{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.pacount{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:17px;
+  font-variant-numeric:tabular-nums}
+.parbi{font-size:11.5px; font-weight:700; color:var(--rule)}
+.pafacts{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+.pafacts span{text-align:center; min-width:0}
+.pafacts i{display:block; font-style:normal; font-size:11px; color:var(--muted)}
+.pafacts b{display:block; font-family:"Barlow Condensed",sans-serif; font-size:19px;
+  font-weight:700; white-space:nowrap}
+
+.pazonebox{padding:8px}
+.pazone{display:block; width:100%}
+.pazone .zbox{fill:var(--panel); stroke:var(--text); stroke-width:2.4}
+.pazone .zdash{fill:none; stroke:var(--line); stroke-width:1.4; stroke-dasharray:4 5}
+.pazone .zline{stroke:var(--line); stroke-width:1}
+.pazone .zplate{fill:none; stroke:var(--line); stroke-width:1.4}
+.pazone .shadow{fill:var(--muted); opacity:.20}
+.pazone .pd{stroke:#fff; stroke-width:2}
 .pazone .pd.strike{fill:#f5c518}
 .pazone .pd.ball{fill:#2f9e4f}
 .pazone .pd.inplay{fill:#d9463f}
 .pazone .pd.hit{fill:#1f6fd0}
-.pazone .pn{font-size:12px; font-weight:700; fill:#11161d;
+.pazone .pn{font-size:14px; font-weight:700; fill:#11161d; pointer-events:none;
   font-family:"Barlow Condensed",sans-serif}
+
 .palist2{list-style:none; margin:0; padding:0; display:flex;
-  flex-direction:column; gap:3px; font-size:12px}
-.palist2 li{display:grid; grid-template-columns:22px minmax(0,1fr) 34px minmax(0,1.1fr);
-  gap:7px; align-items:center}
+  flex-direction:column; gap:5px; font-size:12.5px}
+.palist2 li{display:grid; grid-template-columns:22px minmax(0,1fr) auto auto;
+  gap:8px; align-items:center}
 .palist2 li.none{display:block; color:var(--muted)}
-.pdot{width:20px; height:20px; border-radius:99px; display:flex; flex:none;
-  align-items:center; justify-content:center; color:#11161d;
-  font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:12px;
-  font-style:normal; border:1.5px solid #fff}
+.pdot{width:22px; height:22px; min-width:22px; max-width:22px; flex:none;
+  box-sizing:border-box; border-radius:99px; display:inline-block;
+  justify-self:center; align-self:center; text-align:center; line-height:19px;
+  color:#11161d; font-family:"Barlow Condensed",sans-serif; font-weight:700;
+  font-size:13px; font-style:normal; border:1.5px solid #fff; overflow:hidden}
 .pdot.strike{background:#f5c518}
 .pdot.ball{background:#2f9e4f; color:#fff}
 .pdot.inplay{background:#d9463f; color:#fff}
 .pdot.hit{background:#1f6fd0; color:#fff}
 .palist2 .ptype{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.palist2 .pspd{font-family:"Roboto Mono",monospace; text-align:right}
-.palist2 .pwhat{color:var(--muted); white-space:nowrap; overflow:hidden;
-  text-overflow:ellipsis}
+.palist2 .pspd{font-family:"Roboto Mono",monospace; font-size:11.5px;
+  text-align:right; white-space:nowrap}
+.palist2 .pwhat{color:var(--muted); white-space:nowrap; min-width:56px;
+  text-align:right}
 
 /* アウトカウントの丸 */
 .outdots{display:inline-flex; gap:3px; align-items:center}
@@ -638,13 +705,15 @@ table.mix td.tname i{display:inline-block; width:4px; height:14px; border-radius
   border:1.5px solid var(--line); background:transparent}
 .outdots i.on{background:var(--hot); border-color:var(--hot)}
 
-/* スコアボードの回。押すとその回まで移動する */
+/* スコアボードの回と、打席結果の行。押すと移動する */
 .board td.jump{cursor:pointer}
 .board td.jump:hover{text-decoration:underline}
+tr.jumppa{cursor:pointer}
+tr.jumppa:hover{background:var(--panel-2)}
 
 @media (max-width:900px){
   .pacard{grid-template-columns:minmax(0,1fr)}
-  .pazone{max-width:230px; margin:0 auto}
+  .pazonebox{max-width:320px; margin:0 auto}
 }
 
 /* ------------------------------------------------------------ zone */
@@ -931,6 +1000,8 @@ function teamNames(rows){
           String(info.bottom||first.bottomteam||"").trim()||"後攻"];
 }
 let PLAYER="", SIDE="bat", SAMPLE=true;
+/** 打席詳細で見ている打席。試合を選び直したら先頭に戻す。 */
+let PA_AT=0, PA_GAME="";
 /** 選手ページの見せ方。savant か pawa(パワプロ風)。 */
 /** 上のタブ。player / leaderboard / result。 */
 let VIEW="top";
@@ -2488,8 +2559,12 @@ function renderTabs(){
   if(PLAYER && !list.includes(PLAYER)) PLAYER="";
   if(PAWA_PLAYER && !list.includes(PAWA_PLAYER)) PAWA_PLAYER="";
   // 選手成績と選手統計は上に名前を並べる。能力画面は横の名札を使う。
+  // 名前が増えると横へ延びて読めないので、一覧から選ぶ形にする
   document.getElementById("tabs").innerHTML = VIEW==="pawa" ? "" :
-    list.map(n=>`<div class="tab" data-name="${esc(n)}" aria-selected="${n===PLAYER}">${esc(n)}</div>`).join("");
+    `<select id="playerPick" title="選手を選ぶ">
+      <option value="">選手を選択してください</option>
+      ${list.map(n=>`<option value="${esc(n)}" ${n===PLAYER?"selected":""}>${esc(n)}</option>`).join("")}
+    </select>`;
   document.getElementById("sideTabs").innerHTML=
     `<div class="tab" data-side="bat" aria-selected="${SIDE==="bat"}">打者</div>
      <div class="tab" data-side="pit" aria-selected="${SIDE==="pit"}">投手</div>`;
@@ -2943,7 +3018,7 @@ function batterColumns(mode){
 }
 function pitcherColumns(mode){
   if(mode==="std") return [
-    {key:"g",   head:"試合",    get:d=>d.games,   fmt:v=>v},
+    {key:"g",   head:"登板",    get:d=>d.games,   fmt:v=>v},
     {key:"w",   head:"勝",    get:d=>d.w,       fmt:v=>v},
     {key:"l",   head:"敗",    get:d=>d.l,       fmt:v=>v},
     {key:"ip",  head:"投球回",   get:d=>d.L.outs,  fmt:ipText},
@@ -3307,6 +3382,7 @@ function resultView(){
   const games=gameIds();
   if(!games.length) return '<section><div class="empty">result の csv を読み込んでください</div></section>';
   if(!games.includes(GAME)) GAME=games[games.length-1];
+  if(GAME!==PA_GAME){ PA_GAME=GAME; PA_AT=0; }
   const rows=DATA.plate.filter(r=>String(r.game_id)===GAME);
   const pick=games.map(g=>
     `<button data-game="${esc(g)}" aria-selected="${g===GAME}">${esc(gameLabel(g))}</button>`).join("");
@@ -3321,7 +3397,7 @@ function resultView(){
     ${winChart(rows)}
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">打席詳細<small>1 打席ごとの投球</small></div>
+    <div class="head" id="padetail">打席詳細<small>1 打席ごとの投球</small></div>
     ${paDetail(rows)}
   </div></section>
   <section class="span"><div class="pad">
@@ -3700,27 +3776,35 @@ function pitchTone(row, last, result){
   return "strike";
 }
 
+/** ボールとストライクを丸で出す。 */
+function countMark(text){
+  const part=String(text||"0-0").split("-");
+  const dots=(n, max, tone)=>{
+    let out="";
+    for(let i=0;i<max;i++) out+=`<i class="${i<n?"on "+tone:""}"></i>`;
+    return out;
+  };
+  return `<span class="bscount">
+    <span><b>B</b>${dots(Number(part[0])||0, 3, "ball")}</span>
+    <span><b>S</b>${dots(Number(part[1])||0, 2, "strike")}</span>
+  </span>`;
+}
+
 /**
- * 打席詳細。1 打席ぶんの投球をゾーンの上に並べる。
+ * その打席の最後のカウント。判定を順に当てて数える。
  *
- * <p>左に場面、中にコース、右に 1 球ずつの中身。
- * 球の形はパワプロの変化の向きに合わせて、上へ伸びる球は丸、
- * それ以外は五角形。左投手なら左右を裏返す。
+ * <p>4 つ目のボールと 3 つ目のストライクは打席を終わらせるので、
+ * 表示は 3-2 で止める。
  */
-function paDetail(rows){
-  const index=paPitchIndex();
-  const outs=outsBefore(rows);
-  const sides=teamSides(rows);
-  let run=[0,0];
-  const cards=rows.map(r=>{
-    const side=isBottom(r)?1:0;
-    const before=[run[0], run[1]];
-    run[side]+=Number(r.runs)||0;
-    const key=[String(r.game_id), r.inning, isBottom(r)?"B":"T", r.batter, r.result].join("|");
-    const pitches=index.get(key) || [];
-    return paCard(r, before, outs.get(r)||0, pitches, sides);
+function finalCount(pitches){
+  let b=0, s=0;
+  pitches.forEach(p=>{
+    const call=String(p.call||"");
+    if(call==="BALL") b=Math.min(3,b+1);
+    else if(call==="FOUL"){ if(s<2) s++; }
+    else if(call.indexOf("STRIKE")>=0) s=Math.min(2,s+1);
   });
-  return `<div class="padetail">${cards.join("")}</div>`;
+  return b+"-"+s;
 }
 
 /** 打席 → その打席の投球(順番どおり)。 */
@@ -3748,13 +3832,44 @@ function paPitchIndex(){
   return out;
 }
 
-/** 1 打席ぶんの札。 */
+/**
+ * 打席詳細。選んだ 1 打席だけを大きく見せる。
+ *
+ * <p>初めて開いたときは初回の先頭打者。前後のボタンと、
+ * 打席結果の行を押すことでも移る。
+ */
+function paDetail(rows){
+  if(!rows.length) return '<div class="empty">打席の記録がありません</div>';
+  const at=Math.max(0, Math.min(rows.length-1, PA_AT));
+  const row=rows[at];
+  const index=paPitchIndex();
+  const outs=outsBefore(rows);
+  const sides=teamSides(rows);
+  // その打席が始まるまでの得点
+  const before=[0,0];
+  for(let i=0;i<at;i++){
+    before[isBottom(rows[i])?1:0]+=Number(rows[i].runs)||0;
+  }
+  const key=[String(row.game_id), row.inning, isBottom(row)?"B":"T",
+    row.batter, row.result].join("|");
+  const pitches=index.get(key) || [];
+  return `<div class="panav">
+      <button data-pa="${at-1}" ${at<=0?"disabled":""}>← 前の打席</button>
+      <span>${at+1} / ${rows.length} 打席</span>
+      <button data-pa="${at+1}" ${at>=rows.length-1?"disabled":""}>次の打席 →</button>
+    </div>
+    ${paCard(row, before, outs.get(row)||0, pitches, sides)}`;
+}
+
+/** 1 打席ぶんの中身。 */
 function paCard(row, before, outs, pitches, sides){
   const side=isBottom(row)?1:0;
   const names=teamNames(DATA.plate.filter(r=>String(r.game_id)===String(row.game_id)));
-  const score=`${esc(names[0])} ${before[0]}-${before[1]} ${esc(names[1])}`;
   const lefty=throwHandOf(row.pitcher)==="L";
   const rec=pitches.length ? pitches[pitches.length-1] : null;
+  const ev=rec?Number(rec.exit_velocity):NaN, la=rec?Number(rec.launch_angle):NaN;
+  const hit=rec && rec.contact===true && rec.call==="IN_PLAY" && isFinite(ev) && ev>0;
+  const rbi=Number(row.rbi)||0;
   const list=pitches.map((p,i)=>{
     const tone=pitchTone(p, i===pitches.length-1, row.result);
     const speed=Number(p.velocity);
@@ -3765,82 +3880,131 @@ function paCard(row, before, outs, pitches, sides){
       : resultText(row.result, p);
     return `<li><i class="pdot ${tone}">${i+1}</i>
       <span class="ptype">${esc(p.type||"")}</span>
-      <span class="pspd">${isFinite(speed)&&speed>0?speed.toFixed(0):"—"}</span>
+      <span class="pspd">${isFinite(speed)&&speed>0?speed.toFixed(0)+" km/h":"—"}</span>
       <span class="pwhat">${esc(what)}</span></li>`;
   }).join("");
+  const facts=[
+    ["場面", `${row.inning} 回${side?"裏":"表"}`],
+    ["スコア", `${esc(names[0])} ${before[0]}-${before[1]} ${esc(names[1])}`],
+    ["カウント", finalCount(pitches)],
+    ["打点", rbi ? rbi + " 点" : "—"]
+  ];
+  const batted=[
+    ["打球速度", hit ? f1(ev)+" km/h" : "—"],
+    ["打球角度", hit ? f1(la)+"°" : "—"],
+    ["飛距離", hit ? f1(distanceOf(rec))+" m" : "—"]
+  ];
   return `<div class="pacard">
-    <div class="pahead">
-      <div class="paat">${row.inning} 回${side?"裏":"表"}</div>
-      <div class="pascore">${score}</div>
-      <dl>
-        <dt>投手</dt><dd>${withTeamFace(row.pitcher, sides[row.pitcher], 20)}</dd>
-        <dt>打者</dt><dd>${withTeamFace(row.batter, sides[row.batter], 20)}</dd>
-      </dl>
-      <div class="pares2">
-        <span class="rtag inline ${resultClass(row.result)}">${esc(resultText(row.result, rec))}</span>
-        ${baseMark(row)}${outMark(outs)}
+    <div class="paside">
+      <div class="pabox">
+        <div class="paat">${row.inning} 回${side?"裏":"表"}</div>
+        <div class="pascore"><span class="t-first">${esc(names[0])}</span>
+          <b>${before[0]}-${before[1]}</b>
+          <span class="t-second">${esc(names[1])}</span></div>
+        <dl>
+          <dt>投手</dt><dd>${withTeamFace(row.pitcher, sides[row.pitcher], 20)}</dd>
+          <dt>打者</dt><dd>${withTeamFace(row.batter, sides[row.batter], 20)}</dd>
+        </dl>
       </div>
+      <div class="pabox pares2">
+        <span class="rtag inline ${resultClass(row.result)}">${esc(resultText(row.result, rec))}</span>
+        ${countMark(finalCount(pitches))}
+        ${baseMark(row)}${outMark(outs)}
+        ${rbi ? `<span class="parbi">${rbi} 打点</span>` : ""}
+      </div>
+      <div class="pabox pafacts">${batted.map(one=>
+        `<span><i>${one[0]}</i><b>${one[1]}</b></span>`).join("")}</div>
     </div>
-    ${paZone(pitches, row, lefty)}
-    <ol class="palist2">${list || '<li class="none">投球の記録がありません</li>'}</ol>
+    <div class="pabox pazonebox">${paZone(pitches, row, lefty)}</div>
+    <div class="pabox"><ol class="palist2">${list
+      || '<li class="none">投球の記録がありません</li>'}</ol></div>
   </div>`;
 }
 
 /**
  * 1 打席ぶんのコース。ゾーンの上に球を順番の数字で置く。
  *
+ * <p>見た目は選手統計の「投球位置」と揃えてある。
+ * 太枠がストライクゾーン、その外の点線がボール 1 個ぶんの目安、
+ * 下に本塁ベース。横へ大きく外れた球も入るよう、枠は広めに取る。
+ *
  * <p>位置は本塁を通ったときのずれ(plate_x / plate_y)。
  * 左投手は左右を裏返して、打者から見た向きに揃える。
  */
 function paZone(pitches, row, lefty){
-  const W=210, H=230, cx=W/2, cy=H/2;
-  // ストライクゾーンの箱。1 ブロックを何ピクセルで描くか。
-  // 記録を見ると、ゾーンに入った球は横 -0.5〜0.6、縦 0.5〜1.7 の範囲。
-  // 縦の真ん中は 1.1 あたりなので、そこを箱の中心に置く。
-  const scale=46, middle=1.1;
-  const zw=scale*1.2, zh=scale*1.2;
+  // ストライクゾーンの箱。選手統計の投球位置と同じ寸法。
+  const ZW=0.6, ZB=0.5, ZT=1.7;
+  const W=380, H=330, cx=W/2, cy=150, scale=76;
+  const X=x=>cx+x*scale, Y=y=>cy-(y-(ZB+ZT)/2)*scale;
+  const box={l:X(-ZW), r:X(ZW), t:Y(ZT), b:Y(ZB)};
   const stance=stanceOf(row.batter)==="L";
-  let dots="";
-  pitches.forEach((p,i)=>{
-    const x=Number(p.plate_x), y=Number(p.plate_y);
-    if(!isFinite(x) || !isFinite(y) || (x===0 && y===0)) return;
-    const px=cx + (lefty ? -x : x)*scale;
-    const py=cy - (y-middle)*scale;
-    const tone=pitchTone(p, i===pitches.length-1, row.result);
-    // 上へ伸びる球は丸、それ以外は五角形
-    const up=STRAIGHT.indexOf(String(p.type||""))>=0;
-    dots+= up
-      ? `<circle class="pd ${tone}" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="12"/>`
-      : `<polygon class="pd ${tone}" points="${pentagon(px,py,13)}"/>`;
-    dots+=`<text class="pn" x="${px.toFixed(1)}" y="${py.toFixed(1)}"
-      text-anchor="middle" dominant-baseline="central">${i+1}</text>`;
-  });
-  return `<svg class="pazone" viewBox="0 0 ${W} ${H}" width="100%">
-    <g class="shadow" transform="translate(${stance ? W-18 : 18},${cy-92}) scale(${stance?-0.34:0.34},0.34)">
+  let g="";
+  // ボール 1 個ぶん外の目安
+  g+=`<rect class="zdash" x="${(box.l-16).toFixed(1)}" y="${(box.t-16).toFixed(1)}"
+      width="${(box.r-box.l+32).toFixed(1)}" height="${(box.b-box.t+32).toFixed(1)}"/>`;
+  g+=`<rect class="zbox" x="${box.l.toFixed(1)}" y="${box.t.toFixed(1)}"
+      width="${(box.r-box.l).toFixed(1)}" height="${(box.b-box.t).toFixed(1)}"/>`;
+  for(let i=1;i<3;i++){
+    const x=box.l+(box.r-box.l)*i/3, y=box.t+(box.b-box.t)*i/3;
+    g+=`<line class="zline" x1="${x.toFixed(1)}" y1="${box.t}" x2="${x.toFixed(1)}" y2="${box.b}"/>`;
+    g+=`<line class="zline" x1="${box.l}" y1="${y.toFixed(1)}" x2="${box.r}" y2="${y.toFixed(1)}"/>`;
+  }
+  // 本塁ベース
+  const hp=box.b+62;
+  g+=`<path class="zplate" d="M ${cx-30} ${hp} L ${cx+30} ${hp} L ${cx+30} ${hp+11}
+      L ${cx} ${hp+19} L ${cx-30} ${hp+11} Z"/>`;
+  // 打者の影。打席の左右に立たせる
+  const sx=stance ? W-30 : 30;
+  g+=`<g class="shadow" transform="translate(${sx},${box.t-58}) scale(${stance?-0.78:0.78},0.78)">
       <rect x="26" y="10" width="30" height="30" rx="3"/>
       <rect x="24" y="46" width="34" height="58" rx="4"/>
       <rect x="10" y="52" width="14" height="44" rx="6"/>
       <rect x="24" y="104" width="34" height="44" rx="4"/>
       <rect x="25" y="148" width="14" height="100" rx="4"/>
       <rect x="43" y="148" width="14" height="100" rx="4"/>
-    </g>
-    <rect class="zbox" x="${cx-zw/2}" y="${cy-zh/2}" width="${zw}" height="${zh}"/>
-    <line class="zline" x1="${cx-zw/6}" y1="${cy-zh/2}" x2="${cx-zw/6}" y2="${cy+zh/2}"/>
-    <line class="zline" x1="${cx+zw/6}" y1="${cy-zh/2}" x2="${cx+zw/6}" y2="${cy+zh/2}"/>
-    <line class="zline" x1="${cx-zw/2}" y1="${cy-zh/6}" x2="${cx+zw/2}" y2="${cy-zh/6}"/>
-    <line class="zline" x1="${cx-zw/2}" y1="${cy+zh/6}" x2="${cx+zw/2}" y2="${cy+zh/6}"/>
-    ${dots}
-  </svg>`;
+    </g>`;
+  pitches.forEach((p,i)=>{
+    const rawX=Number(p.plate_x), rawY=Number(p.plate_y);
+    if(!isFinite(rawX) || !isFinite(rawY) || (rawX===0 && rawY===0)) return;
+    // 大きく外れた球は枠の中へ寄せる。外へ出ると見えなくなる。
+    const x=Math.max(-2.2, Math.min(2.2, lefty ? -rawX : rawX));
+    const y=Math.max(-0.9, Math.min(3.1, rawY));
+    const px=X(x), py=Y(y);
+    const tone=pitchTone(p, i===pitches.length-1, row.result);
+    const name=String(p.type||"");
+    const same=pitchOf(row.pitcher,"pit").filter(r=>String(r.type||"")===name);
+    const dir=breakDirection(name, same);
+    const up=STRAIGHT.indexOf(name)>=0 || dir==="up";
+    if(up){
+      g+=`<circle class="pd ${tone}" cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="15"/>`;
+    }else{
+      const raw=BREAK_DEG[dir]===undefined ? 90 : BREAK_DEG[dir];
+      g+=`<polygon class="pd ${tone}" points="${pitchTip(px, py, 17, lefty ? 180-raw : raw)}"/>`;
+    }
+    g+=`<text class="pn" x="${px.toFixed(1)}" y="${(py+1).toFixed(1)}"
+      text-anchor="middle" dominant-baseline="middle">${i+1}</text>`;
+  });
+  return `<svg class="pazone" viewBox="0 0 ${W} ${H}" width="100%">${g}</svg>`;
 }
 
-/** 五角形の点。上が尖った形にする。 */
-function pentagon(cx, cy, r){
-  const out=[];
-  for(let i=0;i<5;i++){
-    const a=(-90 + i*72)*Math.PI/180;
-    out.push((cx + r*Math.cos(a)).toFixed(1) + "," + (cy + r*Math.sin(a)).toFixed(1));
-  }
-  return out.join(" ");
+/** 変化の向きごとの角度(度。0 が右、下が正)。能力画面の図と同じ。 */
+const BREAK_DEG={up:-90, upRight:-45, right:0, lowRight:45,
+  down:90, lowLeft:135, left:180, upLeft:-135};
+
+/**
+ * 変化球の印。向いている方向へ尖った五角形。
+ *
+ * <p>尖った先が変化の向き。残りの 4 点で四角い胴を作る。
+ */
+function pitchTip(cx, cy, r, deg){
+  const rad=deg*Math.PI/180;
+  const ux=Math.cos(rad), uy=Math.sin(rad);
+  // 向きに直交する向き
+  const vx=-uy, vy=ux;
+  const half=r*0.72, back=r*0.62;
+  const at=(along, side)=>
+    (cx + ux*along + vx*side).toFixed(1) + "," + (cy + uy*along + vy*side).toFixed(1);
+  return [at(r, 0), at(0, half), at(-back, half), at(-back, -half), at(0, -half)].join(" ");
 }
 
 function inningTables(rows){
@@ -3869,7 +4033,7 @@ function inningTables(rows){
         const x=hit ? battedExpectation(ev,la).ba : null;
         const rbi=Number(r.rbi)||0;
         const slot=order.get(r.batter);
-        return `<tr>
+        return `<tr class="jumppa" data-pa="${rows.indexOf(r)}">
           <td class="slot">${slot ? `<i>${slot}</i>` : ""}</td>
           <td class="nm">${withTeamFace(r.batter,sides[r.batter],20)}</td>
           <td class="nm">${withTeamFace(r.pitcher,sides[r.pitcher],20)}</td>
@@ -7348,6 +7512,13 @@ document.getElementById("playerRow").addEventListener("click",e=>{
   }
   render();
 });
+// 一覧から選手を選ぶ
+document.getElementById("playerRow").addEventListener("change",e=>{
+  if(e.target.id!=="playerPick") return;
+  PLAYER=e.target.value;
+  PAWA_PLAYER=PLAYER;
+  render();
+});
 // 横の名札。能力画面で選んでいる人は Savant とは別に覚える。
 document.getElementById("app").addEventListener("click",e=>{
   const plate=e.target.closest(".nameplate");
@@ -7393,6 +7564,29 @@ document.getElementById("app").addEventListener("click",e=>{
     else { PARK_SORT.key=key; PARK_SORT.dir=-1; }
     render();
     return;
+  }
+  // 名前は先に見る。行にも打席送りが付いているので、
+  // 先に打席を切り替えると名前を押しても選手ページへ行けない。
+  const first=e.target.closest("[data-who]");
+  if(first && first.dataset.who){
+    PLAYER=canon(first.dataset.who);
+    PAWA_PLAYER=PLAYER;
+    VIEW="split";
+    render();
+    window.scrollTo({top:0, behavior:"auto"});
+    return;
+  }
+  // 打席詳細の前後送り、打席結果の行押し
+  const pa=e.target.closest("[data-pa]");
+  if(pa && pa.dataset.pa!==""){
+    const to=Number(pa.dataset.pa);
+    if(isFinite(to)){
+      PA_AT=to;
+      render();
+      const box=document.getElementById("padetail");
+      if(box) box.scrollIntoView({behavior:"smooth", block:"start"});
+      return;
+    }
   }
   // スコアボードの回を押したら、その回の打席結果まで移動する
   const jump=e.target.closest("[data-jump]");
