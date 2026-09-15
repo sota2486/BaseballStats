@@ -516,9 +516,9 @@ td{font-family:"Roboto Mono",monospace; font-variant-numeric:tabular-nums}
 tr.total td{background:var(--panel-2); font-weight:700; border-bottom:0}
 tr.total td:first-child{font-weight:700; color:var(--text)}
 .scroll{overflow-x:auto}
-/* 打席の一覧。字を詰めて、中でスクロールせずに全部出す。
+/* 打席の一覧。5 打席ぶんの高さだけ見せて、あとはスクロール。
    投手名が空の行があっても列がずれないよう、幅は固定にする */
-.palist{overflow-x:auto}
+.palist{max-height:126px; overflow:auto}
 .palist thead th{position:sticky; top:0; background:var(--panel); z-index:2;
   text-align:center; font-size:9px}
 table.pafix{table-layout:fixed; min-width:620px; font-size:10.5px}
@@ -2849,6 +2849,18 @@ function fieldingPanel(name){
     </div>
     ${rows.map(r=>prow(...r)).join("")}`;
 }
+/**
+ * パーセンタイルの丸を置く位置。
+ *
+ * <p>そのまま左から何 % と置くと、0 と 100 で丸が棒からはみ出して、
+ * 左の項目名や右の値に重なってしまう。両端で丸 1 つぶん内側へ寄せる。
+ */
+function numAt(w){
+  const half=11;                              // 丸の半径。CSS の .bar .num と合わせる
+  const nudge=(half - w*half/50).toFixed(2);
+  return `calc(${w}% + ${nudge}px)`;
+}
+
 function prow(name, sub, key, value, fmt){
   // 先頭が "#" の行はくくりの見出し。棒は出さない。
   if(name==="#") return `<div class="pgroup">${esc(sub)}</div>`;
@@ -2858,7 +2870,7 @@ function prow(name, sub, key, value, fmt){
     <div class="bar">
       <div class="fill" style="width:${w}%; background:${color}"></div>
       <div class="tickmid"></div>
-      ${s===null?"":`<div class="num" style="left:${w}%; background:${color}">${s}</div>`}
+      ${s===null?"":`<div class="num" style="left:${numAt(w)}; background:${color}">${s}</div>`}
     </div>
     <div class="val">${value===null||!isFinite(value)?"—":fmt(value)}</div>
   </div>`;
