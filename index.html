@@ -787,6 +787,8 @@ table.order tr.sub th{font-size:9px; letter-spacing:.02em; text-transform:none;
   padding-top:5px; text-align:center}
 table.order tr.sub th:first-child{text-align:left; padding-left:6px;
   font-weight:700; color:var(--text)}
+/* 2 つめの小見出し(投手)は、野手との区切りを太くして間も開ける */
+table.order tr.sub ~ tr.sub th{border-top:2px solid var(--line); padding-top:13px}
 table.order td.slot{color:var(--muted); font-family:"Roboto Mono",monospace}
 table.order td.at{color:var(--muted)}
 table.order td.nm{text-align:left; font-family:"Source Sans 3",sans-serif;
@@ -794,7 +796,7 @@ table.order td.nm{text-align:left; font-family:"Source Sans 3",sans-serif;
 table.order td.nm .withface{gap:4px}
 table.order td.nm span{overflow:hidden; text-overflow:ellipsis}
 /* 勝敗・セーブ・ホールドの印 */
-table.order td.dec{padding:0}
+table.order td.dec{padding:0; text-align:center}
 .dec{display:inline-block; font-style:normal; font-size:9px; font-weight:700;
   line-height:14px; min-width:15px; border-radius:3px; color:#fff}
 .dec.w{background:#1f6fd0} .dec.l{background:#d9463f}
@@ -3953,12 +3955,33 @@ function starterOf(rows, side){
   return "";
 }
 
-/** その試合で守備の記録がある選手。守っていたかどうかを見るのに使う。 */
-function fieldedIn(game){
-  const out=new Set();
+/**
+ * その試合で守備についた選手。
+ *
+ * <p>名前 -> {inning:初めて守った回, side:どちらのチームか}。
+ * 打球に触っていなくても、守備位置の記録があれば守っていたとみなす。
+ * 守るのは相手の攻撃のときなので、裏の攻撃で守っていれば先攻(0)。
+ */
+function fieldersIn(game){
+  const out=new Map();
+  // 投げていない人に付いた「投手」は、自分のチームの攻撃中に
+  // マウンドの近くにいただけ。これを採ると守っていた側を取り違える。
+  const arms=new Set();
+  DATA.plate.forEach(r=>{
+    if(String(r.game_id)===String(game) && r.pitcher) arms.add(r.pitcher);
+  });
   DATA.play.forEach(r=>{
-    if(String(r.game)!==String(game) || r.kind!=="field" || !r.player) return;
-    out.add(r.player);
+    if(String(r.game)!==String(game) || !r.player) return;
+    const spot=String(r.position||"");
+    if(!POS_LABEL[spot]) return;
+    if(spot==="PITCHER" && !arms.has(r.player)) return;
+    const low=String(r.half||"").toUpperCase().startsWith("B");
+    const inning=Number(r.inning)||0;
+    const when=inning*2+(low?1:0);
+    const had=out.get(r.player);
+    if(had===undefined || when<had.when){
+      out.set(r.player, {when, inning, side:low?0:1});
+    }
   });
   return out;
 }
@@ -4007,34 +4030,52 @@ function lineupCard(rows, side, name){
     if(started.has(r.batter) || later.includes(r.batter)) return;
     later.push(r.batter);
   });
-  const fielded=fieldedIn(GAME);
+  const fielders=fieldersIn(GAME);
   // このチームの誰かが守備の記録を持っているときだけ、指名打者を見分けられる
-  const teamFielded=order.concat(later.map(n=>({name:n})))
-    .some(one=>fielded.has(one.name));
+  let teamFielded=false;
+  fielders.forEach(v=>{ if(v.side===side) teamFielded=true; });
 
   const at=who=>{
     const where=positionIn(GAME, who, arms.indexOf(who)<0);
-    if(where) return esc(POS_LABEL[where]);
-    // 守備の記録が揃っている試合で、その人だけ無ければ指名打者
-    return (teamFielded && !fielded.has(who)) ? "指" : "";
+    return where ? esc(POS_LABEL[where]) : "";
   };
-  const batRow=(slot, who)=>{
+  // 打席には立っていないが守った人。1 回から守っていればスタメンの次、
+  // 2 回以降に出てきたなら途中出場の次に置く。
+  const early=[], lateIn=[];
+  fielders.forEach((v, who)=>{
+    if(v.side!==side) return;
+    if(started.has(who) || later.includes(who) || arms.indexOf(who)>=0) return;
+    if(!at(who)) return;                    // 守備位置が分からない人は出さない
+    (v.inning<=1 ? early : lateIn).push(who);
+  });
+
+  const batRow=(slot, who, isStarter)=>{
     const L=line(mine.filter(r=>r.batter===who));
+    // スタメンで、守備の記録が揃っているのにその人だけ無ければ指名打者。
+    // 途中出場は守っていなくて当たり前なので、何も書かない。
+    const pos=at(who) || (isStarter && teamFielded ? "指" : "");
     return `<tr>
       <td class="slot">${slot}</td>
-      <td class="at">${at(who)}</td>
+      <td class="at">${pos}</td>
       <td class="nm">${withTeamFace(who, side, 18)}</td>
       <td>${L.pa}</td><td>${L.h}</td><td>${L.hr}</td>
       <td>${L.rbi}</td><td>${L.bb}</td><td>${L.so}</td>
     </tr>`;
   };
+  /** 守備だけの人。打撃の記録が無いので成績は棒。 */
+  const fieldRow=who=>`<tr>
+      <td class="slot"></td>
+      <td class="at">${at(who)}</td>
+      <td class="nm">${withTeamFace(who, side, 18)}</td>
+      <td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td>
+    </tr>`;
   const pitRow=who=>{
     const his=rows.filter(r=>r.pitcher===who && (isBottom(r)?1:0)!==side);
     const L=pitcherLine(his);
     const balls=pitchOf(who,"pit").filter(r=>String(r.game)===GAME).length;
     return `<tr>
-      <td class="dec">${decisionMark(rows, who)}</td>
-      <td class="nm" colspan="2">${withTeamFace(who, side, 18)}</td>
+      <td class="dec" colspan="2">${decisionMark(rows, who)}</td>
+      <td class="nm">${withTeamFace(who, side, 18)}</td>
       <td>${ipText(L.outs)}</td><td>${balls||"–"}</td><td>${L.h}</td>
       <td>${L.so}</td><td>${L.bb}</td><td>${L.runs}</td>
     </tr>`;
@@ -4049,8 +4090,10 @@ function lineupCard(rows, side, name){
         <col><col><col><col><col><col></colgroup>
       <tbody>
         ${head("野手","打席","安打","本","点","四","三")}
-        ${order.map(one=>batRow(one.slot, one.name)).join("")}
-        ${later.length ? `${later.map(who=>batRow("", who)).join("")}` : ""}
+        ${order.map(one=>batRow(one.slot, one.name, true)).join("")}
+        ${early.map(fieldRow).join("")}
+        ${later.map(who=>batRow("", who, false)).join("")}
+        ${lateIn.map(fieldRow).join("")}
         ${arms.length ? head("投手","回","球","安","三","四","失") : ""}
         ${arms.map(pitRow).join("")}
       </tbody>
@@ -8438,11 +8481,33 @@ document.getElementById("app").addEventListener("change",e=>{
   app.addEventListener("contextmenu",e=>{
     if(e.target.closest("#parkSolid")) e.preventDefault();
   });
+  /**
+   * 押さえているところを動かさずに拡大縮小する。
+   *
+   * <p>絵は「本塁の位置 + 動かした量」を起点に、そこから zoom 倍で広がる。
+   * 起点を動かさずに倍率だけ変えると本塁を中心に寄ってしまうので、
+   * つまんだ点が同じ場所に留まるよう起点をずらす。
+   *
+   * @param cx,cy 画面の座標(clientX / clientY)
+   * @param k     かけたい倍率
+   */
+  function zoomAt(cx, cy, k){
+    const canvas=document.getElementById("parkSolid");
+    if(!canvas) return;
+    const box=canvas.getBoundingClientRect();
+    const w=canvas.clientWidth||320, h=canvas.clientHeight||300;
+    const next=Math.max(0.3, Math.min(6, PARK_PICK.zoom*k));
+    // 端で止まったぶんは動かさない
+    const real=PARK_PICK.zoom>0 ? next/PARK_PICK.zoom : 1;
+    const ox=w/2+PARK_PICK.panX, oy=h*0.62+PARK_PICK.panY;
+    PARK_PICK.panX+=(1-real)*((cx-box.left)-ox);
+    PARK_PICK.panY+=(1-real)*((cy-box.top)-oy);
+    PARK_PICK.zoom=next;
+  }
   app.addEventListener("wheel",e=>{
     if(!e.target.closest("#parkSolid")) return;
     e.preventDefault();
-    const k=Math.exp(-e.deltaY*0.0012);
-    PARK_PICK.zoom=Math.max(0.3, Math.min(6, PARK_PICK.zoom*k));
+    zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY*0.0012));
     drawParkSolid();
   }, {passive:false});
   /* 指での操作。一本指は回転(pointer 側が受け持つ)、
@@ -8466,12 +8531,10 @@ document.getElementById("app").addEventListener("change",e=>{
     if(!e.target.closest("#parkSolid")) return;
     e.preventDefault();
     const now=spread(e.touches);
+    // 指の真ん中を押さえたまま拡大縮小してから、その真ん中の動きぶん動かす
+    if(pinch.d>10 && now.d>10) zoomAt(pinch.x, pinch.y, now.d/pinch.d);
     PARK_PICK.panX+=now.x-pinch.x;
     PARK_PICK.panY+=now.y-pinch.y;
-    if(pinch.d>10 && now.d>10){
-      const k=now.d/pinch.d;
-      PARK_PICK.zoom=Math.max(0.3, Math.min(6, PARK_PICK.zoom*k));
-    }
     pinch=now;
     drawParkSolid();
   }, {passive:false});
