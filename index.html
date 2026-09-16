@@ -2065,6 +2065,9 @@ function byPlayer(){
     add(box.plate.pit, r.pitcher, r);
   });
   DATA.pitch.forEach(r=>{
+    // 球種も球速も残っていない行は、打席の結果を残すためだけのもの。
+    // 球数や球種の割合に混ぜると「Normal」という球種があるように見えてしまう。
+    if(ghostPitch(r)) return;
     if(r.side==="Pitching") add(box.pitch.pit, r.pitcher, r);
     else if(r.side==="Batting") add(box.pitch.bat, r.batter, r);
     else { add(box.pitch.bat, r.batter, r); add(box.pitch.pit, r.pitcher, r); }
@@ -2073,6 +2076,16 @@ function byPlayer(){
   BY_PLAYER_N=DATA.plate.length+DATA.pitch.length;
   return box;
 }
+/**
+ * 計測できなかった球か。
+ *
+ * <p>三振や四球を決めた球が測れていないとき、打席の結果だけを持つ行が残る。
+ * 球としては数えず、打席詳細で場所の分からない球として出すだけにする。
+ */
+function ghostPitch(r){
+  return !String(r.type||"").trim() && !(Number(r.velocity)>0);
+}
+
 const NO_ROWS=[];
 const plateOf=(n,s)=>byPlayer().plate[s==="bat"?"bat":"pit"].get(n) || NO_ROWS;
 const pitchOf=(n,s)=>byPlayer().pitch[s==="bat"?"bat":"pit"].get(n) || NO_ROWS;
@@ -4635,10 +4648,12 @@ function paPitchIndex(){
   const out=new Map();
   box.forEach(list=>{
     list.sort((a,b)=>(Number(a.pitch_no)||0)-(Number(b.pitch_no)||0));
-    const last=list[list.length-1];
+    // 打者はその打席の 1 球目から採る。最後の球で見ると、
+    // 打席の切れ目がずれた記録で次の打者の名前を拾ってしまう。
+    const first=list[0], last=list[list.length-1];
     const result=list.map(r=>r.result).filter(Boolean).pop() || "";
     const key=[String(last.game), last.inning, isBottom(last)?"B":"T",
-      last.batter, result].join("|");
+      first.batter, result].join("|");
     out.set(key, list);
   });
   PA_PITCH=out; PA_PITCH_N=DATA.pitch.length;
