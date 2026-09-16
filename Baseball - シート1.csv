@@ -1,4 +1,4 @@
-GAME_ID,inning,half,order,pitcherName,batterName,resultType,rbi,runsScored,outsOnPlay,runnerOnFirst,runnerOnSecond,runnerOnThird,memo,batterStance,pitcherThrows
+﻿GAME_ID,inning,half,order,pitcherName,batterName,resultType,rbi,runsScored,outsOnPlay,runnerOnFirst,runnerOnSecond,runnerOnThird,memo,batterStance,pitcherThrows
 2026013101,1,TOP,1,sota2486,Nosada,STRIKE_OUT,0,0,1,FALSE,FALSE,FALSE,,R,R
 2026013101,1,TOP,2,sota2486,Alpha6000,SINGLE,0,0,1,FALSE,FALSE,FALSE,,L,R
 2026013101,1,TOP,3,sota2486,omarupin,STRIKE_OUT,0,0,1,FALSE,FALSE,FALSE,,R,R

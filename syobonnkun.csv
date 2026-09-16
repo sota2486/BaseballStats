@@ -117,9 +117,8 @@ Batting,2026091202,2026091202#37,2,4,BOTTOM,1-0,2,sota2486,syobonnkun,R,ライ�
 Batting,2026091202,2026091202#37,3,4,BOTTOM,1-1,2,sota2486,syobonnkun,R,高速スライダー,108.5,0.6,1.1,25,false,1.1,0.3,true,true,false,SWINGING_STRIKE,,,,,,R,,,113.7
 Batting,2026091202,2026091202#37,4,4,BOTTOM,1-2,2,sota2486,syobonnkun,R,ライズボール,119.5,2.1,0.0,3,false,0.0,2.7,false,false,false,BALL,,,,,,R,,,116.1
 Batting,2026091202,2026091202#37,5,4,BOTTOM,2-2,2,sota2486,syobonnkun,R,サークルチェンジ,65.3,0.3,-0.9,17,true,-0.4,0.6,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT,R,,,107.9
-Batting,2026091202,2026091202#47,1,5,BOTTOM,0-0,0,Pen4,syobonnkun,R,Ball,125.0,0.0,0.0,0,false,0.0,0.0,false,false,false,BALL,,,,,GROUND_OUT,R,,,
 Batting,2026091202,2026091202#48,1,5,BOTTOM,0-0,1,Pen4,syobonnkun,R,パワーカーブ,99.0,-0.4,1.0,14,true,0.5,1.0,false,false,false,BALL,,,,,,R,,,110.4
 Batting,2026091202,2026091202#48,2,5,BOTTOM,1-0,1,Pen4,syobonnkun,R,SFF,107.7,0.3,0.0,24,false,0.6,0.4,false,false,false,BALL,,,,,,R,,,107.8
 Batting,2026091202,2026091202#48,3,5,BOTTOM,2-0,1,Pen4,syobonnkun,R,ライズボール,120.2,1.9,0.0,24,false,0.3,0.5,false,false,false,CALLED_STRIKE,,,,,,R,,,116.8
 Batting,2026091202,2026091202#48,4,5,BOTTOM,2-1,1,Pen4,syobonnkun,R,ライズボール,120.3,1.9,0.0,4,false,0.5,1.8,false,false,false,BALL,,,,,,R,,,116.9
-Batting,2026091202,2026091202#48,5,5,BOTTOM,3-1,1,Pen4,syobonnkun,R,SFF,108.2,-0.5,0.0,23,false,0.2,0.3,true,false,true,IN_PLAY,161.5,2.9,11.9,34.5,SINGLE,R,,,108.3
+Batting,2026091202,2026091202#48,5,5,BOTTOM,3-1,1,Pen4,syobonnkun,R,SFF,108.2,-0.5,0.0,23,false,0.2,0.3,true,false,true,IN_PLAY,161.5,2.9,11.9,34.5,GROUND_OUT,R,,,108.3

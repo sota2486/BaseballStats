@@ -1,4 +1,4 @@
-GAME_ID,inning,half,order,pitcherName,batterName,resultType,rbi,runsScored,outsOnPlay,runnerOnFirst,runnerOnSecond,runnerOnThird,memo,batterStance,pitcherThrows
+﻿GAME_ID,inning,half,order,pitcherName,batterName,resultType,rbi,runsScored,outsOnPlay,runnerOnFirst,runnerOnSecond,runnerOnThird,memo,batterStance,pitcherThrows
 2026091202,1,TOP,1,syobonnkun,sota2486,STRIKE_OUT,0,0,1,FALSE,FALSE,FALSE,,R,R
 2026091202,1,TOP,2,syobonnkun,Pen4,DOUBLE,0,0,0,FALSE,FALSE,FALSE,,L,R
 2026091202,1,TOP,3,syobonnkun,hachi_18,STRIKE_OUT,0,0,1,FALSE,TRUE,FALSE,,R,R
@@ -47,5 +47,5 @@ GAME_ID,inning,half,order,pitcherName,batterName,resultType,rbi,runsScored,outsO
 2026091202,5,BOTTOM,2,Pen4,gaifukaisei,WALK,0,0,0,FALSE,FALSE,FALSE,,L,R
 2026091202,5,BOTTOM,3,Pen4,Rosario20,WALK,0,0,0,TRUE,FALSE,FALSE,,R,R
 2026091202,5,BOTTOM,4,Pen4,pipis_57,GROUND_OUT,0,0,1,TRUE,TRUE,FALSE,,R,R
-2026091202,5,BOTTOM,5,Pen4,syobonnkun,SINGLE,1,1,1,TRUE,FALSE,TRUE,,R,R
+2026091202,5,BOTTOM,5,Pen4,syobonnkun,GROUND_OUT,1,1,1,TRUE,FALSE,TRUE,,R,R
 2026091202,5,BOTTOM,1,Pen4,Alpha6000,STRIKE_OUT,0,0,1,FALSE,TRUE,FALSE,,L,R

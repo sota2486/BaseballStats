@@ -86,7 +86,6 @@ Pitching,2026091201,2026091201#34,4,4,BOTTOM,2-1,2,Pen4,Opanku,R,ツーシーム
 Pitching,2026091201,2026091201#34,5,4,BOTTOM,2-2,2,Pen4,Opanku,R,ツーシームファスト,119.9,0.9,-0.7,8,true,-0.1,1.5,false,false,false,CALLED_STRIKE,,,,,STRIKE_OUT,R,,,121.0
 Batting,2026091202,2026091202#2,1,1,TOP,0-0,1,syobonnkun,Pen4,L,ツーシームファスト,119.1,0.9,-0.7,21,false,-0.6,0.3,true,false,true,IN_PLAY,169.6,11.4,-5.4,94.2,DOUBLE,R,,,120.2
 Batting,2026091202,2026091202#7,1,1,TOP,0-0,2,syobonnkun,Pen4,L,SFF,107.5,-0.6,0.0,24,false,0.3,0.0,true,false,true,IN_PLAY,194.1,8.3,12.6,79.7,DOUBLE,R,,,107.6
-Pitching,2026091202,2026091202#12,1,1,BOTTOM,0-0,2,Pen4,pipis_57,R,Ball,123.4,4.4,0.0,25,false,8.7,-1.7,false,false,false,BALL,,,,,,R,,,
 Batting,2026091202,2026091202#20,1,3,TOP,0-0,0,gaifukaisei,Pen4,L,スライダー,100.7,-0.4,-1.8,11,false,-1.1,1.0,true,true,false,SWINGING_STRIKE,,,,,,L,,,110.2
 Batting,2026091202,2026091202#20,2,3,TOP,0-1,0,gaifukaisei,Pen4,L,シンカー,76.9,-2.1,2.4,24,false,0.6,0.4,true,true,false,SWINGING_STRIKE,,,,,,L,,,98.6
 Batting,2026091202,2026091202#20,3,3,TOP,0-2,0,gaifukaisei,Pen4,L,ファストボール,123.7,0.8,0.0,3,false,-0.1,1.8,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT,L,,,125.0
@@ -111,13 +110,12 @@ Pitching,2026091202,2026091202#46,4,5,BOTTOM,2-1,0,Pen4,Rosario20,R,SFF,109.2,0.
 Pitching,2026091202,2026091202#46,5,5,BOTTOM,3-1,0,Pen4,Rosario20,R,ライズボール,120.7,2.0,0.0,24,false,0.4,0.2,false,false,false,BALL,,,,,,R,,,117.3
 Pitching,2026091202,2026091202#46,6,5,BOTTOM,4-1,0,Pen4,Rosario20,R,ツーシームファスト,121.2,0.8,-0.7,14,true,0.5,1.0,false,false,false,CALLED_STRIKE,,,,,,R,,,122.3
 Pitching,2026091202,2026091202#46,7,5,BOTTOM,3-2,0,Pen4,Rosario20,R,,,,,,,,,,,,,,,,,WALK,R,,,
-Pitching,2026091202,2026091202#47,1,5,BOTTOM,0-0,0,Pen4,pipis_57,R,SFF,107.8,-0.6,0.0,24,false,0.3,0.4,true,false,true,FOUL,96.1,-58.0,30.0,15.7,,R,,,107.9
-Pitching,2026091202,2026091202#47,2,5,BOTTOM,0-1,0,Pen4,syobonnkun,R,Ball,125.0,0.0,0.0,0,false,0.0,0.0,false,false,false,BALL,,,,,GROUND_OUT,R,,,
+Pitching,2026091202,2026091202#47,1,5,BOTTOM,0-0,0,Pen4,pipis_57,R,SFF,107.8,-0.6,0.0,24,false,0.3,0.4,true,false,true,IN_PLAY,96.1,-58.0,30.0,15.7,GROUND_OUT,R,,,107.9
 Pitching,2026091202,2026091202#48,1,5,BOTTOM,0-0,1,Pen4,syobonnkun,R,パワーカーブ,99.0,-0.4,1.0,14,true,0.5,1.0,false,false,false,BALL,,,,,,R,,,110.4
 Pitching,2026091202,2026091202#48,2,5,BOTTOM,1-0,1,Pen4,syobonnkun,R,SFF,107.7,0.3,0.0,24,false,0.6,0.4,false,false,false,BALL,,,,,,R,,,107.8
 Pitching,2026091202,2026091202#48,3,5,BOTTOM,2-0,1,Pen4,syobonnkun,R,ライズボール,120.2,1.9,0.0,24,false,0.3,0.5,false,false,false,CALLED_STRIKE,,,,,,R,,,116.8
 Pitching,2026091202,2026091202#48,4,5,BOTTOM,2-1,1,Pen4,syobonnkun,R,ライズボール,120.3,1.9,0.0,4,false,0.5,1.8,false,false,false,BALL,,,,,,R,,,116.9
-Pitching,2026091202,2026091202#48,5,5,BOTTOM,3-1,1,Pen4,syobonnkun,R,SFF,108.2,-0.5,0.0,23,false,0.2,0.3,true,false,true,IN_PLAY,161.5,2.9,11.9,34.5,SINGLE,R,,,108.3
+Pitching,2026091202,2026091202#48,5,5,BOTTOM,3-1,1,Pen4,syobonnkun,R,SFF,108.2,-0.5,0.0,23,false,0.2,0.3,true,false,true,IN_PLAY,161.5,2.9,11.9,34.5,GROUND_OUT,R,,,108.3
 Pitching,2026091202,2026091202#49,1,5,BOTTOM,0-0,2,Pen4,Alpha6000,L,パワーカーブ,99.5,-2.6,1.3,25,false,0.7,-0.1,true,false,true,FOUL,48.0,-48.5,-132.8,6.9,,R,,,111.0
 Pitching,2026091202,2026091202#49,2,5,BOTTOM,0-1,2,Pen4,Alpha6000,L,ライズボール,120.0,2.0,0.0,4,false,0.3,2.7,false,false,false,BALL,,,,,,R,,,116.6
 Pitching,2026091202,2026091202#49,3,5,BOTTOM,1-1,2,Pen4,Alpha6000,L,SFF,107.4,-0.7,0.0,25,false,0.6,0.3,true,true,false,SWINGING_STRIKE,,,,,,R,,,107.5

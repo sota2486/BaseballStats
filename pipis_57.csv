@@ -1,5 +1,4 @@
 ﻿side,game,pa,pitch_no,inning,half,count,outs,pitcher,batter,stance,type,velocity,v_break,h_break,zone,in_zone,plate_x,plate_y,swing,whiff,contact,call,exit_velocity,launch_angle,spray_angle,distance,result,throws,swing_power,bat_power,init_velocity
-Batting,2026091202,2026091202#12,1,1,BOTTOM,0-0,2,Pen4,pipis_57,R,Ball,123.4,4.4,0.0,25,false,8.7,-1.7,false,false,false,BALL,,,,,,R,,,
 Batting,2026091202,2026091202#12,2,1,BOTTOM,1-0,2,sota2486,pipis_57,R,高速スライダー,107.7,0.0,1.2,19,true,0.3,0.6,true,false,true,FOUL,35.9,-41.8,100.7,6.9,,R,,,112.9
 Batting,2026091202,2026091202#12,3,1,BOTTOM,1-1,2,sota2486,pipis_57,R,ライズボール,120.2,2.1,0.0,9,true,0.3,1.5,false,false,false,CALLED_STRIKE,,,,,,R,,,116.8
 Batting,2026091202,2026091202#12,4,1,BOTTOM,1-2,2,sota2486,pipis_57,R,超高速シンカー,107.5,-1.1,-1.2,21,false,-0.7,-0.8,true,false,true,FOUL,86.1,-73.2,-76.5,7.4,,R,,,112.7
@@ -11,4 +10,4 @@ Batting,2026091202,2026091202#36,1,4,BOTTOM,0-0,1,sota2486,pipis_57,R,ライズ�
 Batting,2026091202,2026091202#36,2,4,BOTTOM,0-1,1,sota2486,pipis_57,R,サークルチェンジ,65.2,0.4,-0.9,22,false,-0.4,0.4,true,false,true,FOUL,56.1,-35.8,-143.6,7.0,,R,,,107.7
 Batting,2026091202,2026091202#36,3,4,BOTTOM,0-2,1,sota2486,pipis_57,R,高速スライダー,107.8,0.0,1.2,25,false,1.1,0.0,false,false,false,BALL,,,,,,R,,,113.0
 Batting,2026091202,2026091202#36,4,4,BOTTOM,1-2,1,sota2486,pipis_57,R,高速スライダー,108.5,-0.1,1.2,25,false,0.9,0.2,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT,R,,,113.7
-Batting,2026091202,2026091202#47,1,5,BOTTOM,0-0,0,Pen4,pipis_57,R,SFF,107.8,-0.6,0.0,24,false,0.3,0.4,true,false,true,FOUL,96.1,-58.0,30.0,15.7,,R,,,107.9
+Batting,2026091202,2026091202#47,1,5,BOTTOM,0-0,0,Pen4,pipis_57,R,SFF,107.8,-0.6,0.0,24,false,0.3,0.4,true,false,true,IN_PLAY,96.1,-58.0,30.0,15.7,GROUND_OUT,R,,,107.9
