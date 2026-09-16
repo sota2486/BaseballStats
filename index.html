@@ -795,12 +795,15 @@ table.order td.nm{text-align:left; font-family:"Source Sans 3",sans-serif;
   font-size:11px; min-width:0}
 table.order td.nm .withface{gap:4px}
 table.order td.nm span{overflow:hidden; text-overflow:ellipsis}
-/* 勝敗・セーブ・ホールドの印 */
-table.order td.dec{padding:0; text-align:center}
-.dec{display:inline-block; font-style:normal; font-size:9px; font-weight:700;
-  line-height:14px; min-width:15px; border-radius:3px; color:#fff}
-.dec.w{background:#d9463f} .dec.l{background:#1f6fd0}
-.dec.s{background:#e8b21c; color:#2a2100} .dec.h{background:#e8801c}
+/* 勝敗・セーブ・ホールドの印。枠の真ん中に置く */
+table.order td.mk{padding:0; text-align:center; vertical-align:middle}
+.decmark{display:inline-block; font-style:normal; font-size:9px; font-weight:700;
+  line-height:14px; min-width:15px; padding:0 1px; border-radius:3px; color:#fff;
+  vertical-align:middle}
+.decmark.w{background:#d9463f} .decmark.l{background:#1f6fd0}
+.decmark.s{background:#e8b21c; color:#2a2100} .decmark.h{background:#e8801c}
+/* 人数合わせの空行。線も文字も出さない */
+table.order tr.fill td{border:0; height:19px}
 
 /* 見出しに添える注釈 */
 .head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
@@ -4005,10 +4008,10 @@ function pitchersOf(rows, side){
 function decisionMark(rows, name){
   const d=decisions(rows);
   const relief=reliefCredits(rows, d);
-  if(d && d.win===name) return '<i class="dec w">勝</i>';
-  if(d && d.lose===name) return '<i class="dec l">敗</i>';
-  if(relief.save===name) return '<i class="dec s">S</i>';
-  if(relief.holds.indexOf(name)>=0) return '<i class="dec h">H</i>';
+  if(d && d.win===name) return '<i class="decmark w">勝</i>';
+  if(d && d.lose===name) return '<i class="decmark l">敗</i>';
+  if(relief.save===name) return '<i class="decmark s">S</i>';
+  if(relief.holds.indexOf(name)>=0) return '<i class="decmark h">H</i>';
   return "";
 }
 
@@ -4018,11 +4021,17 @@ function decisionMark(rows, name){
  * <p>スタメンの野手、途中から出た野手、投手の順に並べる。
  * 守備の記録がある試合で、その人だけ記録が無ければ指名打者とみなす。
  */
-function lineupCard(rows, side, name){
+/**
+ * オーダーの中身。誰をどの並びで出すかだけを決める。
+ *
+ * <p>札を組む前に人数が要る。野手の人数はチームで違うので、
+ * 先に両方を数えておいて、少ないほうを空行で埋めて投手の行を揃える。
+ */
+function orderParts(rows, side){
   const mine=rows.filter(r=>(isBottom(r)?1:0)===side && r.batter);
   const order=lineup(rows, side);
   const arms=pitchersOf(rows, side);
-  if(!order.length && !arms.length) return "";
+  if(!order.length && !arms.length) return null;
   const started=new Set(order.map(o=>o.name));
   // 一巡目に出てこなかった打者。代打・代走・守備固め
   const later=[];
@@ -4048,7 +4057,16 @@ function lineupCard(rows, side, name){
     if(!at(who)) return;                    // 守備位置が分からない人は出さない
     (v.inning<=1 ? early : lateIn).push(who);
   });
+  return {mine, order, arms, started, later, early, lateIn, teamFielded, at,
+    // 野手の行数。両チームで揃えるのに使う
+    count:order.length+early.length+later.length+lateIn.length};
+}
 
+/** オーダーの 1 チームぶん。pad は野手の行数をここまで埋める。 */
+function lineupCard(rows, side, name, pad){
+  const P=orderParts(rows, side);
+  if(!P) return "";
+  const {mine, order, arms, later, early, lateIn, teamFielded, at}=P;
   const batRow=(slot, who, isStarter)=>{
     const L=line(mine.filter(r=>r.batter===who));
     // スタメンで、守備の記録が揃っているのにその人だけ無ければ指名打者。
@@ -4074,12 +4092,22 @@ function lineupCard(rows, side, name){
     const L=pitcherLine(his);
     const balls=pitchOf(who,"pit").filter(r=>String(r.game)===GAME).length;
     return `<tr>
-      <td class="dec">${decisionMark(rows, who)}</td>
+      <td class="mk">${decisionMark(rows, who)}</td>
       <td class="at"></td>
       <td class="nm">${withTeamFace(who, side, 18)}</td>
       <td>${ipText(L.outs)}</td><td>${balls||"–"}</td><td>${L.h}</td>
       <td>${L.so}</td><td>${L.bb}</td><td>${L.runs}</td>
     </tr>`;
+  };
+  /** 人数合わせの空行。相手より野手が少ないチームに入れる。 */
+  const blankRows=n=>{
+    let out="";
+    for(let i=0;i<n;i++){
+      out+='<tr class="fill"><td class="slot"></td><td class="at"></td>'
+        + '<td class="nm"></td><td></td><td></td><td></td>'
+        + '<td></td><td></td><td></td></tr>';
+    }
+    return out;
   };
   const head=(a,b,c,d,e,f,g)=>`<tr class="sub">
     <th class="lead">${a}</th><th></th><th></th><th>${b}</th><th>${c}</th><th>${d}</th>
@@ -4095,6 +4123,7 @@ function lineupCard(rows, side, name){
         ${early.map(fieldRow).join("")}
         ${later.map(who=>batRow("", who, false)).join("")}
         ${lateIn.map(fieldRow).join("")}
+        ${blankRows(Math.max(0, (pad||0)-P.count))}
         ${arms.length ? head("投手","回","球","安","三","四","失") : ""}
         ${arms.map(pitRow).join("")}
       </tbody>
@@ -4104,7 +4133,11 @@ function lineupCard(rows, side, name){
 
 function lineupBox(rows){
   const names=teamNames(rows);
-  const cards=[lineupCard(rows,0,names[0]), lineupCard(rows,1,names[1])].join("");
+  // 投手の欄が横に並ぶよう、野手の行数を多いほうに合わせる
+  const parts=[orderParts(rows,0), orderParts(rows,1)];
+  const pad=Math.max(...parts.map(one=>one ? one.count : 0));
+  const cards=[lineupCard(rows,0,names[0],pad),
+    lineupCard(rows,1,names[1],pad)].join("");
   if(!cards) return "";
   return `<section class="span"><div class="pad">
     <div class="head">オーダー</div>
