@@ -785,8 +785,8 @@ table.order td,table.order th{padding:1px 2px; text-align:center;
 table.order tr.sub th{font-size:9px; letter-spacing:.02em; text-transform:none;
   color:var(--muted); border-bottom:1px solid var(--line-soft);
   padding-top:5px; text-align:center}
-table.order tr.sub th:first-child{text-align:left; padding-left:6px;
-  font-weight:700; color:var(--text)}
+table.order tr.sub th.lead{text-align:left; padding-left:6px; font-weight:700;
+  color:var(--text); overflow:visible; white-space:nowrap}
 /* 2 つめの小見出し(投手)は、野手との区切りを太くして間も開ける */
 table.order tr.sub ~ tr.sub th{border-top:2px solid var(--line); padding-top:13px}
 table.order td.slot{color:var(--muted); font-family:"Roboto Mono",monospace}
@@ -799,8 +799,8 @@ table.order td.nm span{overflow:hidden; text-overflow:ellipsis}
 table.order td.dec{padding:0; text-align:center}
 .dec{display:inline-block; font-style:normal; font-size:9px; font-weight:700;
   line-height:14px; min-width:15px; border-radius:3px; color:#fff}
-.dec.w{background:#1f6fd0} .dec.l{background:#d9463f}
-.dec.s{background:#2f9e4f} .dec.h{background:#8a7ad0}
+.dec.w{background:#d9463f} .dec.l{background:#1f6fd0}
+.dec.s{background:#e8b21c; color:#2a2100} .dec.h{background:#e8801c}
 
 /* 見出しに添える注釈 */
 .head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
@@ -4074,14 +4074,15 @@ function lineupCard(rows, side, name){
     const L=pitcherLine(his);
     const balls=pitchOf(who,"pit").filter(r=>String(r.game)===GAME).length;
     return `<tr>
-      <td class="dec" colspan="2">${decisionMark(rows, who)}</td>
+      <td class="dec">${decisionMark(rows, who)}</td>
+      <td class="at"></td>
       <td class="nm">${withTeamFace(who, side, 18)}</td>
       <td>${ipText(L.outs)}</td><td>${balls||"–"}</td><td>${L.h}</td>
       <td>${L.so}</td><td>${L.bb}</td><td>${L.runs}</td>
     </tr>`;
   };
   const head=(a,b,c,d,e,f,g)=>`<tr class="sub">
-    <th colspan="3">${a}</th><th>${b}</th><th>${c}</th><th>${d}</th>
+    <th class="lead">${a}</th><th></th><th></th><th>${b}</th><th>${c}</th><th>${d}</th>
     <th>${e}</th><th>${f}</th><th>${g}</th></tr>`;
   return `<div class="card">
     <h4 class="${teamClass(side)}">${esc(name)}</h4>
