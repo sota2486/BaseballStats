@@ -1212,6 +1212,10 @@ function replayAt(row){
   if(!row) return null;
   const at=Number(row.pitchat);
   if(!isFinite(at) || at<=0) return null;
+  // 今の記録は「その試合の 1 打席目が呼ばれてから何秒か」。そのまま使える。
+  if(at < 1e9) return at;
+  // 昔の記録は 1970 年からのミリ秒。1 打席目との差をとる。
+  // ただし表計算で 1.79E+12 に丸められていると差が 0 になるので、そのときは出さない。
   const game=String(row.game_id);
   let start=null;
   for(const r of DATA.plate){
@@ -1219,8 +1223,8 @@ function replayAt(row){
     const called=Number(r.calledat);
     if(isFinite(called) && called>0){ start=called; break; }
   }
-  if(start===null) return null;
-  return Math.max(0, (at-start)/1000);
+  if(start===null || at-start<=0) return null;
+  return (at-start)/1000;
 }
 
 /**
@@ -8579,13 +8583,30 @@ function forgetSeen(){
 }
 
 
-/** 打席の記録。すでに読んだ試合のぶんは読み飛ばす。 */
+/**
+ * 打席の記録。
+ *
+ * <p>すでに読んだ試合はもう一度足さない。ただし空のままの列は埋める。
+ * 同じ試合を 2 か所に置いていて、片方にだけ時刻の列が入っている、
+ * ということがあるため。どちらを先に読んでも同じ結果になる。
+ */
 function addPlate(rows){
   const mine=new Set(rows.map(r=>String(r.game_id||"")));
-  const skip=new Set([...mine].filter(g=>SEEN.games.has(g)));
+  const again=new Set([...mine].filter(g=>SEEN.games.has(g)));
   mine.forEach(g=>SEEN.games.add(g));
-  const keep=rows.filter(r=>!skip.has(String(r.game_id||"")));
+  const keep=rows.filter(r=>!again.has(String(r.game_id||"")));
   DATA.plate.push(...keep);
+  again.forEach(game=>{
+    const had=DATA.plate.filter(r=>String(r.game_id||"")===game);
+    const now=rows.filter(r=>String(r.game_id||"")===game);
+    // 打席の数が違うなら別物。中途半端に混ぜない
+    if(!had.length || had.length!==now.length) return;
+    had.forEach((r,i)=>{
+      Object.keys(now[i]).forEach(key=>{
+        if(r[key]===undefined || r[key]==="") r[key]=now[i][key];
+      });
+    });
+  });
   return keep.length;
 }
 
