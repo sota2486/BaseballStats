@@ -12,7 +12,7 @@
 2026091201,5,TOP,,spot,Rosario20,,,,,,,,,,,FIRST_BASEMAN,,,,,,,,,,,,,,,,,,,R
 2026091202,1,TOP,,spot,Rosario20,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
 2026091202,1,TOP,2026091202#4,field,Rosario20,3,46,129.3,-17.7,3.6,LT0/125-150,,,,,THIRD_BASEMAN,2,264.6,-93.9,286.3,-70.0,false,false,false,false,false,2,-1,,false,false,false,false,,R
-2026091202,1,TOP,,field,Rosario20,15,15,194.1,8.3,38.4,0-15/175-200,,,,,SECOND_BASEMAN,1,294.1,-104.1,293.3,-104.1,false,true,false,false,false,2,-1,,false,false,true,false,,R
+2026091202,1,TOP,2026091202#7,field,Rosario20,15,15,194.1,8.3,38.4,0-15/175-200,,,,,SECOND_BASEMAN,1,294.1,-104.1,293.3,-104.1,false,true,false,false,false,2,-1,,false,false,true,false,,R
 2026091202,1,TOP,2026091202#8,field,Rosario20,31,154,164.2,11.4,58.4,0-15/150-175,,,,,SECOND_BASEMAN,2,295.6,-102.2,292.3,-124.6,false,true,false,false,false,2,-1,,false,false,false,false,,R
 2026091202,1,BOTTOM,2026091202#11,run,Rosario20,116,133,184.2,47.9,,45+/175-200,0,1,false,0.00,,,,,,,,,,,,,,,false,,,,,R
 2026091202,2,TOP,,spot,Rosario20,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
@@ -20,9 +20,9 @@
 2026091202,3,TOP,,spot,Rosario20,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
 2026091202,3,TOP,2026091202#21,field,Rosario20,2,53,131.6,-45.1,2.2,LT0/125-150,,,,,SHORTSTOP,1,275.8,-107.1,284.8,-68.6,false,false,true,false,false,0,28,128.2,false,false,false,true,,R
 2026091202,4,TOP,,spot,Rosario20,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
-2026091202,4,TOP,,field,Rosario20,58,75,156.4,22.4,87.1,15-30/150-175,,,,,SHORTSTOP,2,275.3,-106.4,223.0,-127.2,false,false,false,false,false,1,-1,,false,false,false,false,,R
+2026091202,4,TOP,2026091202#30,field,Rosario20,58,75,156.4,22.4,87.1,15-30/150-175,,,,,SHORTSTOP,2,275.3,-106.4,223.0,-127.2,false,false,false,false,false,1,-1,,false,false,false,false,,R
 2026091202,4,BOTTOM,2026091202#35,run,Rosario20,56,143,190.9,19.3,106.7,15-30/175-200,0,2,false,0.00,,,,,,,,,,,,,,,false,,,,,R
 2026091202,5,TOP,,spot,Rosario20,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
-2026091202,5,TOP,,field,Rosario20,102,147,158.5,37.0,107.0,30-45/150-175,,,,,SHORTSTOP,2,278.0,-107.2,278.7,-173.2,false,false,true,false,false,2,31,128.9,false,false,false,false,,R
+2026091202,5,TOP,2026091202#40,field,Rosario20,102,147,158.5,37.0,107.0,30-45/150-175,,,,,SHORTSTOP,2,278.0,-107.2,278.7,-173.2,false,false,true,false,false,2,31,128.9,false,false,false,false,,R
 2026091202,5,TOP,2026091202#42,field,Rosario20,26,155,188.3,7.7,57.8,0-15/175-200,,,,,SHORTSTOP,2,273.3,-106.0,307.5,-120.0,false,false,false,false,false,2,-1,,false,false,false,false,,R
-2026091202,5,BOTTOM,,run,Rosario20,2,36,96.1,-58.0,2.4,LT0/LT100,1,1,true,0.00,,,,,,,,,,,,,,,false,,,FORCE,,R
+2026091202,5,BOTTOM,2026091202#47,run,Rosario20,2,36,96.1,-58.0,2.4,LT0/LT100,1,1,true,0.00,,,,,,,,,,,,,,,false,,,FORCE,,R

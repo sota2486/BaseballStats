@@ -1,4 +1,4 @@
-game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
 2026091201,1,TOP,2026091201#2,run,Pen4,64,64,125.7,24.0,75.1,15-30/125-150,0,0,true,0.00,,,,,,,,,,,,,,,false,,,FLY,,R
 2026091201,1,BOTTOM,,spot,Pen4,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,R
 2026091201,1,BOTTOM,2026091201#4,field,Pen4,13,-1,163.0,4.2,27.4,0-15/150-175,,,,,PITCHER,,286.4,-85.4,290.1,-93.5,false,false,false,false,false,1,-1,,false,false,false,false,,R
@@ -14,7 +14,7 @@ game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,di
 2026091202,1,TOP,2026091202#2,run,Pen4,28,138,169.6,11.4,54.6,0-15/150-175,0,2,false,0.00,,,,,,,,,,,,,,,false,,,,,R
 2026091202,1,TOP,2026091202#4,run,Pen4,3,46,129.3,-17.7,3.6,LT0/125-150,2,3,false,0.00,,,,,,,,,,,,,,,false,,,,,R
 2026091202,1,TOP,2026091202#5,run,Pen4,-1,-1,204.8,28.3,,15-30/200+,3,3,false,0.00,,,,,,,,,,,,,,,false,,,,,R
-2026091202,1,TOP,,run,Pen4,15,15,194.1,8.3,38.4,0-15/175-200,0,2,false,0.00,,,,,,,,,,,,,,,false,,,,,R
+2026091202,1,TOP,2026091202#7,run,Pen4,15,15,194.1,8.3,38.4,0-15/175-200,0,2,false,0.00,,,,,,,,,,,,,,,false,,,,,R
 2026091202,1,TOP,2026091202#8,run,Pen4,31,154,164.2,11.4,58.4,0-15/150-175,2,2,false,0.99,,,,,,,,,,,,,,,false,,,,,R
 2026091202,1,BOTTOM,,spot,Pen4,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
 2026091202,2,BOTTOM,,spot,Pen4,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
@@ -29,5 +29,5 @@ game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,di
 2026091202,5,TOP,2026091202#42,run,Pen4,26,155,188.3,7.7,57.8,0-15/175-200,0,2,false,0.00,,,,,,,,,,,,,,,false,,,,,R
 2026091202,5,TOP,2026091202#43,run,Pen4,2,72,87.0,-56.9,0.4,LT0/LT100,2,2,false,0.73,,,,,,,,,,,,,,,true,,,,,R
 2026091202,5,BOTTOM,,spot,Pen4,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,R
-2026091202,5,BOTTOM,,field,Pen4,2,36,96.1,-58.0,2.4,LT0/LT100,,,,,PITCHER,1,286.8,-85.9,286.2,-68.8,false,false,true,false,false,2,44,125.0,false,false,false,true,,R
+2026091202,5,BOTTOM,2026091202#47,field,Pen4,2,36,96.1,-58.0,2.4,LT0/LT100,,,,,PITCHER,1,286.8,-85.9,286.2,-68.8,false,false,true,false,false,2,44,125.0,false,false,false,true,,R
 2026091202,5,BOTTOM,2026091202#48,field,Pen4,11,22,161.5,2.9,22.8,0-15/150-175,,,,,PITCHER,,287.1,-85.0,290.5,-88.8,false,false,false,false,false,1,-1,,false,false,false,false,,R

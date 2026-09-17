@@ -1,5 +1,5 @@
-game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
-2026091201,5,TOP,,run,gaifukaisei,94,122,169.4,37.2,109.4,30-45/150-175,0,2,false,1.00,,,,,,,,,,,,,,,true,,,,,L
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+2026091201,5,TOP,2026091201#35,run,gaifukaisei,94,122,169.4,37.2,109.4,30-45/150-175,0,2,false,1.00,,,,,,,,,,,,,,,true,,,,,L
 2026091201,5,TOP,2026091201#38,run,gaifukaisei,92,175,157.3,27.8,112.7,15-30/150-175,2,2,false,0.00,,,,,,,,,,,,,,,false,,,,,L
 2026091201,5,TOP,2026091201#39,run,gaifukaisei,56,144,170.0,21.5,92.5,15-30/150-175,0,2,false,0.00,,,,,,,,,,,,,,,false,,,,,L
 2026091202,1,TOP,,spot,gaifukaisei,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,L
@@ -13,5 +13,5 @@ game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,di
 2026091202,3,BOTTOM,2026091202#27,run,gaifukaisei,10,25,154.5,1.1,20.0,0-15/150-175,2,2,false,0.00,,,,,,,,,,,,,,,false,,,,,L
 2026091202,4,TOP,,spot,gaifukaisei,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,L
 2026091202,5,TOP,,spot,gaifukaisei,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,L
-2026091202,5,BOTTOM,,run,gaifukaisei,2,36,96.1,-58.0,2.4,LT0/LT100,2,3,false,0.00,,,,,,,,,,,,,,,false,,,,,L
+2026091202,5,BOTTOM,2026091202#47,run,gaifukaisei,2,36,96.1,-58.0,2.4,LT0/LT100,2,3,false,0.00,,,,,,,,,,,,,,,false,,,,,L
 2026091202,5,BOTTOM,2026091202#48,run,gaifukaisei,11,22,161.5,2.9,22.8,0-15/150-175,3,3,false,0.00,,,,,,,,,,,,,,,false,,,,,L

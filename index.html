@@ -815,6 +815,13 @@ table.order tr.fill td{border:0; height:19px}
 .head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
   color:var(--muted); margin-left:8px; letter-spacing:0; text-transform:none}
 
+/* リプレイのボタン */
+.replay{display:inline-flex; align-items:center; gap:3px; font-size:10.5px;
+  font-weight:700; padding:2px 7px; border-radius:99px; text-decoration:none;
+  color:#fff; background:#c4302b; white-space:nowrap}
+.replay:hover{filter:brightness(1.1)}
+table.pa2 .replay,table.pafix .replay{font-size:9.5px; padding:1px 5px}
+
 /* 守備成績 */
 table.glove{width:100%; font-size:12px}
 table.glove th,table.glove td{padding:3px 8px; text-align:center; white-space:nowrap}
@@ -1140,6 +1147,51 @@ function videoOf(id){
   const start=raw.match(new RegExp("[?&]t=([0-9]+)"));
   return "https://www.youtube-nocookie.com/embed/" + at[1]
     + (start ? "?start=" + start[1] : "");
+}
+
+/**
+ * その試合の動画を、途中から開く住所。
+ *
+ * <p>埋め込みではなく、押したら YouTube がその秒から始まるふつうの住所。
+ */
+function videoLink(gameId, seconds){
+  const info=GAMES.get(String(gameId||"").trim());
+  const raw=info ? info.video : "";
+  if(!raw) return "";
+  const at=raw.match(new RegExp("(?:youtu[.]be/|v=|/live/|/embed/|/shorts/)([A-Za-z0-9_-]{6,})"));
+  if(!at) return "";
+  return "https://www.youtube.com/watch?v=" + at[1] + "&t=" + Math.max(0, Math.round(seconds)) + "s";
+}
+
+/**
+ * その打席が、動画の何秒のところか。
+ *
+ * <p>動画は「初回の先頭打者の打順が呼ばれたところ」から始まっている前提。
+ * そこからの差を秒で返す。時刻が記録されていなければ null。
+ */
+function replayAt(row){
+  if(!row) return null;
+  const at=Number(row.pitchat);
+  if(!isFinite(at) || at<=0) return null;
+  const game=String(row.game_id);
+  let start=null;
+  for(const r of DATA.plate){
+    if(String(r.game_id)!==game) continue;
+    const called=Number(r.calledat);
+    if(isFinite(called) && called>0){ start=called; break; }
+  }
+  if(start===null) return null;
+  return Math.max(0, (at-start)/1000);
+}
+
+/** リプレイのボタン。動画と時刻が揃っているときだけ出す。 */
+function replayButton(row){
+  const at=replayAt(row);
+  if(at===null) return "";
+  const link=videoLink(row.game_id, at);
+  if(!link) return "";
+  return `<a class="replay" href="${esc(link)}" target="_blank" rel="noopener"
+    title="この打席を決めた投球から再生します">▶ リプレイを見る</a>`;
 }
 
 /** 試合ページの頭に出す動画。無ければ何も出さない。 */
@@ -3314,7 +3366,7 @@ function clutchCard(){
       r.batter, r.result].join("|"));
     const at=plateNumber(r);
     const where=`${esc(gameLabel(r.game_id))} ${r.inning}回${isBottom(r)?"裏":"表"}${
-      at ? " "+at+"打席目" : ""} ${esc(resultText(r.result, rec))}`;
+      at ? " "+at+"打席目" : ""} ${esc(resultText(r.result, rec, r))}`;
     return bestRow(i+1, r.batter, where, "+"+(m.forBatting*100).toFixed(1)+"pt",
       r.game_id, plateIndexOf(r.game_id, r));
   }).join("")}</ol>` : '<div class="empty">打席の記録がありません</div>';
@@ -4560,21 +4612,84 @@ function sprayName(angle){
  * 打ち出し角と方向からの見当と違って、これは実際に起きたこと。
  */
 let PLAY_OWNER=null, PLAY_OWNER_N=-1;
-function fielderFromPlay(rec){
-  if(!rec || !rec.pa) return "";
-  if(!PLAY_OWNER || PLAY_OWNER_N!==DATA.play.length){
-    PLAY_OWNER=new Map();
-    DATA.play.forEach(r=>{
-      if(r.kind!=="field" || !r.pa || !POS_LABEL[String(r.position||"")]) return;
-      // 打球に最初に触った人。飛球を捕った人も同じ扱い。
-      if(r.caughtonfly!==true && nz(r.touchorder)!==1) return;
+function playOwners(){
+  if(PLAY_OWNER && PLAY_OWNER_N===DATA.play.length) return PLAY_OWNER;
+  PLAY_OWNER=new Map();
+  DATA.play.forEach(r=>{
+    if(r.kind!=="field" || !r.pa || !POS_LABEL[String(r.position||"")]) return;
+    // 打球に最初に触った人。飛球を捕った人も同じ扱い。
+    if(r.caughtonfly!==true && nz(r.touchorder)!==1) return;
+    const key=String(r.game)+"|"+String(r.pa);
+    if(!PLAY_OWNER.has(key)) PLAY_OWNER.set(key, r);
+  });
+  PLAY_OWNER_N=DATA.play.length;
+  return PLAY_OWNER;
+}
+
+/**
+ * 打席結果の行が指す打席 ID。
+ *
+ * <p>打席 ID は「試合 ID # その試合の通し番号」。結果の行には入っていないので、
+ * 並び順から組み立てる。1 球ずつの記録が無い打席でも、
+ * 守備の記録と突き合わせられるようになる。
+ */
+let PA_ID=null, PA_ID_N=-1;
+function paIdOf(row){
+  if(!row || !row.game_id) return "";
+  if(!PA_ID || PA_ID_N!==DATA.plate.length+DATA.pitch.length){
+    PA_ID=new Map();
+    // 1 球ずつの記録に残っている打席 ID を、試合ごとに番号順で並べる
+    const box={};
+    const seen=new Set();
+    DATA.pitch.forEach(r=>{
+      if(!r.pa) return;
       const key=String(r.game)+"|"+String(r.pa);
-      if(!PLAY_OWNER.has(key)) PLAY_OWNER.set(key, String(r.position));
+      if(seen.has(key)) return;
+      seen.add(key);
+      const game=String(r.game);
+      (box[game]=box[game]||[]).push({pa:String(r.pa),
+        n:Number(String(r.pa).split("#")[1])||0,
+        inning:String(r.inning), half:String(r.half).toUpperCase().charAt(0),
+        batter:r.batter});
     });
-    PLAY_OWNER_N=DATA.play.length;
+    Object.keys(box).forEach(g=>box[g].sort((a,b)=>a.n-b.n));
+    // 打席結果の並びと、打席 ID の並びを頭から突き合わせる。
+    // 番号がひとつ飛んでいる試合があるので、通し番号では当てにならない。
+    const at={};
+    DATA.plate.forEach(r=>{
+      const game=String(r.game_id);
+      const list=box[game];
+      if(!list) return;
+      let i=at[game]||0;
+      const half=isBottom(r)?"B":"T";
+      while(i<list.length && !(list[i].inning===String(r.inning)
+          && list[i].half===half && list[i].batter===r.batter)) i++;
+      if(i<list.length){
+        PA_ID.set(r, list[i].pa);
+        at[game]=i+1;
+      }
+    });
+    PA_ID_N=DATA.plate.length+DATA.pitch.length;
   }
-  const at=PLAY_OWNER.get(String(rec.game)+"|"+String(rec.pa));
-  return at ? (POS_JA[at] || "") : "";
+  return PA_ID.get(row) || "";
+}
+
+/**
+ * その打球を実際に処理した守備の行。
+ *
+ * @param rec 1 球ずつの記録(pa を持つ)。無ければ null
+ * @param row 打席結果の行。rec が無いときはこちらから打席 ID を割り出す
+ */
+function ownerOf(rec, row){
+  const pa=(rec && rec.pa) ? String(rec.pa) : paIdOf(row);
+  if(!pa) return null;
+  const game=rec && rec.game ? String(rec.game) : String(row && row.game_id || "");
+  return playOwners().get(game+"|"+pa) || null;
+}
+
+function fielderFromPlay(rec, row){
+  const own=ownerOf(rec, row);
+  return own ? (POS_JA[String(own.position)] || "") : "";
 }
 
 /**
@@ -4582,8 +4697,8 @@ function fielderFromPlay(rec){
  *
  * <p>守備の記録があればそれを使い、無ければ打ち出し角と方向から見当をつける。
  */
-function fielderName(rec){
-  const real=fielderFromPlay(rec);
+function fielderName(rec, row){
+  const real=fielderFromPlay(rec, row);
   if(real) return real;
   if(!rec) return "";
   const la=Number(rec.launch_angle), a=Number(rec.spray_angle);
@@ -4607,8 +4722,20 @@ function fielderName(rec){
  * <p>アウトは「セカンドゴロ」「ライトフライ」、安打は「右安打」「中二塁打」。
  * 打球の記録が無ければこれまでどおりの言い方。
  */
-function resultText(result, rec){
+function resultText(result, rec, row){
   const plain=JA[result] || result || "";
+  // 守備の記録があれば、1 球ずつの記録が無くても処理者を書ける
+  const own=ownerOf(rec, row);
+  if(own && POS_JA[String(own.position)]){
+    const at=POS_JA[String(own.position)];
+    const la=nz(own.launchangle);
+    if(result==="GROUND_OUT") return at+"ゴロ";
+    if(result==="DOUBLE_PLAY") return at+"ゴロ併殺";
+    if(result==="FLY_OUT"){
+      return at + (own.caughtonfly!==true ? "ゴロ"
+        : (la!==null && la<25 ? "ライナー" : "フライ"));
+    }
+  }
   if(!rec) return plain;
   const a=Number(rec.spray_angle);
   // 決め球の判定が分かれば、三振の種類まで書く
@@ -4619,7 +4746,7 @@ function resultText(result, rec){
   }
   const hit=rec.contact===true && rec.call==="IN_PLAY";
   if(!hit) return plain;
-  const where=fielderName(rec);
+  const where=fielderName(rec, row);
   if(result==="GROUND_OUT") return where ? where+"ゴロ" : plain;
   if(result==="FLY_OUT"){
     const la=Number(rec.launch_angle);
@@ -4817,11 +4944,12 @@ function paCard(row, before, outs, pitches, sides){
         </dl>
       </div>
       <div class="pabox pares2">
-        <span class="rtag inline ${resultClass(row.result)}">${esc(resultText(row.result, rec))}</span>
+        <span class="rtag inline ${resultClass(row.result)}">${esc(resultText(row.result, rec, row))}</span>
         ${countMark(finalCount(pitches), outs)}
         ${baseMark(row)}
         ${rbi ? `<span class="parbi">${rbi} 打点</span>` : ""}
         ${winPtText(row)}
+        ${replayButton(row)}
       </div>
       <div class="pabox pafacts">${batted.map(one=>
         `<span><i>${one[0]}</i><b>${one[1]}</b></span>`).join("")}</div>
@@ -4938,11 +5066,11 @@ function inningTables(rows){
       html+=`<div class="inninghead" id="inning-${i}-${side}">${i} 回${side?"裏":"表"}</div>
       <div class="scroll"><table class="pa2">
       <colgroup><col class="c-o"><col class="c-p"><col class="c-p"><col class="c-b"><col class="c-b"><col class="c-r"><col class="c-s">
-        <col class="c-w">
+        <col class="c-w"><col class="c-s">
         <col class="c-m"><col class="c-s"><col class="c-m"><col class="c-k"><col class="c-s"></colgroup>
       <thead><tr>
         <th>打順</th><th class="nm">打者</th><th class="nm">投手</th><th>塁</th><th>アウト</th>
-        <th class="nm">結果</th><th>打点</th><th>勝利pt</th>
+        <th class="nm">結果</th><th>打点</th><th>勝利pt</th><th>映像</th>
         <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th>
       </tr></thead><tbody>${half.map(r=>{
         const rec=index.get([GAME,r.inning,side?"B":"T",r.batter,r.result].join("|"));
@@ -4957,9 +5085,10 @@ function inningTables(rows){
           <td class="nm">${withTeamFace(r.pitcher,sides[r.pitcher],20)}</td>
           <td class="bases">${baseMark(r)}</td>
           <td class="bases">${outMark(outs.get(r)||0)}</td>
-          <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, rec))}</span></td>
+          <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, rec, r))}</span></td>
           <td class="${rbi?"rbi":""}">${rbi||""}</td>
           <td class="wcell">${winPtText(r) || "–"}</td>
+          <td class="wcell">${replayButton(r) || "–"}</td>
           <td>${hit?f1(ev):"–"}</td>
           <td>${hit?f1(la)+"°":"–"}</td>
           <td>${hit?f1(distanceOf(rec)):"–"}</td>
@@ -5995,12 +6124,12 @@ function paTable(rows, other, plate){
   if(!ended.length) return '<div class="empty">打席の記録がありません</div>';
   return `<div class="palist"><table class="pafix">
     <colgroup><col class="c-game"><col class="c-name"><col class="c-res">
-      <col class="c-num"><col class="c-num"><col class="c-wpt">
+      <col class="c-num"><col class="c-num"><col class="c-wpt"><col class="c-flag">
       <col class="c-num"><col class="c-num"><col class="c-num">
       <col class="c-flag"><col class="c-num"><col class="c-num"></colgroup>
     <thead><tr>
       <th>試合</th><th>${other==="pitcher"?"投手":"打者"}</th><th>結果</th>
-      <th>アウト</th><th>打点</th><th>勝利pt</th>
+      <th>アウト</th><th>打点</th><th>勝利pt</th><th>映像</th>
       <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th><th>HR球場</th>
     </tr></thead><tbody>
     ${ended.map(r=>{
@@ -6023,6 +6152,7 @@ function paTable(rows, other, plate){
         <td class="bases">${plate2 ? outMark(outsBeforeAll().get(plate2)||0) : "–"}</td>
         <td class="${rbi2?"rbi":""}">${rbi2||""}</td>
         <td class="wcell">${winPtText(plate2, {pit:other==="batter"}) || "–"}</td>
+        <td class="wcell">${replayButton(plate2) || "–"}</td>
         <td>${hit?f1(ev):"–"}</td>
         <td>${hit?f1(la)+"°":"–"}</td>
         <td>${hit?f1(distanceOf(r)):"–"}</td>
@@ -7142,15 +7272,28 @@ function paTexts(rows){
 function fieldingByPosition(name){
   const box=new Map();
   const innings=new Map();
+  const of=at=>box.get(at)
+    || box.set(at, {at, po:0, a:0, drop:0, wild:0, catches:0, innings:0}).get(at);
+  // 実際に投げた試合。投げていない人に付く「投手」は、自分のチームの
+  // 攻撃中にマウンドのそばにいただけなので数えない。
+  const threw=new Set(plateOf(name,"pit").map(r=>String(r.game_id)));
+  // 守った回。打球が飛んでこなかった回も、立っていた記録があれば数える
+  DATA.play.forEach(r=>{
+    if(r.player!==name) return;
+    const at=String(r.position||"");
+    if(!POS_LABEL[at]) return;
+    if(at==="PITCHER" && !threw.has(String(r.game))) return;
+    const when=[at, r.game, r.inning, String(r.half)].join("|");
+    if(innings.has(when)) return;
+    innings.set(when, true);
+    of(at).innings++;
+  });
   playOf(name,"field").forEach(r=>{
     const at=String(r.position||"");
     if(!POS_LABEL[at]) return;
-    const one=box.get(at) || box.set(at, {at, po:0, a:0, drop:0, wild:0, catches:0}).get(at);
+    const one=of(at);
     // 自分で追いついた打球ではない = 送球を受けた
     if(r.caughtonfly!==true && nz(r.touchorder) >= 2) one.catches++;
-    // 守った回。同じ半回に何度出てきても 1 回と数える
-    const when=[at, r.game, r.inning, String(r.half)].join("|");
-    if(!innings.has(when)){ innings.set(when, true); one.innings=(one.innings||0)+1; }
     if(r.gotout===true) one.po++;
     if(r.assist===true) one.a++;
     // 打球を自分で処理しようとして落とした。送球を受け損ねたものは入れない

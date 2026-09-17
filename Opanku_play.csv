@@ -1,9 +1,9 @@
-game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
 2026091201,2,TOP,,spot,Opanku,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
 2026091201,2,BOTTOM,2026091201#16,run,Opanku,29,58,64.6,23.4,21,15-30/LT100,0,1,FALSE,0,,,,,,,,,,,,,,,FALSE,,,,,R
 2026091201,3,TOP,,spot,Opanku,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
 2026091201,3,TOP,2026091201#17,field,Opanku,87,87,119.9,50.7,55.8,45+/100-125,,,,,RIGHT_FIELDER,1,320.5,-129.2,313.8,-114.6,TRUE,FALSE,FALSE,TRUE,FALSE,0,-1,,FALSE,FALSE,FALSE,FALSE,,R
-2026091201,3,TOP,,field,Opanku,30,113,158.1,12,55.9,0-15/150-175,,,,,RIGHT_FIELDER,1,322.9,-136.8,297.4,-121.1,FALSE,FALSE,TRUE,FALSE,FALSE,1,25,127.4,FALSE,TRUE,FALSE,FALSE,,R
+2026091201,3,TOP,2026091201#18,field,Opanku,30,113,158.1,12,55.9,0-15/150-175,,,,,RIGHT_FIELDER,1,322.9,-136.8,297.4,-121.1,FALSE,FALSE,TRUE,FALSE,FALSE,1,25,127.4,FALSE,TRUE,FALSE,FALSE,,R
 2026091201,4,TOP,,spot,Opanku,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
 2026091201,4,BOTTOM,2026091201#29,run,Opanku,3,38,117,-14.6,3.6,LT0/100-125,0,0,TRUE,0,,,,,,,,,,,,,,,FALSE,,,FORCE,,R
 2026091201,5,TOP,,spot,Opanku,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
