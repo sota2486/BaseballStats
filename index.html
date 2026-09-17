@@ -367,12 +367,6 @@ table.board td.team,table.board th.team{text-align:left; padding:4px 10px; width
   min-width:150px; font-family:"Source Sans 3",sans-serif; color:var(--text)}
 table.board .big{font-weight:700; background:var(--panel-2); border-left:1px solid var(--line)}
 table.board tr.win td.team{font-weight:700}
-.boardnote{display:flex; flex-wrap:wrap; gap:16px; padding:10px 0 0; font-size:12px;
-  align-items:center}
-/* 見出しと顔を同じ高さに揃える。揃えないと写真の分だけ文字が下がる */
-.boardnote > span{display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap}
-.boardnote b{font-family:"Barlow Condensed",sans-serif; font-size:13px; letter-spacing:.04em;
-  color:var(--muted)}
 .inninghead{font-family:"Barlow Condensed",sans-serif; font-size:16px; letter-spacing:.03em;
   padding:9px 0 3px; color:var(--rule)}
 /* 回ごとに表を分けているので、列の幅を決め打ちにしないと回ごとにずれる */
@@ -815,11 +809,15 @@ table.order tr.fill td{border:0; height:19px}
 .head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
   color:var(--muted); margin-left:8px; letter-spacing:0; text-transform:none}
 
-/* スコアボードの下に並べる本塁打 */
-.hrbox{display:flex; align-items:flex-start; gap:10px; margin-top:9px;
-  padding-top:9px; border-top:1px solid var(--line-soft); flex-wrap:wrap}
-.hrbox .lead{font-family:"Barlow Condensed",sans-serif; font-size:13px;
-  letter-spacing:.06em; color:var(--muted); padding-top:2px; flex:none}
+/* スコアボードの下。左に責任投手、右に本塁打 */
+.creditbox{display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px 26px;
+  margin-top:9px; padding-top:9px; border-top:1px solid var(--line-soft);
+  align-items:start}
+@media (max-width:640px){.creditbox{grid-template-columns:minmax(0,1fr)}}
+.credit{display:flex; align-items:flex-start; gap:9px; min-width:0}
+.credit .lead{font-family:"Barlow Condensed",sans-serif; font-size:13px;
+  letter-spacing:.06em; color:var(--muted); padding-top:2px; flex:none;
+  white-space:nowrap}
 .hrlist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column;
   gap:4px; min-width:0}
 .hrlist li{display:flex; align-items:center; gap:7px; font-size:12.5px}
@@ -4346,7 +4344,7 @@ function resultView(){
     <div class="head">試合<small>${games.length} 試合</small></div>
     <div class="gamepick">${pick}</div>
     ${scoreBoard(rows)}
-    ${homeRunLines(rows)}
+    ${gameCredits(rows)}
   </div></section>
   ${videoBox(GAME)}
   ${lineupBox(rows)}
@@ -4407,16 +4405,43 @@ function homeRunKind(runs){
 function homeRunLines(rows){
   const hits=rows.filter(r=>r.result==="HOME_RUN");
   if(!hits.length) return "";
-  const body=hits.map(r=>{
+  return hits.map(r=>{
     const number=homeRunNumber(r);
-    return `<li class="plink" data-who="${esc(r.batter||"")}">
+    return `<li>
       <span class="nmlink" data-who="${esc(r.batter||"")}">${face(r.batter,18)}${esc(r.batter||"?")}</span>
       <b>${number ? number+"号" : ""}${homeRunKind(r.runs)}ホームラン</b>
       <span class="when">(${r.inning}回${isBottom(r)?"裏":"表"})</span>
     </li>`;
   }).join("");
-  return `<div class="hrbox"><span class="lead">本塁打</span>
-    <ul class="hrlist">${body}</ul></div>`;
+}
+
+/** 責任投手。勝ち・負け・セーブを 1 人 1 行で。 */
+function creditLines(rows){
+  const d=decisions(rows);
+  const relief=reliefCredits(rows, d);
+  const line=(mark, cls, name)=>name
+    ? `<li><i class="decmark ${cls}">${mark}</i>
+        <span class="nmlink" data-who="${esc(name)}">${face(name,18)}${esc(name)}</span></li>`
+    : "";
+  return line("勝","w", d&&d.win) + line("敗","l", d&&d.lose)
+    + line("S","s", relief.save);
+}
+
+/**
+ * スコアボードの下。左に責任投手、右に本塁打。
+ *
+ * <p>前は 1 行に横並べで書いていたが、人数が増えると読めなくなるので
+ * 1 人 1 行の 2 列にした。
+ */
+function gameCredits(rows){
+  const credits=creditLines(rows);
+  const homers=homeRunLines(rows);
+  if(!credits && !homers) return "";
+  const box=(head, body)=>body
+    ? `<div class="credit"><span class="lead">${head}</span>
+        <ul class="hrlist">${body}</ul></div>`
+    : "";
+  return `<div class="creditbox">${box("責任投手", credits)}${box("本塁打", homers)}</div>`;
 }
 
 function scoreBoard(rows){
@@ -4448,22 +4473,13 @@ function scoreBoard(rows){
     }).join("")}
     <td class="big">${total(side)}</td><td class="big">${totalH(side)}</td>
   </tr>`;
-  const homers=rows.filter(r=>r.result==="HOME_RUN");
   const venue=venueOf(rows.length ? rows[0].game_id : GAME);
   return `<div class="scroll"><table class="board">
     <thead><tr><th class="team">${venue ? `<span class="venue">${esc(venue)}</span>` : ""}</th>
       ${Array.from({length:innings},(_,k)=>`<th>${k+1}</th>`).join("")}
       <th class="big">R</th><th class="big">H</th></tr></thead>
     <tbody>${row(0)}${row(1)}</tbody>
-  </table></div>
-  <div class="boardnote">
-    ${d&&d.win ? `<span><b>勝</b>${withTeamFace(d.win,sides[d.win],20)}</span>` : ""}
-    ${d&&d.lose ? `<span><b>敗</b>${withTeamFace(d.lose,sides[d.lose],20)}</span>` : ""}
-    ${relief.save ? `<span><b>S</b>${withTeamFace(relief.save,sides[relief.save],20)}</span>` : ""}
-    ${homers.length ? `<span><b>本塁打</b>${homers.map(h=>
-        `<span class="withface ${teamClass(sides[h.batter])}" style="margin-right:10px">${face(h.batter,20)}
-          <span>${esc(h.batter)}${Number(h.rbi)>1?`(${h.rbi}点)`:""}</span></span>`).join("")}</span>` : ""}
-  </div>`;
+  </table></div>`;
 }
 /**
  * その試合の打順表から、選手 → 打順番号を引けるようにする。
