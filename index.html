@@ -815,6 +815,20 @@ table.order tr.fill td{border:0; height:19px}
 .head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
   color:var(--muted); margin-left:8px; letter-spacing:0; text-transform:none}
 
+/* スコアボードの下に並べる本塁打 */
+.hrbox{display:flex; align-items:flex-start; gap:10px; margin-top:9px;
+  padding-top:9px; border-top:1px solid var(--line-soft); flex-wrap:wrap}
+.hrbox .lead{font-family:"Barlow Condensed",sans-serif; font-size:13px;
+  letter-spacing:.06em; color:var(--muted); padding-top:2px; flex:none}
+.hrlist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column;
+  gap:4px; min-width:0}
+.hrlist li{display:flex; align-items:center; gap:7px; font-size:12.5px}
+.hrlist .nmlink{display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+  white-space:nowrap; font-family:"Source Sans 3",sans-serif}
+.hrlist .nmlink:hover{text-decoration:underline}
+.hrlist b{font-weight:700; color:var(--rule); white-space:nowrap}
+.hrlist .when{color:var(--muted); font-size:11.5px; white-space:nowrap}
+
 /* 戦況変化の分岐点。押すと下に説明が出る */
 .moment{cursor:pointer}
 .winnote{grid-column:1/-1; margin-top:6px; padding:7px 10px; border-radius:6px;
@@ -2936,6 +2950,57 @@ window.addEventListener("resize", ()=>{ if(VIEW==="pawa") fitPawa(); });
 
 /** 能力画面で選んでいる選手。Savant とは別に覚える。 */
 let PAWA_PLAYER="";
+
+/* ------------------------------------------------ 戻る/進む
+   どの画面を見ていたかを履歴に積んでおく。
+   選手ページから試合ページへ移ったあと、戻るボタンで選手ページへ帰れる。
+   ファイルを直に開いたときでも動くよう、住所は書き換えない。 */
+
+/** いま見ている画面。 */
+function viewState(){
+  return {view:VIEW, player:PLAYER, pawa:PAWA_PLAYER, side:SIDE, game:GAME,
+    pa:PA_AT, paGame:PA_GAME, lb:{side:LB.side, mode:LB.mode, key:LB.key, dir:LB.dir}};
+}
+
+/** その画面に戻す。描き直しはしない。 */
+function applyState(at){
+  if(!at) return;
+  VIEW=at.view; PLAYER=at.player; PAWA_PLAYER=at.pawa; SIDE=at.side;
+  GAME=at.game; PA_AT=at.pa; PA_GAME=at.paGame;
+  if(at.lb){ LB.side=at.lb.side; LB.mode=at.lb.mode; LB.key=at.lb.key; LB.dir=at.lb.dir; }
+}
+
+/** 同じ画面を二度積まない。 */
+function sameState(a, b){
+  if(!a || !b) return false;
+  return a.view===b.view && a.player===b.player && a.side===b.side
+    && a.game===b.game && a.pa===b.pa;
+}
+
+/** 画面が変わったら履歴に積む。render の前に呼ぶ。 */
+let HISTORY_READY=false;
+function pushView(){
+  if(typeof history==="undefined" || !history.pushState) return;
+  try{
+    const now=viewState();
+    if(!HISTORY_READY){
+      history.replaceState(now, "");
+      HISTORY_READY=true;
+      return;
+    }
+    if(sameState(history.state, now)) return;
+    history.pushState(now, "");
+  }catch(e){ /* 住所を書き換えられない置き場所でも困らない */ }
+}
+if(typeof window!=="undefined" && window.addEventListener){
+  window.addEventListener("popstate", e=>{
+    if(!e.state) return;
+    applyState(e.state);
+    HISTORY_READY=true;
+    render();
+    window.scrollTo({top:0, behavior:"auto"});
+  });
+}
 /** 能力画面のどの面を見ているか。打者 / 投手 / 守備。 */
 let PAWA_TAB="bat";
 
@@ -4281,6 +4346,7 @@ function resultView(){
     <div class="head">試合<small>${games.length} 試合</small></div>
     <div class="gamepick">${pick}</div>
     ${scoreBoard(rows)}
+    ${homeRunLines(rows)}
   </div></section>
   ${videoBox(GAME)}
   ${lineupBox(rows)}
@@ -4298,6 +4364,61 @@ function resultView(){
     ${inningTables(rows)}
   </div></section>`;
 }
+/**
+ * 本塁打が、その打者にとって何号目か。
+ *
+ * <p>読み込んである試合を古い順に並べて数える。
+ * 試合中にプラグインが出すコールと同じ数え方。
+ */
+let HR_NUMBER=null, HR_NUMBER_N=-1;
+function homeRunNumber(row){
+  if(!HR_NUMBER || HR_NUMBER_N!==DATA.plate.length){
+    HR_NUMBER=new Map();
+    const count={};
+    // 試合 ID の順に並べ直す。打席の並びは試合の中でしか保証されない
+    const all=DATA.plate.filter(r=>r.result==="HOME_RUN")
+      .map((r,i)=>({r, i}))
+      .sort((a,b)=>String(a.r.game_id).localeCompare(String(b.r.game_id)) || a.i-b.i);
+    all.forEach(one=>{
+      const who=one.r.batter;
+      if(!who) return;
+      count[who]=(count[who]||0)+1;
+      HR_NUMBER.set(one.r, count[who]);
+    });
+    HR_NUMBER_N=DATA.plate.length;
+  }
+  return HR_NUMBER.get(row) || 0;
+}
+
+/** 本塁打の種類。走者の数で決まる。 */
+function homeRunKind(runs){
+  const n=Math.max(1, Number(runs)||1);
+  if(n>=4) return "満塁";
+  if(n===3) return "3ラン";
+  if(n===2) return "2ラン";
+  return "ソロ";
+}
+
+/**
+ * その試合の本塁打。スコアボードの下に並べる。
+ *
+ * <p>「sota2486 5号2ランホームラン (3回裏)」の形。
+ */
+function homeRunLines(rows){
+  const hits=rows.filter(r=>r.result==="HOME_RUN");
+  if(!hits.length) return "";
+  const body=hits.map(r=>{
+    const number=homeRunNumber(r);
+    return `<li class="plink" data-who="${esc(r.batter||"")}">
+      <span class="nmlink" data-who="${esc(r.batter||"")}">${face(r.batter,18)}${esc(r.batter||"?")}</span>
+      <b>${number ? number+"号" : ""}${homeRunKind(r.runs)}ホームラン</b>
+      <span class="when">(${r.inning}回${isBottom(r)?"裏":"表"})</span>
+    </li>`;
+  }).join("");
+  return `<div class="hrbox"><span class="lead">本塁打</span>
+    <ul class="hrlist">${body}</ul></div>`;
+}
+
 function scoreBoard(rows){
   const innings=Math.max(1,...rows.map(r=>Number(r.inning)||1));
   const runs=[[],[]], hits=[[],[]], played=[[],[]];
@@ -8662,11 +8783,14 @@ function finishLoad(skipped){
 }
 document.getElementById("viewTabs").addEventListener("click",e=>{
   const t=e.target.closest(".tab"); if(!t) return;
+  pushView();
   VIEW=t.dataset.view;
   render();
+  pushView();
 });
 document.getElementById("playerRow").addEventListener("click",e=>{
   const t=e.target.closest(".tab"); if(!t) return;
+  pushView();
   if(t.dataset.side) SIDE=t.dataset.side;
   else if(t.dataset.name){
     PLAYER=t.dataset.name;
@@ -8674,10 +8798,12 @@ document.getElementById("playerRow").addEventListener("click",e=>{
     PAWA_PLAYER=PLAYER;
   }
   render();
+  pushView();
 });
 // 一覧から選手を選ぶ
 document.getElementById("playerRow").addEventListener("change",e=>{
   if(e.target.id!=="playerPick") return;
+  pushView();
   PLAYER=e.target.value;
   PAWA_PLAYER=PLAYER;
   render();
@@ -8718,7 +8844,7 @@ document.getElementById("app").addEventListener("click",e=>{
     return;
   }
   const game=e.target.closest("[data-game]");
-  if(game){ GAME=game.dataset.game; render(); return; }
+  if(game){ pushView(); GAME=game.dataset.game; render(); pushView(); return; }
   // 広さの一覧の並べ替え
   const ps=e.target.closest("th[data-park-sort]");
   if(ps){
@@ -8732,10 +8858,12 @@ document.getElementById("app").addEventListener("click",e=>{
   // 先に打席を切り替えると名前を押しても選手ページへ行けない。
   const first=e.target.closest("[data-who]");
   if(first && first.dataset.who){
+    pushView();
     PLAYER=canon(first.dataset.who);
     PAWA_PLAYER=PLAYER;
     VIEW="split";
     render();
+    pushView();
     window.scrollTo({top:0, behavior:"auto"});
     return;
   }
@@ -8755,9 +8883,11 @@ document.getElementById("app").addEventListener("click",e=>{
     const to=String(best.dataset.jumpPa||"");
     const at=Number(best.dataset.jumpAt);
     if(to){
+      pushView();
       VIEW="result"; GAME=to; PA_GAME=to;
       if(isFinite(at) && at>=0) PA_AT=at;
       render();
+      pushView();
       const box=(isFinite(at) && at>=0) ? document.getElementById("padetail") : null;
       if(box) box.scrollIntoView({behavior:"smooth", block:"start"});
       else window.scrollTo({top:0, behavior:"auto"});
@@ -8786,10 +8916,12 @@ document.getElementById("app").addEventListener("click",e=>{
   // 名前を押したらその選手の画面へ
   const who=e.target.closest("[data-who]");
   if(who && who.dataset.who){
+    pushView();
     PLAYER=canon(who.dataset.who);
     PAWA_PLAYER=PLAYER;
     VIEW="split";
     render();
+    pushView();
     // 前に見ていた位置のまま出ると、選手の顔より下から始まってしまう
     window.scrollTo({top:0, behavior:"auto"});
   }
