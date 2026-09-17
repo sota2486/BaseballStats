@@ -86,6 +86,12 @@ button:hover,label.filebtn:hover,#parkPick:hover{border-color:var(--rule)}
   background:var(--panel-2); color:var(--muted); white-space:nowrap; cursor:pointer}
 .tab[aria-selected="true"]{background:var(--panel); color:var(--text); font-weight:600;
   box-shadow:inset 0 3px 0 var(--rule); margin-bottom:-1px}
+/* 選手のタブは顔写真つき。名前の長さが違っても枠の幅は揃える */
+.tab.face{display:inline-flex; align-items:center; gap:6px; font-size:13.5px;
+  font-family:"Source Sans 3",sans-serif; letter-spacing:0; padding:5px 10px 6px;
+  width:150px; min-width:150px; box-sizing:border-box}
+.tab.face > span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.tab.face .face{flex:none}
 .side{display:flex; gap:4px; flex:none; align-self:flex-end}
 .side .tab{border-color:var(--rule); font-size:21px; padding:8px 26px 9px;
   font-weight:700}
@@ -518,7 +524,7 @@ tr.total td:first-child{font-weight:700; color:var(--text)}
 .scroll{overflow-x:auto}
 /* 打席の一覧。5 打席ぶんの高さだけ見せて、あとはスクロール。
    投手名が空の行があっても列がずれないよう、幅は固定にする */
-.palist{max-height:126px; overflow:auto}
+.palist{max-height:150px; overflow:auto}
 .palist thead th{position:sticky; top:0; background:var(--panel); z-index:2;
   text-align:center; font-size:9px}
 table.pafix{table-layout:fixed; min-width:620px; font-size:10.5px}
@@ -808,6 +814,13 @@ table.order tr.fill td{border:0; height:19px}
 /* 見出しに添える注釈 */
 .head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
   color:var(--muted); margin-left:8px; letter-spacing:0; text-transform:none}
+
+/* 守備成績 */
+table.glove{width:100%; font-size:12px}
+table.glove th,table.glove td{padding:3px 8px; text-align:center; white-space:nowrap}
+table.glove .nm{text-align:left; font-family:"Source Sans 3",sans-serif}
+table.glove td.bad{color:var(--hot); font-weight:700}
+table.glove tr.total td{background:var(--panel-2); font-weight:700}
 
 /* 勝利ポイント。上がったら青、下がったら赤 */
 .wpt{font-family:"Roboto Mono",monospace; font-size:11.5px; font-weight:700;
@@ -1413,7 +1426,7 @@ const SCALE={
   chase:[85,45], whiff:[48,20], k:[52,26], bb:[1,12],
   xera:[8.0,2.0], gb:[18,44], wrc:[40,190], k9:[4.0,16.0], bb9:[6.0,0.5],
   // スイングの速さと、芯で捉えた度合い
-  bat_speed:[95,130], squared:[60,100],
+  bat_speed:[95,130], squared:[75,92],
   // Run Value。打者は通算の点、投手は 100 球あたりの点
   bat_rv:[-0.9,0.9], run_rv:[-0.05,0.10], field_rv:[-0.7,0.3],
   pitch_rv:[-4.0,4.0], fast_rv:[-5.0,5.0], break_rv:[-5.0,5.0], off_rv:[-7.0,7.0],
@@ -2131,9 +2144,8 @@ function summarize(rows){
     speedSum+=bat; speedN++;
     const e=Number(r.exit_velocity);
     if(r.contact===true && r.call==="IN_PLAY" && e>0){
-      // 芯で捉えた度合い。分母は「その振りで出せるはずの打球速度」。
-      // 球速の分は 150km/h で揃える。
-      sqSum+=100*e/(bat*1.23 + 150*0.23); sqN++;
+      // 芯で捉えた度合い。振ったバットの速さの 1.5 倍を上限とみなす。
+      sqSum+=100*e/(bat*1.5); sqN++;
     }
   });
   const n=bip.length;
@@ -2456,6 +2468,32 @@ function completeGames(name){
     if(runs===0) sho++;
   });
   return {cg, sho};
+}
+
+/**
+ * 先発した試合と、そのうちの SQS。
+ *
+ * <p>SQS(SnowballGame Quality Start)は、先発が 3 回以上投げて
+ * 失点をイニング数 − 1 以下に抑えた試合。5 回制に合わせた目安。
+ */
+function startsOf(name){
+  let starts=0, sqs=0;
+  const mine=new Set(plateOf(name,"pit").map(r=>String(r.game_id)));
+  mine.forEach(game=>{
+    const all=DATA.plate.filter(r=>String(r.game_id)===game);
+    const rows=all.filter(r=>r.pitcher===name);
+    if(!rows.length) return;
+    // その回の表裏で最初に投げていたら先発
+    const half=String(rows[0].half);
+    const first=all.find(r=>String(r.half)===half && r.pitcher);
+    if(!first || first.pitcher!==name) return;
+    starts++;
+    const outs=rows.reduce((n,r)=>n+(Number(r.outs)||0),0);
+    const runs=rows.reduce((n,r)=>n+(Number(r.runs)||0),0);
+    const ip=outs/3;
+    if(ip>=3 && runs<=ip-1) sqs++;
+  });
+  return {starts, sqs};
 }
 
 /** その選手の得点。 */
@@ -2796,7 +2834,8 @@ function renderTabs(){
       <option value="">選手を選択してください</option>
       ${list.map(n=>`<option value="${esc(n)}" ${n===PLAYER?"selected":""}>${esc(n)}</option>`).join("")}
     </select>`
-    + list.map(n=>`<div class="tab" data-name="${esc(n)}" aria-selected="${n===PLAYER}">${esc(n)}</div>`).join("");
+    + list.map(n=>`<div class="tab face" data-name="${esc(n)}" aria-selected="${n===PLAYER}"
+        >${face(n,20)}<span>${esc(n)}</span></div>`).join("");
   document.getElementById("sideTabs").innerHTML=
     `<div class="tab" data-side="bat" aria-selected="${SIDE==="bat"}">打者</div>
      <div class="tab" data-side="pit" aria-selected="${SIDE==="pit"}">投手</div>`;
@@ -3601,6 +3640,7 @@ function batterColumns(mode){
     {key:"rbi", head:"打点", get:d=>d.L.rbi,      fmt:v=>v},
     {key:"bb",  head:"四球",  get:d=>d.L.bb,       fmt:v=>v},
     {key:"so",  head:"三振",  get:d=>d.L.so,       fmt:v=>v},
+    {key:"gidp",head:"併殺打", get:d=>d.L.counts.DOUBLE_PLAY||0, fmt:v=>v},
     {key:"avg", head:"打率", get:d=>d.L.avg,      fmt:f3, rate:true},
     {key:"obp", head:"出塁率", get:d=>d.L.obp,      fmt:f3, rate:true},
     {key:"slg", head:"長打率", get:d=>d.L.slg,      fmt:f3, rate:true},
@@ -3621,7 +3661,7 @@ function batterColumns(mode){
     {key:"sweet", head:"Sweet%", get:d=>d.S.sweet,  fmt:pc, rate:true},
     {key:"bspd",  head:"Bat Speed", get:d=>d.S.batSpeed, fmt:f1, rate:true},
     {key:"sqd",   head:"Squared Up%", get:d=>d.S.squared, fmt:pc, rate:true},
-    {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
+    {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, low:true, rate:true},
     {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true, low:true},
     {key:"k",     head:"K%",     get:d=>d.L.kRate,  fmt:pc, rate:true, low:true},
     {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, rate:true}
@@ -3630,28 +3670,45 @@ function batterColumns(mode){
 function pitcherColumns(mode){
   if(mode==="std") return [
     {key:"g",   head:"登板",    get:d=>d.games,   fmt:v=>v},
+    {key:"gs",  head:"先発",    get:d=>startsOf(d.name).starts, fmt:v=>v},
+    {key:"era", head:"防御率(5回)", get:d=>d.L.era, fmt:f2, low:true, rate:true},
     {key:"w",   head:"勝",    get:d=>d.w,       fmt:v=>v},
     {key:"l",   head:"敗",    get:d=>d.l,       fmt:v=>v},
     {key:"ip",  head:"投球回",   get:d=>d.L.outs,  fmt:ipText},
     {key:"so",  head:"奪三振",   get:d=>d.L.so,    fmt:v=>v},
     {key:"bb",  head:"与四球",   get:d=>d.L.bb,    fmt:v=>v},
+    {key:"sqs", head:"SQS",    get:d=>startsOf(d.name).sqs, fmt:v=>v},
+    {key:"sqsp",head:"SQS%",   get:d=>{
+      const one=startsOf(d.name);
+      return one.starts ? 100*one.sqs/one.starts : null;
+    }, fmt:pc, rate:true},
     // 失点と被本塁打は「多い人から」並べる
     {key:"r",   head:"失点",    get:d=>d.L.runs,  fmt:v=>v},
+    {key:"ha",  head:"被安打",   get:d=>d.L.h,    fmt:v=>v},
     {key:"hra", head:"被本塁打", get:d=>d.L.hr,   fmt:v=>v},
-    {key:"sv",  head:"セーブ",   get:d=>d.sv,      fmt:v=>v},
-    {key:"hld", head:"ホールド",  get:d=>d.hld,     fmt:v=>v},
     {key:"cg",  head:"完投",    get:d=>completeGames(d.name).cg,  fmt:v=>v},
     {key:"sho", head:"完封",    get:d=>completeGames(d.name).sho, fmt:v=>v},
-    // 率の項目は規定投球回に届いた人を先に出す
-    {key:"era", head:"防御率(5回)", get:d=>d.L.era, fmt:f2, low:true, rate:true},
+    {key:"sv",  head:"セーブ",   get:d=>d.sv,      fmt:v=>v},
+    {key:"hld", head:"ホールド",  get:d=>d.hld,     fmt:v=>v},
     {key:"whip",head:"WHIP", get:d=>d.L.whip, fmt:f2, low:true, rate:true}
   ];
   return [
     {key:"ip",    head:"投球回",     get:d=>d.L.outs,   fmt:ipText},
     {key:"kp",    head:"K%",     get:d=>d.L.kRate,  fmt:pc, rate:true},
     {key:"bbp",   head:"BB%",    get:d=>d.L.bbRate, fmt:pc, low:true, rate:true},
+    {key:"baa",   head:"被打率",  get:d=>d.L.avg,    fmt:f3, low:true, rate:true},
+    // 奪三振率と与四球率は 5 回あたり。このイベントは 5 回制。
+    {key:"k5",    head:"奪三振率", get:d=>d.L.outs ? GAME_INNINGS*3*d.L.so/d.L.outs : null,
+      fmt:f2, rate:true},
+    {key:"bb5",   head:"与四球率", get:d=>d.L.outs ? GAME_INNINGS*3*d.L.bb/d.L.outs : null,
+      fmt:f2, low:true, rate:true},
+    {key:"fip",   head:"FIP",    get:d=>fipOf(d.L), fmt:f2, low:true, rate:true},
     {key:"whip",  head:"WHIP",   get:d=>d.L.whip,   fmt:f2, low:true, rate:true},
-    {key:"ops",   head:"OPS",    get:d=>d.L.ops,    fmt:f3, low:true, rate:true},
+    {key:"ops",   head:"被OPS",  get:d=>d.L.ops,    fmt:f3, low:true, rate:true},
+    {key:"bf",    head:"被打席",  get:d=>d.L.pa,     fmt:v=>v},
+    {key:"np",    head:"投球数",  get:d=>d.S.pitches, fmt:v=>v},
+    {key:"npi",   head:"投球平均", get:d=>d.L.outs ? d.S.pitches/(d.L.outs/3) : null,
+      fmt:f1, low:true, rate:true},
     {key:"xera",  head:"xERA(5回)",   get:d=>d.xera,  fmt:f1, low:true, rate:true},
     {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, low:true, rate:true},
     {key:"ev",    head:"EV",     get:d=>d.S.ev,     fmt:f1, low:true, rate:true},
@@ -3660,14 +3717,7 @@ function pitcherColumns(mode){
     {key:"chase", head:"Chase%", get:d=>d.S.chase,  fmt:pc, rate:true},
     {key:"whiff", head:"Whiff%", get:d=>d.S.whiff,  fmt:pc, rate:true},
     {key:"gb",    head:"GB%",    get:d=>d.S.gb,     fmt:pc, rate:true},
-    {key:"fly",   head:"FLY%",   get:d=>d.S.fly, fmt:pc, low:true, rate:true},
-    {key:"baa",   head:"被打率",  get:d=>d.L.avg,    fmt:f3, low:true, rate:true},
-    // 奪三振率と与四球率は 5 回あたり。このイベントは 5 回制。
-    {key:"k5",    head:"奪三振率", get:d=>d.L.outs ? GAME_INNINGS*3*d.L.so/d.L.outs : null,
-      fmt:f2, rate:true},
-    {key:"bb5",   head:"与四球率", get:d=>d.L.outs ? GAME_INNINGS*3*d.L.bb/d.L.outs : null,
-      fmt:f2, low:true, rate:true},
-    {key:"fip",   head:"FIP",    get:d=>fipOf(d.L), fmt:f2, low:true, rate:true}
+    {key:"fly",   head:"FLY%",   get:d=>d.S.fly, fmt:pc, low:true, rate:true}
   ];
 }
 /**
@@ -3850,7 +3900,9 @@ function leaderboardView(){
     <div class="lbbar">
       <div class="seg">${seg("side","bat","打者")}${seg("side","pit","投手")}</div>
       <span class="note">項目を押すと下の一覧がその項目に変わります。
-        ${LB.side==="bat" ? "規定打席は "+QUAL_PA+" 打席です。" : "規定投球回は "+QUAL_IP+" 回です。"}</span>
+        ${LB.side==="bat" ? "規定打席は "+QUAL_PA+" 打席です。"
+          : "規定投球回は "+QUAL_IP+" 回です。SQS は先発が 3 回以上投げて、"
+            + "失点をイニング数 − 1 以下に抑えた試合です。"}</span>
     </div>
     <div class="cards three">${cols.map(c=>leaderCard(c, rows, LB.side)).join("")}</div>
   </div></section>
@@ -4502,11 +4554,37 @@ function sprayName(angle){
 }
 
 /**
+ * その打球を実際に処理した人の守備位置。
+ *
+ * <p>守備の記録に「最初に触った人」が残っていればそれを使う。
+ * 打ち出し角と方向からの見当と違って、これは実際に起きたこと。
+ */
+let PLAY_OWNER=null, PLAY_OWNER_N=-1;
+function fielderFromPlay(rec){
+  if(!rec || !rec.pa) return "";
+  if(!PLAY_OWNER || PLAY_OWNER_N!==DATA.play.length){
+    PLAY_OWNER=new Map();
+    DATA.play.forEach(r=>{
+      if(r.kind!=="field" || !r.pa || !POS_LABEL[String(r.position||"")]) return;
+      // 打球に最初に触った人。飛球を捕った人も同じ扱い。
+      if(r.caughtonfly!==true && nz(r.touchorder)!==1) return;
+      const key=String(r.game)+"|"+String(r.pa);
+      if(!PLAY_OWNER.has(key)) PLAY_OWNER.set(key, String(r.position));
+    });
+    PLAY_OWNER_N=DATA.play.length;
+  }
+  const at=PLAY_OWNER.get(String(rec.game)+"|"+String(rec.pa));
+  return at ? (POS_JA[at] || "") : "";
+}
+
+/**
  * 打球を処理したであろう守備位置。
  *
- * <p>打ち出し角と方向から見当をつける。角度が取れていなければ空。
+ * <p>守備の記録があればそれを使い、無ければ打ち出し角と方向から見当をつける。
  */
 function fielderName(rec){
+  const real=fielderFromPlay(rec);
+  if(real) return real;
   if(!rec) return "";
   const la=Number(rec.launch_angle), a=Number(rec.spray_angle);
   if(!isFinite(la) || !isFinite(a)) return "";
@@ -6724,6 +6802,10 @@ function splitBatter(){
     </div>
   </div></section>
   <section class="span"><div class="pad">
+    <div class="head">守備成績<em class="headnote">守備機会は刺殺 + 捕殺 + 失策</em></div>
+    ${gloveTable(PLAYER)}
+  </div></section>
+  <section class="span"><div class="pad">
     <div class="head">過去の試合</div>
     ${gameLog(PLAYER)}
   </div></section>
@@ -7044,6 +7126,70 @@ function paTexts(rows){
 }
 
 /** 打者の試合ごとの成績。4 試合ぶん見えてスクロールする。 */
+/**
+ * 守備位置ごとの成績。
+ *
+ * <p>守備機会は野球の数え方どおり「刺殺 + 補殺 + 失策」。
+ * 一塁手が送球を受けて取るアウトも、ここにはきちんと入る。
+ *
+ * <p>捕球ミスは打球を자分で処理しようとして落としたものだけ。
+ * 送球を受け損ねたものは入れない。
+ *
+ * <p>送球ミスは、きちんと投げていればアウトにできた場面のものだけ。
+ * 打席が決まったあとにスタンドへ投げたような球は、走者が進んでいないので入らない。
+ * 外野からの送球はそもそも数えない。距離があるぶん逸れて当たり前なので。
+ */
+function fieldingByPosition(name){
+  const box=new Map();
+  const innings=new Map();
+  playOf(name,"field").forEach(r=>{
+    const at=String(r.position||"");
+    if(!POS_LABEL[at]) return;
+    const one=box.get(at) || box.set(at, {at, po:0, a:0, drop:0, wild:0, catches:0}).get(at);
+    // 自分で追いついた打球ではない = 送球を受けた
+    if(r.caughtonfly!==true && nz(r.touchorder) >= 2) one.catches++;
+    // 守った回。同じ半回に何度出てきても 1 回と数える
+    const when=[at, r.game, r.inning, String(r.half)].join("|");
+    if(!innings.has(when)){ innings.set(when, true); one.innings=(one.innings||0)+1; }
+    if(r.gotout===true) one.po++;
+    if(r.assist===true) one.a++;
+    // 打球を自分で処理しようとして落とした。送球を受け損ねたものは入れない
+    if(r.fumbled===true && !recovered(r) && (r.caughtonfly===true || nz(r.touchorder)===1)) {
+      one.drop++;
+    }
+    // 投げていればアウトにできた場面の悪送球だけ。外野は数えない
+    if(r.threwtobase===true && r.throwerror===true && !OUTFIELD.has(at)
+       && nz(r.basesallowed) > 0) {
+      one.wild++;
+    }
+  });
+  return [...box.values()]
+    .map(one=>({...one, innings:one.innings||0, chances:one.po+one.a+one.drop+one.wild}))
+    .sort((a,b)=>b.innings-a.innings || b.chances-a.chances);
+}
+
+/** 守備成績の表。 */
+function gloveTable(name){
+  const rows=fieldingByPosition(name);
+  if(!rows.length) return '<div class="empty">守備の記録がありません</div>';
+  const total=rows.reduce((t,one)=>({innings:t.innings+one.innings, chances:t.chances+one.chances,
+    po:t.po+one.po, a:t.a+one.a, catches:t.catches+one.catches,
+    drop:t.drop+one.drop, wild:t.wild+one.wild}),
+    {innings:0, chances:0, po:0, a:0, catches:0, drop:0, wild:0});
+  const line=(head, one, cls)=>`<tr class="${cls||""}">
+    <td class="nm">${head}</td><td>${one.innings}</td><td>${one.chances}</td>
+    <td>${one.po}</td><td>${one.a}</td><td>${one.catches}</td>
+    <td class="${one.drop?"bad":""}">${one.drop}</td>
+    <td class="${one.wild?"bad":""}">${one.wild}</td></tr>`;
+  return `<div class="scroll"><table class="glove">
+    <thead><tr><th class="nm">位置</th><th>イニング</th><th>守備機会</th>
+      <th>刺殺</th><th>捕殺</th><th>送球受け</th><th>捕球ミス</th><th>送球ミス</th></tr></thead>
+    <tbody>
+      ${rows.map(one=>line(esc(POS_JA[one.at]||POS_LABEL[one.at]||one.at), one)).join("")}
+      ${rows.length>1 ? line("合計", total, "total") : ""}
+    </tbody></table></div>`;
+}
+
 function gameLog(name){
   const pa=plateOf(name,"bat");
   const games=[...new Set(pa.map(r=>String(r.game_id)))].sort().reverse();
@@ -7443,7 +7589,7 @@ function parkCard(park){
   const h=f.height;
   return `<div class="parkcard">
     <div class="shotwrap">
-      <div class="noshot">写真なし (球場名.png を読み込むと出ます)</div>
+      <div class="noshot">写真なし</div>
       ${shot ? `<img class="shot" src="${esc(shot)}" alt="">` : ""}
     </div>
     <div class="body">
