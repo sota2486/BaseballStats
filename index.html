@@ -837,7 +837,8 @@ table.order tr.fill td{border:0; height:19px}
 /* リプレイのボタン */
 .replay{display:inline-flex; align-items:center; gap:3px; font-size:10.5px;
   font-weight:700; padding:2px 7px; border-radius:99px; text-decoration:none;
-  color:#fff; background:#c4302b; white-space:nowrap}
+  color:#fff; background:#c4302b; white-space:nowrap; border:0; cursor:pointer;
+  font-family:inherit; line-height:1.5}
 .replay:hover{filter:brightness(1.1)}
 table.pa2 .replay,table.pafix .replay{font-size:9.5px; padding:1px 5px}
 
@@ -1175,11 +1176,16 @@ function videoOf(id){
  */
 function videoLink(gameId, seconds){
   const info=GAMES.get(String(gameId||"").trim());
-  const raw=info ? info.video : "";
+  const raw=info ? String(info.video||"").trim() : "";
   if(!raw) return "";
-  const at=raw.match(new RegExp("(?:youtu[.]be/|v=|/live/|/embed/|/shorts/)([A-Za-z0-9_-]{6,})"));
-  if(!at) return "";
-  return "https://www.youtube.com/watch?v=" + at[1] + "&t=" + Math.max(0, Math.round(seconds)) + "s";
+  // 書いてもらった住所をそのまま使う。/live/ の住所を watch?v= に組み直すと
+  // 時刻の指定が落ちることがあるので、t= だけ付け替える。
+  const cut=raw.split("#")[0];
+  const part=cut.split("?");
+  const query=(part[1]||"").split("&")
+    .filter(one=>one && one.split("=")[0]!=="t");
+  query.push("t=" + Math.max(0, Math.round(seconds)));
+  return part[0] + "?" + query.join("&");
 }
 
 /**
@@ -1203,14 +1209,32 @@ function replayAt(row){
   return Math.max(0, (at-start)/1000);
 }
 
-/** リプレイのボタン。動画と時刻が揃っているときだけ出す。 */
+/**
+ * リプレイのボタン。動画と時刻が揃っているときだけ出す。
+ *
+ * <p>押すと試合の画面の映像がその秒から始まる。別のタブは開かない。
+ */
 function replayButton(row){
   const at=replayAt(row);
   if(at===null) return "";
-  const link=videoLink(row.game_id, at);
-  if(!link) return "";
-  return `<a class="replay" href="${esc(link)}" target="_blank" rel="noopener"
-    title="この打席を決めた投球から再生します">▶ リプレイを見る</a>`;
+  if(!videoOf(row.game_id)) return "";
+  return `<button class="replay" data-replay="${esc(String(row.game_id))}"
+    data-sec="${Math.round(at)}"
+    title="この打席を決めた投球から再生します">▶ リプレイを見る</button>`;
+}
+
+/** 試合の画面の映像を、その秒から流す。 */
+function playFrom(seconds){
+  const box=document.getElementById("gamevideo");
+  const frame=box ? box.querySelector("iframe") : null;
+  if(!frame) return false;
+  const at=videoOf(GAME);
+  if(!at) return false;
+  // 埋め込みの住所に元から start が付いていることがあるので、いったん落とす
+  frame.src=at.split("?")[0] + "?start=" + Math.max(0, Math.round(seconds))
+    + "&autoplay=1&rel=0";
+  box.scrollIntoView({behavior:"smooth", block:"center"});
+  return true;
 }
 
 /** 試合ページの頭に出す動画。無ければ何も出さない。 */
@@ -1219,9 +1243,9 @@ function videoBox(id){
   if(!at) return "";
   return `<section class="span"><div class="pad">
     <div class="head">映像</div>
-    <div class="gamevideo"><iframe src="${esc(at)}" title="試合の動画"
+    <div class="gamevideo" id="gamevideo"><iframe src="${esc(at)}" title="試合の動画"
       loading="lazy" allowfullscreen
-      allow="accelerometer; encrypted-media; picture-in-picture; fullscreen"
+      allow="autoplay; accelerometer; encrypted-media; picture-in-picture; fullscreen"
       referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
   </div></section>`;
 }
@@ -8881,6 +8905,20 @@ document.getElementById("app").addEventListener("click",e=>{
     render();
     pushView();
     window.scrollTo({top:0, behavior:"auto"});
+    return;
+  }
+  // リプレイ。試合の画面へ移ってから、その秒で映像を流す
+  const rep=e.target.closest("[data-replay]");
+  if(rep){
+    const game=String(rep.dataset.replay||"");
+    const sec=Number(rep.dataset.sec)||0;
+    if(VIEW!=="result" || GAME!==game){
+      pushView();
+      VIEW="result"; GAME=game; PA_GAME=game;
+      render();
+      pushView();
+    }
+    playFrom(sec);
     return;
   }
   // 戦況変化の分岐点。押したら下に説明を出す
