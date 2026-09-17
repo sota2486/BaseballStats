@@ -815,6 +815,13 @@ table.order tr.fill td{border:0; height:19px}
 .head .headnote{font-style:normal; font-weight:400; font-size:10.5px;
   color:var(--muted); margin-left:8px; letter-spacing:0; text-transform:none}
 
+/* 戦況変化の分岐点。押すと下に説明が出る */
+.moment{cursor:pointer}
+.winnote{grid-column:1/-1; margin-top:6px; padding:7px 10px; border-radius:6px;
+  background:var(--panel-2); border:1px solid var(--line-soft);
+  font-size:12px; line-height:1.5; color:var(--muted); min-height:18px}
+.winnote.on{color:var(--text); border-color:var(--rule)}
+
 /* リプレイのボタン */
 .replay{display:inline-flex; align-items:center; gap:3px; font-size:10.5px;
   font-weight:700; padding:2px 7px; border-radius:99px; text-decoration:none;
@@ -962,7 +969,7 @@ table.pa2 td.slot i{display:inline-flex; align-items:center; justify-content:cen
 .glovefield{width:100%; height:auto; display:block}
 
 /* 戦況変化 */
-.winwrap{display:grid; grid-template-rows:auto 1fr auto; gap:2px}
+.winwrap{display:grid; grid-template-rows:auto 1fr auto auto; gap:2px}
 .winchart{width:100%; height:auto; display:block}
 .winside{display:flex; align-items:center; gap:8px; font-size:12px; padding:0 2px}
 .winside b{font-family:"Barlow Condensed",sans-serif; font-size:16px}
@@ -4577,12 +4584,16 @@ function winChart(rows){
         stroke="var(--line)" stroke-dasharray="4 4"/>
       <path d="${line}" fill="none" stroke="var(--text)" stroke-width="2"
         stroke-linejoin="round"/>
-      ${bigMoments(path).map(m=>`<g class="moment">
+      ${bigMoments(path).map(m=>{
+        const note=playNote(m.row, m.delta);
+        return `<g class="moment" data-note="${esc(note)}">
+        <circle cx="${x(m.at+1).toFixed(1)}" cy="${y(path[m.at+1].p).toFixed(1)}" r="16"
+          fill="transparent"/>
         <circle cx="${x(m.at+1).toFixed(1)}" cy="${y(path[m.at+1].p).toFixed(1)}" r="6"
           fill="${m.delta>0 ? "var(--hot)" : "var(--cold)"}"
           stroke="var(--panel)" stroke-width="2">
-          <title>${esc(playNote(m.row, m.delta))}</title></circle>
-      </g>`).join("")}
+          <title>${esc(note)}</title></circle>
+      </g>`;}).join("")}
       <text x="${pad-4}" y="${(y(1)+4).toFixed(1)}" text-anchor="end" font-size="10"
         fill="var(--muted)">100%</text>
       <text x="${pad-4}" y="${(y(0.5)+4).toFixed(1)}" text-anchor="end" font-size="10"
@@ -4591,6 +4602,7 @@ function winChart(rows){
         fill="var(--muted)">100%</text>
     </svg>
     <div class="winside bottom"><b>${esc(names[1])}</b><span>後攻</span></div>
+    <div class="winnote" id="winnote">丸を押すと、その打席で何が起きたかが出ます</div>
   </div>`;
 }
 
@@ -7273,7 +7285,7 @@ function fieldingByPosition(name){
   const box=new Map();
   const innings=new Map();
   const of=at=>box.get(at)
-    || box.set(at, {at, po:0, a:0, drop:0, wild:0, catches:0, innings:0}).get(at);
+    || box.set(at, {at, po:0, a:0, drop:0, wild:0, catches:0, safe:0, innings:0}).get(at);
   // 実際に投げた試合。投げていない人に付く「投手」は、自分のチームの
   // 攻撃中にマウンドのそばにいただけなので数えない。
   const threw=new Set(plateOf(name,"pit").map(r=>String(r.game_id)));
@@ -7294,6 +7306,9 @@ function fieldingByPosition(name){
     const one=of(at);
     // 自分で追いついた打球ではない = 送球を受けた
     if(r.caughtonfly!==true && nz(r.touchorder) >= 2) one.catches++;
+    // 自分で追いついたのにアウトにならなかった打球。
+    // 守備が悪いとは限らない。抜けそうな打球に追いついた形も入る。
+    if(reachedBall(r) && r.gotout!==true && r.assist!==true) one.safe++;
     if(r.gotout===true) one.po++;
     if(r.assist===true) one.a++;
     // 打球を自分で処理しようとして落とした。送球を受け損ねたものは入れない
@@ -7317,16 +7332,17 @@ function gloveTable(name){
   if(!rows.length) return '<div class="empty">守備の記録がありません</div>';
   const total=rows.reduce((t,one)=>({innings:t.innings+one.innings, chances:t.chances+one.chances,
     po:t.po+one.po, a:t.a+one.a, catches:t.catches+one.catches,
-    drop:t.drop+one.drop, wild:t.wild+one.wild}),
-    {innings:0, chances:0, po:0, a:0, catches:0, drop:0, wild:0});
+    safe:t.safe+one.safe, drop:t.drop+one.drop, wild:t.wild+one.wild}),
+    {innings:0, chances:0, po:0, a:0, catches:0, safe:0, drop:0, wild:0});
   const line=(head, one, cls)=>`<tr class="${cls||""}">
     <td class="nm">${head}</td><td>${one.innings}</td><td>${one.chances}</td>
-    <td>${one.po}</td><td>${one.a}</td><td>${one.catches}</td>
+    <td>${one.po}</td><td>${one.a}</td><td>${one.catches}</td><td>${one.safe}</td>
     <td class="${one.drop?"bad":""}">${one.drop}</td>
     <td class="${one.wild?"bad":""}">${one.wild}</td></tr>`;
   return `<div class="scroll"><table class="glove">
     <thead><tr><th class="nm">位置</th><th>イニング</th><th>守備機会</th>
-      <th>刺殺</th><th>捕殺</th><th>送球受け</th><th>捕球ミス</th><th>送球ミス</th></tr></thead>
+      <th>刺殺</th><th>捕殺</th><th>送球受け</th><th>安打処理</th>
+      <th>捕球ミス</th><th>送球ミス</th></tr></thead>
     <tbody>
       ${rows.map(one=>line(esc(POS_JA[one.at]||POS_LABEL[one.at]||one.at), one)).join("")}
       ${rows.length>1 ? line("合計", total, "total") : ""}
@@ -8721,6 +8737,16 @@ document.getElementById("app").addEventListener("click",e=>{
     VIEW="split";
     render();
     window.scrollTo({top:0, behavior:"auto"});
+    return;
+  }
+  // 戦況変化の分岐点。押したら下に説明を出す
+  const moment=e.target.closest("[data-note]");
+  if(moment){
+    const box=document.getElementById("winnote");
+    if(box){
+      box.textContent=moment.dataset.note;
+      box.classList.add("on");
+    }
     return;
   }
   // ベストプレーの行。名前以外を押したら、その試合のその打席へ飛ぶ
