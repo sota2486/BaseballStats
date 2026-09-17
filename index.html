@@ -1174,6 +1174,19 @@ function videoOf(id){
  *
  * <p>埋め込みではなく、押したら YouTube がその秒から始まるふつうの住所。
  */
+/**
+ * その試合が映像の何秒から始まるか。
+ *
+ * <p>配信 1 本に何試合も入っているので、game.csv の住所に付けてある t= が
+ * その試合の頭になる。打席の位置はここからの足し算で決まる。
+ */
+function videoStart(gameId){
+  const info=GAMES.get(String(gameId||"").trim());
+  const raw=info ? String(info.video||"") : "";
+  const at=raw.match(new RegExp("[?&]t=([0-9]+)"));
+  return at ? Number(at[1]) : 0;
+}
+
 function videoLink(gameId, seconds){
   const info=GAMES.get(String(gameId||"").trim());
   const raw=info ? String(info.video||"").trim() : "";
@@ -1184,7 +1197,8 @@ function videoLink(gameId, seconds){
   const part=cut.split("?");
   const query=(part[1]||"").split("&")
     .filter(one=>one && one.split("=")[0]!=="t");
-  query.push("t=" + Math.max(0, Math.round(seconds)));
+  // 試合の頭からの秒数を、配信の頭からの秒数に直す
+  query.push("t=" + Math.max(0, Math.round(videoStart(gameId) + seconds)));
   return part[0] + "?" + query.join("&");
 }
 
@@ -1230,8 +1244,10 @@ function playFrom(seconds){
   if(!frame) return false;
   const at=videoOf(GAME);
   if(!at) return false;
-  // 埋め込みの住所に元から start が付いていることがあるので、いったん落とす
-  frame.src=at.split("?")[0] + "?start=" + Math.max(0, Math.round(seconds))
+  // 埋め込みの住所に元から start が付いていることがあるので、いったん落とす。
+  // 秒数は試合の頭からのぶんなので、配信の頭からの位置に直す。
+  frame.src=at.split("?")[0] + "?start="
+    + Math.max(0, Math.round(videoStart(GAME) + seconds))
     + "&autoplay=1&rel=0";
   box.scrollIntoView({behavior:"smooth", block:"center"});
   return true;
