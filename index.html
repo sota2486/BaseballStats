@@ -2590,7 +2590,9 @@ function scoreBook(){
         if(want[i] && !bases[i]) bases[i]={name:"", pitcher:r.pitcher, earned:true};
         if(!want[i]) bases[i]=null;
       }
-      const scored=Number(r.runs)||0;
+      // 記録に負の数が入っていることがある(取り消された得点)。
+      // そのまま下の while に渡すと終わらなくなるので 0 以上に丸める。
+      const scored=Math.max(0, Number(r.runs)||0);
       const push=pushBases(result);
       const reach=reachedBase(result);
       // 先の塁にいる人から順に進める
