@@ -834,6 +834,12 @@ table.order tr.fill td{border:0; height:19px}
   font-size:12px; line-height:1.5; color:var(--muted); min-height:18px}
 .winnote.on{color:var(--text); border-color:var(--rule)}
 
+/* ファイルを直に開いたときの、映像へのリンク */
+.videolink{display:inline-flex; align-items:center; gap:5px; margin-top:4px;
+  padding:7px 14px; border-radius:99px; text-decoration:none; color:#fff;
+  background:#c4302b; font-weight:700; font-size:13px}
+.videolink:hover{filter:brightness(1.1)}
+
 /* リプレイのボタン */
 .replay{display:inline-flex; align-items:center; gap:3px; font-size:10.5px;
   font-weight:700; padding:2px 7px; border-radius:99px; text-decoration:none;
@@ -1243,6 +1249,12 @@ function replayButton(row){
 
 /** 試合の画面の映像を、その秒から流す。 */
 function playFrom(seconds){
+  if(localFile()){
+    // 埋め込めないので YouTube を開く
+    const link=videoLink(GAME, seconds);
+    if(link) window.open(link, "_blank", "noopener");
+    return true;
+  }
   const box=document.getElementById("gamevideo");
   const frame=box ? box.querySelector("iframe") : null;
   if(!frame) return false;
@@ -1257,10 +1269,30 @@ function playFrom(seconds){
   return true;
 }
 
+/**
+ * ファイルを直に開いているか。
+ *
+ * <p>file:// で開くと、YouTube は埋め込みを断る(出どころが無いため)。
+ * その場合は埋め込みをやめて、押すと YouTube が開くリンクにする。
+ */
+function localFile(){
+  try{ return window.location.protocol==="file:"; }catch(e){ return false; }
+}
+
 /** 試合ページの頭に出す動画。無ければ何も出さない。 */
 function videoBox(id){
   const at=videoOf(id);
   if(!at) return "";
+  if(localFile()){
+    // 直に開いたファイルからは埋め込めない。リンクで開いてもらう。
+    return `<section class="span"><div class="pad">
+      <div class="head">映像</div>
+      <a class="videolink" href="${esc(videoLink(id, 0))}" target="_blank" rel="noopener">
+        ▶ YouTube で試合を見る</a>
+      <p class="note">ファイルを直に開いているので、ここには映像を出せません。
+        公開した住所(http から始まるもの)で開くと、この場所で再生できます。</p>
+    </div></section>`;
+  }
   return `<section class="span"><div class="pad">
     <div class="head">映像</div>
     <div class="gamevideo" id="gamevideo"><iframe src="${esc(at)}" title="試合の動画"
@@ -2077,21 +2109,42 @@ function expectedAdvance(row){
 }
 
 /**
+ * 塁を 1 つ進むのにかかる時間(tick)。
+ *
+ * <p>塁間はおよそ 6 秒。ヘッドスライディングで 5.5 秒まで縮む。
+ * リードは禁止なので、走者も打者も打った瞬間から走り出す。
+ */
+const BASE_TICKS=120;
+
+/**
+ * 守備が打球に触ってから、塁に送球が届くまでの目安(tick)。
+ *
+ * <p>拾ってから二塁まででおよそ 4 秒。持ち替えと送球のぶんで、
+ * 走者にはそれだけ猶予がある。
+ */
+const THROW_TICKS=80;
+
+/**
  * もう一つ先の塁を狙えたかの 5 段階。
  *
- * <p>守備が打球に触るまでの時間(touchTicks)で分ける。
- * 触るのが遅い打球ほど、走者は次の塁へ行きやすい。
- * 外野まで届くフライは 5〜6 秒、ライナーでも 4 秒はかかるので、
- * 境目はそのあたりから上に置いてある。
+ * <p>「送球が届くまでの時間」から「その塁まで走るのにかかる時間」を引いた
+ * 余裕(tick)で分ける。0 なら間一髪、正なら余裕をもって進める。
+ *
+ * <pre>
+ *   余裕 = (触るまでの時間 + 送球のぶん) - 塁間の時間 × 進みたい塁の数
+ * </pre>
+ *
+ * <p>出発した塁は「進みたい塁の数」に入っているので、
+ * 三塁走者が還るのと打者が二塁を狙うのは、ここで自然に分かれる。
  *
  * <p>expect はその段で進塁できて当たり前という割合。
  * penalty は、行けたはずなのに止まったときに引く点。
  */
 const RUN_TIERS=[
-  {limit:80,       name:"無理",           expect:0.05, penalty:0},
-  {limit:100,      name:"チャレンジ",     expect:0.25, penalty:0},
-  {limit:120,      name:"ごぶごぶ",       expect:0.50, penalty:0},
-  {limit:150,      name:"進塁できそう",   expect:0.75, penalty:0.25},
+  {limit:-60,      name:"無理",           expect:0.05, penalty:0},
+  {limit:-20,      name:"チャレンジ",     expect:0.25, penalty:0},
+  {limit:20,       name:"ごぶごぶ",       expect:0.50, penalty:0},
+  {limit:60,       name:"進塁できそう",   expect:0.75, penalty:0.25},
   {limit:Infinity, name:"絶対進塁できる", expect:0.95, penalty:0.5}
 ];
 
@@ -2104,18 +2157,31 @@ const RUN_TIERS=[
 const RUN_MIN_DISTANCE=80;
 
 /**
- * 塁に出ている走者の有利ぶん(tick)。
+ * その走塁の余裕(tick)。正なら間に合う。
  *
- * <p>打者走者は振り終わってから走り出すが、塁上の走者は打った瞬間に
- * もう動いている。先の塁にいるほどその差は積み上がるので、
- * 1 つにつきこれだけ touchTicks に足して難易度を見る。
- * 三塁走者が外野への当たりで還れないのは、打者が二塁を狙えないのとは
- * 意味が違う。
+ * @param touchTicks 守備が打球に触るまでの時間
+ * @param bases      いまいる塁から、狙う塁までいくつ進むか
  */
-const RUN_HEAD_START=30;
-function runTier(touchTicks){
+/**
+ * 走塁で見る「守備が打球を止めた時間」。
+ *
+ * <p>弾いてそらした打球は、手に収めるまで走者は走り続けられる。
+ * 触れただけの touchTicks ではなく、確保した holdTicks で見る。
+ * 古い記録には holdTicks が無いので、そのときは touchTicks を使う。
+ */
+function stopTicks(r){
+  const hold=nz(r.holdticks);
+  const touch=nz(r.touchticks);
+  if(hold!==null && hold>0) return Math.max(hold, touch===null ? 0 : touch);
+  return touch;
+}
+
+function runRoom(touchTicks, bases){
   const t=touchTicks===null ? 0 : touchTicks;
-  return RUN_TIERS.find(one=>t<one.limit) || RUN_TIERS[RUN_TIERS.length-1];
+  return (t + THROW_TICKS) - BASE_TICKS*Math.max(1, bases);
+}
+function runTier(room){
+  return RUN_TIERS.find(one=>room<one.limit) || RUN_TIERS[RUN_TIERS.length-1];
 }
 
 function baserunLine(rows){
@@ -2134,7 +2200,8 @@ function baserunLine(rows){
     // 本塁より先は無いので、当たり前の分もそこで頭打ちにする。
     const need=Math.min(expectedAdvance(r), 4-from);
     const gained=(to-from)-need;
-    const touch=nz(r.touchticks);
+    // 走塁は「いつまで走れたか」なので、弾いてそらしたぶんも含めて見る
+    const touch=stopTicks(r);
     const far=nz(r.distance);
     // 本塁打と、誰も追わずに転がり続けた打球は走塁を測れない。
     // 飛距離が足りない当たりも、そもそも余分な進塁ができない。
@@ -2147,7 +2214,8 @@ function baserunLine(rows){
       // 生還した走者。それ以上進む塁が無いので、走塁の機会として数えない。
       return;
     }
-    const tier=runTier(touch + RUN_HEAD_START*Math.max(0, from));
+    // 当たり前の塁より 1 つ先まで走るのに、どれだけ余裕があったか
+    const tier=runTier(runRoom(touch, need+1));
     const one=tiers[tier.name] || (tiers[tier.name]={n:0, made:0});
     one.n++;
     if(gained>0){
