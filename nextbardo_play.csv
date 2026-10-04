@@ -1,4 +1,4 @@
-game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
 2026091201,1,TOP,,spot,nextbardo,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,R
 2026091201,1,BOTTOM,,spot,nextbardo,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
 2026091201,1,BOTTOM,2026091201#7,field,nextbardo,2,39,172.7,-15.5,2.5,LT0/150-175,,,,,SHORTSTOP,1,272.8,-109.3,285.1,-69.0,false,true,true,false,false,0,23,107.5,false,true,false,true,,R
