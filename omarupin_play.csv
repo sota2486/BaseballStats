@@ -1,9 +1,9 @@
 ﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,holdTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
-2026100401,1,TOP,,spot,omarupin,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,R
+2026100401,1,TOP,,spot,omarupin,,,,,,,,,,,PITCHER,PITCHER,,,,,,,,,,,,,,,,,,R
 2026100401,1,BOTTOM,,run,omarupin,-1,-1,-1,187.2,26.7,,15-30/175-200,0,4,false,0.00,,,,,,,,,,,,,,,false,,,,R
 2026100401,1,BOTTOM,2026100401#12,run,omarupin,3,48,48,155.6,-11.7,6.0,LT0/150-175,0,1,false,1.00,,,,,,,,,,,,,,,true,,,,R
-2026100401,2,TOP,,spot,omarupin,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,R
-2026100401,3,TOP,,spot,omarupin,,,,,,,,,,,PITCHER,,,,,,,,,,,,,,,,,,,R
+2026100401,2,TOP,,spot,omarupin,,,,,,,,,,,PITCHER,PITCHER,,,,,,,,,,,,,,,,,,R
+2026100401,3,TOP,,spot,omarupin,,,,,,,,,,,PITCHER,PITCHER,,,,,,,,,,,,,,,,,,R
 2026100402,1,TOP,2026100402#29,field,omarupin,3,53,97,124.3,-8.6,6.6,LT0/100-125,,,,,SECOND_BASEMAN,1,174.0,-133.0,149.0,-117.3,false,false,true,false,false,0,22,106.1,false,true,false,true,,R
 2026100402,1,TOP,2026100402#31,field,omarupin,55,83,83,165.5,13.1,94.3,0-15/150-175,,,,,SECOND_BASEMAN,2,173.1,-133.0,177.7,-200.7,false,false,false,false,false,2,-1,,false,false,false,false,,R
 2026100402,2,TOP,,spot,omarupin,,,,,,,,,,,SECOND_BASEMAN,,,,,,,,,,,,,,,,,,,R

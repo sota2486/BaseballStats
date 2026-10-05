@@ -94,9 +94,6 @@ Batting,2026100401,2026100401#1,4,1,TOP,0-2,0,omarupin,gaifukaisei,L,,0.0,0.0,0.
 Batting,2026100401,2026100401#5,1,1,TOP,0-0,2,omarupin,gaifukaisei,L,ファストボール,117.5,0.9,0.0,3,false,-0.2,1.9,false,false,false,BALL,,,,,,R,,,123.7
 Batting,2026100401,2026100401#5,2,1,TOP,1-0,2,omarupin,gaifukaisei,L,ファストボール,119.7,0.9,0.0,17,true,-0.4,0.7,false,false,false,CALLED_STRIKE,,,,,,R,,,124.2
 Batting,2026100401,2026100401#5,3,1,TOP,1-1,2,omarupin,gaifukaisei,L,ファストボール,136.9,0.9,0.0,18,true,-0.1,0.7,true,false,true,IN_PLAY,202.8,3.9,27.5,42.0,SINGLE,R,1.0,1.0,125.3
-Batting,2026100401,2026100401#15,1,2,TOP,0-0,1,omarupin,gaifukaisei,L,ファストボール,119.3,0.9,0.0,12,true,-0.5,0.9,false,false,false,CALLED_STRIKE,,,,,,R,,,124.1
-Batting,2026100401,2026100401#15,2,2,TOP,0-1,1,omarupin,gaifukaisei,L,ファストボール,125.6,0.9,0.0,13,true,-0.2,1.2,true,false,true,FOUL,73.8,39.1,126.3,28.0,,R,1.0,1.0,124.3
-Batting,2026100401,2026100401#15,3,2,TOP,0-2,1,omarupin,gaifukaisei,L,チェンジアップ,53.4,0.2,0.0,12,true,-0.4,1.2,false,false,false,CALLED_STRIKE,,,,,STRIKE_OUT,R,,,106.9
 Batting,2026100401,2026100401#16,1,2,TOP,0-2,1,omarupin,gaifukaisei,L,ファストボール,117.8,0.9,0.0,7,true,-0.3,1.7,true,true,false,SWINGING_STRIKE,,,,,STRIKE_OUT,R,1.0,1.0,123.5
 Batting,2026100401,2026100401#25,1,3,TOP,0-0,2,omarupin,gaifukaisei,L,カットボール,113.6,0.9,0.8,3,false,-0.1,2.3,false,false,false,BALL,,,,,,R,,,119.9
 Batting,2026100401,2026100401#25,2,3,TOP,1-0,2,omarupin,gaifukaisei,L,スライダー,102.1,-0.4,2.0,14,true,0.5,1.1,true,false,true,FOUL,144.0,29.1,77.5,81.2,,R,1.0,1.0,108.7
