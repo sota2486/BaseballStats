@@ -1,8 +1,8 @@
 ﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,holdTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
 2026100402,1,TOP,2026100402#31,field,Obake_zzz,55,83,83,165.5,13.1,94.3,0-15/150-175,,,,,RIGHT_FIELDER,,240.9,-124.9,177.7,-200.7,false,false,false,false,false,2,-1,,true,false,false,false,,R
-2026100402,2,TOP,,spot,Obake_zzz,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026100402,2,TOP,,spot,Obake_zzz,,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
 2026100402,2,TOP,2026100402#44,field,Obake_zzz,69,69,171,142.5,33.3,82.2,30-45/125-150,,,,,RIGHT_FIELDER,1,236.8,-124.5,224.8,-130.1,true,false,true,true,false,1,-1,134.0,false,true,false,false,,R
-2026100402,2,BOTTOM,2026100402#47,run,Obake_zzz,35,35,35,196.6,13.6,77.9,0-15/175-200,0,0,true,0.00,,,,,,,,,,,,,,,false,,,FLY,R
-2026100402,3,TOP,,spot,Obake_zzz,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
-2026100402,4,TOP,,spot,Obake_zzz,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
-2026100402,5,TOP,,spot,Obake_zzz,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026100402,2,BOTTOM,2026100402#47,run,Obake_zzz,35,35,35,196.6,13.6,77.9,0-15/175-200,0,0,true,0.00,,,,,,,,,,,,,,,false,,,,FLY,R
+2026100402,3,TOP,,spot,Obake_zzz,,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026100402,4,TOP,,spot,Obake_zzz,,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026100402,5,TOP,,spot,Obake_zzz,,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R

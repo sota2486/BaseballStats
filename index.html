@@ -1775,7 +1775,7 @@ function reachGap(r){
   // 上がった打球。落ちてくるところへ走って間に合えば捕れる。
   // ただし落ちたあとに拾ってアウトにしたなら、やっていることはゴロと同じ。
   // そちらで見ないと、ふつうの小飛球が「追いつけない打球」になってしまう。
-  if(flyBall(r) && !afterBounce(r)){
+  if(airPlay(r)){
     return Math.hypot(sx-lx, sz-lz)/FIELD_SPEED - hang/20;
   }
   if(!home){
@@ -1803,6 +1803,19 @@ function reachGap(r){
   return perp/FIELD_SPEED - ticks/20;
 }
 
+/**
+ * 空中で処理した打球か。
+ *
+ * <p>ノーバウンドで捕った球は、打ち出し角が低いライナーでも
+ * 「落ちてくるところまで走って間に合うか」で見る。
+ * 転がる球と同じ横ずれの見方をすると、打球の線のそばに
+ * 立っていただけで簡単な打球に見えてしまい、
+ * 実際には何ブロックも動いて捕った当たりが手柄にならない。
+ */
+function airPlay(r){
+  return r.caughtonfly===true || (flyBall(r) && !afterBounce(r));
+}
+
 /** 空中で捕るかどうかを問う打球か。 */
 function flyBall(r){
   return (nz(r.launchangle)||0)>=15 && (nz(r.hangticks)||0)>=25;
@@ -1820,7 +1833,7 @@ function afterBounce(r){
  * 追いついて、なおかつ落とさなければ成功。
  */
 function convertedPlay(r){
-  if(flyBall(r) && !afterBounce(r)) return r.caughtonfly===true;
+  if(airPlay(r)) return r.caughtonfly===true;
   return reachedBall(r) && (r.fumbled!==true || recovered(r));
 }
 
@@ -3557,6 +3570,10 @@ function clutchCard(){
   return `<div class="card"><h4>決定打</h4>${body}</div>`;
 }
 
+/** 内野の守備位置。内野安打・内野ゴロの呼び方を決めるのに使う。 */
+const INFIELD_POS=new Set(["PITCHER", "CATCHER", "FIRST_BASEMAN",
+  "SECOND_BASEMAN", "THIRD_BASEMAN", "SHORTSTOP"]);
+
 /** 守備位置の呼び名。打球の言い方に合わせる。 */
 const POS_JA={PITCHER:"ピッチャー", CATCHER:"キャッチャー", FIRST_BASEMAN:"ファースト",
   SECOND_BASEMAN:"セカンド", THIRD_BASEMAN:"サード", SHORTSTOP:"ショート",
@@ -4878,12 +4895,22 @@ let PLAY_OWNER=null, PLAY_OWNER_N=-1;
 function playOwners(){
   if(PLAY_OWNER && PLAY_OWNER_N===DATA.play.length) return PLAY_OWNER;
   PLAY_OWNER=new Map();
+  // 打球ごとに、触った人を順番に並べる
+  const touched=new Map();
   DATA.play.forEach(r=>{
     if(r.kind!=="field" || !r.pa || !POS_LABEL[String(r.position||"")]) return;
-    // 打球に最初に触った人。飛球を捕った人も同じ扱い。
-    if(r.caughtonfly!==true && nz(r.touchorder)!==1) return;
+    const order=r.caughtonfly===true ? 1 : nz(r.touchorder);
+    if(order===null || order<1) return;
     const key=String(r.game)+"|"+String(r.pa);
-    if(!PLAY_OWNER.has(key)) PLAY_OWNER.set(key, r);
+    const list=touched.get(key) || touched.set(key, []).get(key);
+    list.push({order, row:r});
+  });
+  touched.forEach((list, key)=>{
+    list.sort((a,b)=>a.order-b.order);
+    // 最初に「きれいに捕った」人。弾いた人に打球の呼び名を付けると、
+    // ショートが弾いた当たりが「センターゴロ」になってしまう。
+    const clean=list.find(x=>x.row.fumbled!==true);
+    PLAY_OWNER.set(key, (clean||list[0]).row);
   });
   PLAY_OWNER_N=DATA.play.length;
   return PLAY_OWNER;
@@ -4967,8 +4994,8 @@ function fielderName(rec, row){
   const la=Number(rec.launch_angle), a=Number(rec.spray_angle);
   if(!isFinite(la) || !isFinite(a)) return "";
   const far=distanceOf(rec);
-  if(la >= 25 || far >= 60){
-    // 上がった打球か外野まで届いた打球
+  if(far >= 60 || (la >= 25 && far >= 40)){
+    // 外野まで届いた打球。高く上がっても、近くに落ちた球は内野が処理する
     return a < -15 ? "レフト" : (a > 15 ? "ライト" : "センター");
   }
   if(far < 12) return Math.abs(a) < 20 ? "ピッチャー" : "キャッチャー";
@@ -4993,6 +5020,12 @@ function resultText(result, rec, row){
     const at=POS_JA[String(own.position)];
     const la=nz(own.launchangle);
     if(result==="GROUND_OUT") return at+"ゴロ";
+    // 内野が捕った単打は内野安打。打球の方向ではなく、
+    // 最初に完全捕球した人の守備位置で呼ぶ
+    if(result==="SINGLE" && own.caughtonfly!==true
+        && INFIELD_POS.has(String(own.position))){
+      return at+"内野安打";
+    }
     if(result==="DOUBLE_PLAY") return at+"ゴロ併殺";
     if(result==="FLY_OUT"){
       return at + (own.caughtonfly!==true ? "ゴロ"
@@ -7965,7 +7998,7 @@ function stadiumView(){
     <div class="parkcards">${PARKS.map(parkCard).join("")}</div>
   </div></section>
   <section class="span"><div class="pad">
-    <div class="head">広さのデータ<small>本塁からフェンスまで (m)</small></div>
+    <div class="head">球場のデータ<small>パークファクターと本塁からフェンスまで (m)</small></div>
     <div class="scroll">${parkSheet()}</div>
   </div></section>
   <section class="span"><div class="pad">
@@ -8024,9 +8057,66 @@ const PARK_SORT={key:"", dir:-1};
  *
  * <p>見出しを押すとその項目で並べ替える。最初は降順(大きい順)。
  */
+/**
+ * パークファクター。その球場では点や本塁打がどれだけ出やすいか。
+ *
+ * <p>「この球場での 1 試合あたり」を「他の球場での 1 試合あたり」で割り、
+ * 100 倍したもの。100 なら平均どおり、120 なら 2 割出やすい。
+ * 得点は両チームの合計で見る。
+ *
+ * <p>その球場の試合が無いとき、または他の球場の試合が無いときは出せない。
+ * 試合数が少ないうちは大きく振れるので、目安として見る。
+ */
+let PARK_PF=null, PARK_PF_N=-1;
+function parkFactors(){
+  if(PARK_PF && PARK_PF_N===DATA.plate.length) return PARK_PF;
+  // 球場ごとに「試合数・得点・本塁打」を数える
+  const box=new Map();
+  gameIds().forEach(id=>{
+    const where=venueOf(id);
+    if(!where) return;
+    const rows=DATA.plate.filter(r=>String(r.game_id)===String(id));
+    if(!rows.length) return;
+    const at=box.get(where) || {games:0, runs:0, hr:0};
+    at.games++;
+    rows.forEach(r=>{
+      at.runs+=Math.max(0, Number(r.runs)||0);
+      if(String(r.result)==="HOME_RUN") at.hr++;
+    });
+    box.set(where, at);
+  });
+  let allGamesN=0, allRuns=0, allHr=0;
+  box.forEach(v=>{ allGamesN+=v.games; allRuns+=v.runs; allHr+=v.hr; });
+  const out=new Map();
+  box.forEach((v, name)=>{
+    const otherGames=allGamesN-v.games;
+    if(!v.games || !otherGames){
+      out.set(name, {run:null, hr:null, games:v.games});
+      return;
+    }
+    const otherRuns=(allRuns-v.runs)/otherGames;
+    const otherHr=(allHr-v.hr)/otherGames;
+    out.set(name, {
+      games:v.games,
+      run: otherRuns>0 ? (v.runs/v.games)/otherRuns*100 : null,
+      hr: otherHr>0 ? (v.hr/v.games)/otherHr*100 : null
+    });
+  });
+  PARK_PF=out; PARK_PF_N=DATA.plate.length;
+  return out;
+}
+
+/** その球場のパークファクター。数えられなければ null。 */
+function parkFactorOf(park, key){
+  const one=parkFactors().get(park.name);
+  return one ? one[key] : null;
+}
+
 function parkSheet(){
   const cols=[
     {key:"name",   head:"球場",     nm:true, get:p=>p.name},
+    {key:"pfrun",  head:"得点PF",   pf:true, get:p=>parkFactorOf(p,"run")},
+    {key:"pfhr",   head:"本塁打PF", pf:true, get:p=>parkFactorOf(p,"hr")},
     {key:"left",   head:"左翼",     get:p=>distAt(p,-45)},
     {key:"lalley", head:"左中間",   get:p=>distAt(p,-22)},
     {key:"center", head:"中堅",     get:p=>distAt(p,0)},
@@ -8054,6 +8144,7 @@ function parkSheet(){
     const v=c.get(park);
     if(c.nm) return esc(String(v));
     if(!isFinite(v)) return "—";
+    if(c.pf) return Math.round(v);
     return c.key==="area" ? Math.round(v).toLocaleString() : v.toFixed(1);
   };
   const head=cols.map(c=>`<th${c.nm?' class="nm"':""} data-park-sort="${c.key}"
