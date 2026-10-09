@@ -3803,6 +3803,11 @@ function bestOrder(bat, pit){
  * <p>規定は置かない。同じ人が複数の位置に選ばれてもよい。
  * 投手も、投げた成績ではなく守備の数字で選ぶ。
  * ピッチャー返しの処理やバント処理も守備なので、ほかの位置と同じに見る。
+ *
+ * <p>見るのは守備の記録(打球を処理した回数)だけ。適性のほうは
+ * 「投手として打者と対戦した数」も投手の回数に足しているので、
+ * そのまま使うと、1 球ずつの守備の記録が無い昔の試合で投げた人まで
+ * 投手の守備で評価されてしまう。
  */
 function goldenGlove(){
   const names=playerNames();
@@ -3810,13 +3815,26 @@ function goldenGlove(){
   Object.keys(POS_LABEL).forEach(at=>{
     let top=null;
     names.forEach(n=>{
-      const value=positionSkill(n, gloveAbility(n).glove, at);
+      const value=gloveSkillAt(n, at);
       if(value===null) return;
       if(!top || value>top.value) top={name:n, value};
     });
     if(top) best[at]=top;
   });
   return gloveField(best);
+}
+
+/**
+ * その守備位置での守備の評価。守備の記録が無ければ null。
+ *
+ * <p>その位置で打球を処理した回数で、守備の数字をリーグの真ん中へ寄せる。
+ * 回数が少ないうちは真ん中に近づくので、1 度守っただけでは上に来ない。
+ */
+function gloveSkillAt(name, position){
+  const n=playOf(name,"field")
+    .filter(r=>String(r.position||"")===position).length;
+  if(!n) return null;
+  return steady(gloveAbility(name).glove, n, QUAL_CHANCE);
 }
 
 /** ゴールデングラブの図。扇形の球場に選ばれた人を置く。 */
