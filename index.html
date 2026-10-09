@@ -3369,7 +3369,7 @@ function topView(){
     </div></section>
     <section><div class="pad">
       <div class="head">ゴールデングラブ</div>
-      ${goldenGlove(pit)}
+      ${goldenGlove()}
     </div></section>
   </div>`;
 }
@@ -3801,13 +3801,13 @@ function bestOrder(bat, pit){
  * ゴールデングラブ。守備位置ごとに、その位置でいちばん守れる人。
  *
  * <p>規定は置かない。同じ人が複数の位置に選ばれてもよい。
- * 投手だけは守備の数字ではなく、防御率がいちばん良い人にする。
+ * 投手も、投げた成績ではなく守備の数字で選ぶ。
+ * ピッチャー返しの処理やバント処理も守備なので、ほかの位置と同じに見る。
  */
-function goldenGlove(pit){
+function goldenGlove(){
   const names=playerNames();
   const best={};
   Object.keys(POS_LABEL).forEach(at=>{
-    if(at==="PITCHER") return;
     let top=null;
     names.forEach(n=>{
       const value=positionSkill(n, gloveAbility(n).glove, at);
@@ -3816,11 +3816,6 @@ function goldenGlove(pit){
     });
     if(top) best[at]=top;
   });
-  // 投手は防御率がいちばん良い人。ここだけは規定投球回に届いた人から選ぶ。
-  const arms=pit.filter(d=>d.L.era!==null && isFinite(d.L.era)
-      && d.L.outs/3>=QUAL_IP)
-    .sort((a,b)=>a.L.era-b.L.era);
-  if(arms.length) best.PITCHER={name:arms[0].name, era:arms[0].L.era};
   return gloveField(best);
 }
 
@@ -6420,12 +6415,12 @@ function paTable(rows, other, plate){
   if(!ended.length) return '<div class="empty">打席の記録がありません</div>';
   return `<div class="palist"><table class="pafix">
     <colgroup><col class="c-game"><col class="c-name"><col class="c-res">
-      <col class="c-num"><col class="c-num"><col class="c-wpt"><col class="c-flag">
+      <col class="c-num"><col class="c-num">
       <col class="c-num"><col class="c-num"><col class="c-num">
       <col class="c-flag"><col class="c-num"><col class="c-num"></colgroup>
     <thead><tr>
       <th>試合</th><th>${other==="pitcher"?"投手":"打者"}</th><th>結果</th>
-      <th>アウト</th><th>打点</th><th>勝利pt</th><th>映像</th>
+      <th>アウト</th><th>打点</th>
       <th>初速</th><th>角度</th><th>距離</th><th>打球</th><th>xBA</th><th>HR球場</th>
     </tr></thead><tbody>
     ${ended.map(r=>{
@@ -6447,8 +6442,6 @@ function paTable(rows, other, plate){
         <td class="res"><span class="rtag ${resultClass(r.result)}">${esc(resultText(r.result, r))}</span></td>
         <td class="bases">${plate2 ? outMark(outsBeforeAll().get(plate2)||0) : "–"}</td>
         <td class="${rbi2?"rbi":""}">${rbi2||""}</td>
-        <td class="wcell">${winPtText(plate2, {pit:other==="batter"}) || "–"}</td>
-        <td class="wcell">${replayButton(plate2) || "–"}</td>
         <td>${hit?f1(ev):"–"}</td>
         <td>${hit?f1(la)+"°":"–"}</td>
         <td>${hit?f1(distanceOf(r)):"–"}</td>
