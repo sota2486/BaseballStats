@@ -921,6 +921,10 @@ tr.jumppa:hover{background:var(--panel-2)}
 
 /* heat charts */
 .heats{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+/* 統計の球種別コースは 1 段 4 つ */
+.heats.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1100px){.heats.four{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.heats.four{grid-template-columns:1fr}}
 .heat h3{font-size:13px; display:flex; justify-content:space-between; align-items:baseline;
   gap:6px; white-space:nowrap}
 .heat h3 > span:first-child{overflow:hidden; text-overflow:ellipsis}
@@ -1072,8 +1076,10 @@ table.stand tbody tr:hover td{background:var(--panel-2)}
   color:var(--text);background:var(--panel-2);border:1px solid var(--line);
   border-radius:999px;padding:4px 11px}
 .bipsets button:hover{border-color:var(--text)}
-/* 統計の総合成績。表が広いので、中で横に流す */
+/* 統計の総合成績。投打を 1 段ずつ組んで、同じ項目の頭をそろえる */
+.statsum{align-items:start}
 .statsum>div{min-width:0}
+.statsum+.statsum{margin-top:14px}
 .statsum .head{margin-top:14px}
 .statsum>div>.head:first-child{margin-top:0}
 
@@ -3001,6 +3007,7 @@ function render(){
     app.innerHTML=safely(statsView, "統計");
     drawBip();
     drawLoc();
+    drawHeats("heats8", 8);
     PLAYER=keep;
     return;
   }
@@ -7108,17 +7115,24 @@ function drawLoc(){
   });
   svg.innerHTML=g || '<text x="125" y="140" text-anchor="middle" fill="var(--muted)" font-size="12">位置の記録がありません</text>';
 }
-function drawHeats(){
-  const box=document.getElementById("heats"); if(!box) return;
+/**
+ * 球種ごとのコースを塗り分ける。
+ *
+ * @param boxId 描き込む枠の id。既定は選手ページの heats
+ * @param limit 出す球種の数。既定は 4
+ */
+function drawHeats(boxId, limit){
+  const id=boxId||"heats";
+  const box=document.getElementById(id); if(!box) return;
   const all=pitchOf(PLAYER,"pit");
-  const types=typeUsage(all).slice(0,4);
+  const types=typeUsage(all).slice(0, limit||4);
   if(!types.length){ box.innerHTML='<div class="empty">投球の記録がありません</div>'; return; }
   box.innerHTML=types.map((t,i)=>{
     const rows=located(all.filter(r=>(r.type||"Normal")===t.name));
     return `<div class="heat"><h3><span style="display:inline-flex;align-items:center;gap:6px">
         <span class="pdot" style="background:${TYPE_COLORS[i%TYPE_COLORS.length]};width:18px;height:11px"></span>
         ${esc(t.name)}</span><span>${rows.length} 球</span></h3>
-      ${densityChart(rows, "h"+i)}</div>`;
+      ${densityChart(rows, id+i)}</div>`;
   }).join("");
 }
 
@@ -7975,18 +7989,9 @@ function standingsView(){
   if(!DATA.plate.length){
     return '<section class="span"><div class="empty">result の csv を読み込むと出ます</div></section>';
   }
-  const lg=leagueAverage();
   const teams=withBehind(teamStandings());
   const people=withBehind(personalStandings());
   return `<section class="span"><div class="pad">
-    <div class="head">一試合平均<small>${gameIds().length} 試合</small></div>
-    <div class="cards">
-      ${bigNumber("平均打率", f3(lg.avg))}
-      ${bigNumber("平均得点", f2(lg.runs/Math.max(1,lg.games)))}
-      ${bigNumber("OPS", f3(lg.ops))}
-    </div>
-  </div></section>
-  <section class="span"><div class="pad">
     <div class="head">チーム順位<small>先攻・後攻のチームごと</small></div>
     ${teams.length ? standTable(teams, false)
       : '<div class="empty">game.csv にチーム名がありません</div>'}
@@ -8443,15 +8448,16 @@ function densityChart(rows, id){
 
 /** 打球の種類。チェックの並びと色はここで決まる。 */
 const BIP_KINDS=[
-  {key:"single", label:"単打",         color:"var(--single)", hit:true},
-  {key:"double", label:"二塁打",       color:"var(--double)", hit:true},
-  {key:"triple", label:"三塁打",       color:"var(--triple)", hit:true},
-  {key:"homer",  label:"本塁打",       color:"var(--homer)",  hit:true},
-  {key:"fly",    label:"フライアウト", color:"#4a8fd0", hit:false},
-  {key:"liner",  label:"ライナーアウト", color:"#2aa79b", hit:false},
-  {key:"ground", label:"ゴロ",         color:"#b07c3a", hit:false},
-  {key:"dp",     label:"ゴロ(併殺)",   color:"#c04a4a", hit:false},
-  {key:"other",  label:"その他",       color:"var(--out)", hit:false}
+  // ヒットは寒色、アウトは暖色。種類より先に「出たか出ていないか」が分かる
+  {key:"single", label:"単打",         color:"#45b6e8", hit:true},
+  {key:"double", label:"二塁打",       color:"#3b6fd4", hit:true},
+  {key:"triple", label:"三塁打",       color:"#1fa98f", hit:true},
+  {key:"homer",  label:"本塁打",       color:"#8b5cf6", hit:true},
+  {key:"fly",    label:"フライアウト", color:"#f0a33a", hit:false},
+  {key:"liner",  label:"ライナーアウト", color:"#e8622a", hit:false},
+  {key:"ground", label:"ゴロ",         color:"#b4651e", hit:false},
+  {key:"dp",     label:"ゴロ(併殺)",   color:"#c0392b", hit:false},
+  {key:"other",  label:"その他",       color:"#a8846a", hit:false}
 ];
 
 /** いま出している打球の種類。 */
@@ -8594,14 +8600,26 @@ function statsView(){
   const ppa=plateOf(ALL_PLAYERS,"pit"), pps=pitchOf(ALL_PLAYERS,"pit");
   const bended=bps.filter(r=>r.result), pended=pps.filter(r=>r.result);
   const games=gameIds().length;
+  const lg=leagueAverage();
+  // 投打を左右に並べる。1 段ずつ組むと、同じ項目の頭がそろう
+  const pair=(left, right)=>`<div class="twoup statsum">
+    <div>${left}</div><div>${right}</div></div>`;
   return `
   <section class="span"><div class="pad">
-    <div class="head">打球分布<small id="bipcount"></small>
-      <em class="headnote">チェックを外すとその打球を隠します</em></div>
-    ${bipBox()}
+    <div class="head">一試合平均<small>${games} 試合</small></div>
+    <div class="cards">
+      ${bigNumber("平均打率", f3(lg.avg))}
+      ${bigNumber("平均得点", f2(lg.runs/Math.max(1,lg.games)))}
+      ${bigNumber("OPS", f3(lg.ops))}
+    </div>
   </div></section>
   <section class="span"><div class="pad">
     <div class="twoup">
+      <div>
+        <div class="head">打球分布<small id="bipcount"></small>
+          <em class="headnote">チェックを外すとその打球を隠します</em></div>
+        ${bipBox()}
+      </div>
       <div>
         <div class="head">投球分布<small>${located(pps).length} 球</small></div>
         <div class="locwrap">
@@ -8614,58 +8632,58 @@ function statsView(){
         <p class="note" style="padding:9px 0 0">
           投げた人ぜんぶぶん。捕手目線。太枠がストライクゾーン。丸の色が球種。</p>
       </div>
-      <div>
-        <div class="head">球種使用率<small>上位 8 球種 / ${pps.length} 球</small></div>
-        ${typeBars(pps, 8)}
-      </div>
     </div>
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">球種別コース<small>使用率上位 8 球種</small></div>
+    <div class="heats four" id="heats8"></div>
+    <p class="note" style="padding:10px 0 0">
+      投げた人ぜんぶぶん。捕手目線。太枠の中がストライクゾーン。
+      色が濃いほどそこへ多く投げている。<br>
+      5×5 のマスではなく、1 球ごとの通過点から density を出して描いています。</p>
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">総合成績<small>${games} 試合</small>
       <em class="headnote">左が打撃、右が投球。読み込んだ記録を全部足したもの</em></div>
-    <div class="twoup statsum">
-      <div>
-        <div class="head">打撃 通算</div>
-        ${batterBoxes(ALL_PLAYERS)}
-        <div class="head">ゾーン別打率<small>捕手目線</small></div>
-        <div class="zonewrap">${zoneGrid(bps)}</div>
-        <div class="head">打球方向<small>外側は本塁打の数</small></div>
-        ${sprayFan(ALL_PLAYERS)}
-        <div class="head">カウント別<small>${bended.length} 打席</small></div>
-        ${splitTable(countGroups(bended), SPLIT_BAT)}
-        <div class="head">得点圏<small>二塁か三塁に走者</small></div>
-        ${splitTable(scoringGroups(bpa), SPLIT_BAT)}
-        <div class="head">塁状況別<small>打席が始まった時点</small></div>
-        ${splitTable(baseGroups(bpa), SPLIT_BAT)}
-        <div class="head">左右別<small>投手の投げ手</small></div>
-        ${splitTable(handGroups(bpa,"throws"), SPLIT_BAT)}
-        <div class="head">球場別</div>
-        ${splitTable(parkGroups(bpa), SPLIT_BAT)}
-        <div class="head">四半期別<small>3 か月ごと</small></div>
-        ${splitTable(quarterGroups(bpa), [SPLIT_GAMES].concat(SPLIT_BAT))}
-      </div>
-      <div>
-        <div class="head">投球 通算</div>
-        ${pitcherBoxes(ALL_PLAYERS)}
-        <div class="head">投球データ</div>
-        ${pitchMix(ALL_PLAYERS)}
-        <div class="head">ゾーン別被打率<small>捕手目線</small></div>
-        <div class="zonewrap">${zoneGrid(pps)}</div>
-        <div class="head">カウント別<small>${pended.length} 打席</small></div>
-        ${splitTable(countGroups(pended), SPLIT_PIT_COUNT)}
-        <div class="head">得点圏<small>二塁か三塁に走者</small></div>
-        ${splitTable(scoringGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
-        <div class="head">塁状況別<small>打席が始まった時点</small></div>
-        ${splitTable(baseGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
-        <div class="head">左右別<small>打者の打席</small></div>
-        ${splitTable(handGroups(ppa,"stance").map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
-        <div class="head">球場別</div>
-        ${splitTable(parkGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
-        <div class="head">四半期別<small>3 か月ごと</small></div>
-        ${splitTable(quarterGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})),
-          [SPLIT_GAMES].concat(SPLIT_PIT))}
-      </div>
-    </div>
+    ${pair(
+      `<div class="head">打撃 通算</div>${batterBoxes(ALL_PLAYERS)}`,
+      `<div class="head">投球 通算</div>${pitcherBoxes(ALL_PLAYERS)}`)}
+    ${pair(
+      `<div class="head">ゾーン別打率<small>捕手目線</small></div>
+       <div class="zonewrap">${zoneGrid(bps)}</div>
+       <div class="head">打球方向<small>外側は本塁打の数</small></div>
+       ${sprayFan(ALL_PLAYERS)}`,
+      `<div class="head">投球データ</div>${pitchMix(ALL_PLAYERS)}`)}
+    ${pair(
+      `<div class="head">カウント別<small>${bended.length} 打席</small></div>
+       ${splitTable(countGroups(bended), SPLIT_BAT)}`,
+      `<div class="head">カウント別<small>${pended.length} 打席</small></div>
+       ${splitTable(countGroups(pended), SPLIT_PIT_COUNT)}`)}
+    ${pair(
+      `<div class="head">得点圏<small>二塁か三塁に走者</small></div>
+       ${splitTable(scoringGroups(bpa), SPLIT_BAT)}`,
+      `<div class="head">得点圏<small>二塁か三塁に走者</small></div>
+       ${splitTable(scoringGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}`)}
+    ${pair(
+      `<div class="head">塁状況別<small>打席が始まった時点</small></div>
+       ${splitTable(baseGroups(bpa), SPLIT_BAT)}`,
+      `<div class="head">塁状況別<small>打席が始まった時点</small></div>
+       ${splitTable(baseGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}`)}
+    ${pair(
+      `<div class="head">左右別<small>投手の投げ手</small></div>
+       ${splitTable(handGroups(bpa,"throws"), SPLIT_BAT)}`,
+      `<div class="head">左右別<small>打者の打席</small></div>
+       ${splitTable(handGroups(ppa,"stance").map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}`)}
+    ${pair(
+      `<div class="head">球場別</div>${splitTable(parkGroups(bpa), SPLIT_BAT)}`,
+      `<div class="head">球場別</div>
+       ${splitTable(parkGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}`)}
+    ${pair(
+      `<div class="head">四半期別<small>3 か月ごと</small></div>
+       ${splitTable(quarterGroups(bpa), [SPLIT_GAMES].concat(SPLIT_BAT))}`,
+      `<div class="head">四半期別<small>3 か月ごと</small></div>
+       ${splitTable(quarterGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})),
+         [SPLIT_GAMES].concat(SPLIT_PIT))}`)}
   </div></section>`;
 }
 
