@@ -1061,6 +1061,22 @@ table.stand tbody tr:hover td{background:var(--panel-2)}
 .bignum{font-family:"Barlow Condensed",sans-serif; font-size:40px; font-weight:700;
   line-height:1.1; padding:6px 2px 2px}
 
+/* 打球分布の操作まわり */
+.bipctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;
+  padding:4px 0 10px}
+.bipctl .pickrow{flex:1 1 420px}
+.bipctl .bipn{font-style:normal;color:var(--muted);font-size:10px;
+  font-family:Roboto Mono,monospace}
+.bipsets{display:flex;gap:6px}
+.bipsets button{font:inherit;font-size:11px;font-weight:700;cursor:pointer;
+  color:var(--text);background:var(--panel-2);border:1px solid var(--line);
+  border-radius:999px;padding:4px 11px}
+.bipsets button:hover{border-color:var(--text)}
+/* 統計の総合成績。表が広いので、中で横に流す */
+.statsum>div{min-width:0}
+.statsum .head{margin-top:14px}
+.statsum>div>.head:first-child{margin-top:0}
+
 /* ---------------------------------------------------------- スタジアム */
 /* 球場の紹介。1 行 2 つ */
 .parkcards{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
@@ -2272,14 +2288,20 @@ function byPlayer(){
   DATA.plate.forEach(r=>{
     add(box.plate.bat, r.batter, r);
     add(box.plate.pit, r.pitcher, r);
+    // リーグ全体。打者側からも投手側からも、同じ打席を 1 つ数える
+    add(box.plate.bat, ALL_PLAYERS, r);
+    add(box.plate.pit, ALL_PLAYERS, r);
   });
   DATA.pitch.forEach(r=>{
     // 球種も球速も残っていない行は、打席の結果を残すためだけのもの。
     // 球数や球種の割合に混ぜると「Normal」という球種があるように見えてしまう。
     if(ghostPitch(r)) return;
-    if(r.side==="Pitching") add(box.pitch.pit, r.pitcher, r);
-    else if(r.side==="Batting") add(box.pitch.bat, r.batter, r);
-    else { add(box.pitch.bat, r.batter, r); add(box.pitch.pit, r.pitcher, r); }
+    if(r.side==="Pitching"){ add(box.pitch.pit, r.pitcher, r); add(box.pitch.pit, ALL_PLAYERS, r); }
+    else if(r.side==="Batting"){ add(box.pitch.bat, r.batter, r); add(box.pitch.bat, ALL_PLAYERS, r); }
+    else {
+      add(box.pitch.bat, r.batter, r); add(box.pitch.pit, r.pitcher, r);
+      add(box.pitch.bat, ALL_PLAYERS, r); add(box.pitch.pit, ALL_PLAYERS, r);
+    }
   });
   BY_PLAYER=box;
   BY_PLAYER_N=DATA.plate.length+DATA.pitch.length;
@@ -2294,6 +2316,14 @@ function byPlayer(){
 function ghostPitch(r){
   return !String(r.type||"").trim() && !(Number(r.velocity)>0);
 }
+
+/**
+ * リーグ全体をまとめて指す名前。選手の名前とはぶつからない形にする。
+ *
+ * この名前で plateOf / pitchOf を引くと、全員ぶんの記録が返る。
+ * 選手ひとり用の部品を、そのまま統計の画面で使い回すための仕掛け。
+ */
+const ALL_PLAYERS="__リーグ全体__";
 
 const NO_ROWS=[];
 const plateOf=(n,s)=>byPlayer().plate[s==="bat"?"bat":"pit"].get(n) || NO_ROWS;
@@ -2522,6 +2552,9 @@ function reliefFor(gameId, name, which){
   return relief.holds.includes(name) ? 1 : 0;
 }
 function reliefTotal(name, which){
+  if(name===ALL_PLAYERS){
+    return playerNames().reduce((n,who)=>n+reliefTotal(who,which),0);
+  }
   return gameIds().reduce((n,g)=>n+reliefFor(g,name,which),0);
 }
 function gameIds(){
@@ -2652,6 +2685,13 @@ function scoreBook(){
  */
 function completeGames(name){
   let cg=0, sho=0;
+  if(name===ALL_PLAYERS){
+    playerNames().forEach(who=>{
+      const one=completeGames(who);
+      cg+=one.cg; sho+=one.sho;
+    });
+    return {cg, sho};
+  }
   const mine=new Set(plateOf(name,"pit").map(r=>String(r.game_id)));
   mine.forEach(game=>{
     const rows=DATA.plate.filter(r=>String(r.game_id)===game && r.pitcher===name);
@@ -2696,6 +2736,10 @@ function startsOf(name){
 
 /** その選手の得点。 */
 function runsOf(name){
+  if(name===ALL_PLAYERS){
+    // リーグ全体。全員ぶんを足す
+    return Object.values(scoreBook().runs).reduce((n,v)=>n+(Number(v)||0),0);
+  }
   return scoreBook().runs[name] || 0;
 }
 /** その選手のその試合の得点。 */
@@ -2948,6 +2992,18 @@ function render(){
     app.innerHTML=safely(leaderboardView, "リーダーボード");
     return;
   }
+  if(VIEW==="stats"){
+    renderParks();
+    // 中の部品は「選んでいる人」を見て組み立てるので、
+    // 描いている間だけリーグ全体に差し替える
+    const keep=PLAYER;
+    PLAYER=ALL_PLAYERS;
+    app.innerHTML=safely(statsView, "統計");
+    drawBip();
+    drawLoc();
+    PLAYER=keep;
+    return;
+  }
   if(VIEW==="result"){ renderParks(); app.innerHTML=safely(resultView, "試合結果"); return; }
   if(VIEW==="standings"){ renderParks(); app.innerHTML=safely(standingsView, "順位表"); return; }
   if(VIEW==="stadium"){
@@ -3005,8 +3061,8 @@ function render(){
   document.querySelectorAll(".gamescroll").forEach(el=>{ el.scrollTop=el.scrollHeight; });
 }
 const VIEWS=[["top","トップ"],["split","選手成績"],["player","選手統計"],
-  ["pawa","パワプロ風能力"],["leaderboard","ランキング"],["standings","順位表"],
-  ["result","試合"],["stadium","スタジアム"]];
+  ["pawa","パワプロ風能力"],["stats","統計"],["leaderboard","ランキング"],
+  ["standings","順位表"],["result","試合"],["stadium","スタジアム"]];
 /** 選手を選んでいないときに出す案内。 */
 function pickPlayerNote(){
   return playerNames().length
@@ -3310,6 +3366,9 @@ function decisionFor(gameId, name, which){
   return d && d[which]===name ? 1 : 0;
 }
 function decisionTotal(name, which){
+  if(name===ALL_PLAYERS){
+    return playerNames().reduce((n,who)=>n+decisionTotal(who,which),0);
+  }
   return gameIds().reduce((n,g)=>n+decisionFor(g,name,which),0);
 }
 
@@ -7134,8 +7193,9 @@ function splitPitTotal(name){
 function splitTable(groups, cols){
   const rows=groups.filter(g=>g.rows.length).map(g=>{
     const L=g.line ? g.line(g.rows) : line(g.rows);
+    // 列には場面そのものも渡す。試合数のように、行の中身を数える列があるため
     return `<tr><td class="sit">${g.label}</td>
-      ${cols.map(c=>`<td>${c.get(L)}</td>`).join("")}</tr>`;
+      ${cols.map(c=>`<td>${c.get(L, g)}</td>`).join("")}</tr>`;
   }).join("");
   if(!rows) return '<div class="empty">この分け方の記録がありません</div>';
   return `<div class="scroll"><table class="split">
@@ -7268,7 +7328,7 @@ function splitBatter(){
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">四半期別<small>3 か月ごと</small></div>
-    ${splitTable(quarterGroups(pa), SPLIT_BAT)}
+    ${splitTable(quarterGroups(pa), [SPLIT_GAMES].concat(SPLIT_BAT))}
   </div></section>`;
 }
 
@@ -7390,7 +7450,8 @@ function splitPitcher(){
   </div></section>
   <section class="span"><div class="pad">
     <div class="head">四半期別<small>3 か月ごと</small></div>
-    ${splitTable(quarterGroups(pa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
+    ${splitTable(quarterGroups(pa).map(g=>Object.assign(g,{line:pitcherLine})),
+      [SPLIT_GAMES].concat(SPLIT_PIT))}
   </div></section>`;
 }
 
@@ -7918,9 +7979,9 @@ function standingsView(){
   const teams=withBehind(teamStandings());
   const people=withBehind(personalStandings());
   return `<section class="span"><div class="pad">
-    <div class="head">リーグ平均<small>${gameIds().length} 試合</small></div>
+    <div class="head">一試合平均<small>${gameIds().length} 試合</small></div>
     <div class="cards">
-      ${bigNumber("打率", f3(lg.avg))}
+      ${bigNumber("平均打率", f3(lg.avg))}
       ${bigNumber("平均得点", f2(lg.runs/Math.max(1,lg.games)))}
       ${bigNumber("OPS", f3(lg.ops))}
     </div>
@@ -8004,10 +8065,16 @@ function stadiumView(){
   if(!PARKS.length){
     return '<section><div class="empty">stadium.yml を読み込むと球場が並びます</div></section>';
   }
+  const plain=unmeasuredParks();
   return `<section class="span"><div class="pad">
     <div class="head">球場<small>${PARKS.length} 球場</small></div>
     <div class="parkcards">${PARKS.map(parkCard).join("")}</div>
   </div></section>
+  ${plain.length ? `<section class="span"><div class="pad">
+    <div class="head">形を測っていない球場<small>${plain.length} 球場</small>
+      <em class="headnote">記録にはあるが stadium.yml に無いもの</em></div>
+    <div class="parkcards">${plain.map(plainParkCard).join("")}</div>
+  </div></section>` : ""}
   <section class="span"><div class="pad">
     <div class="head">球場のデータ<small>パークファクターと本塁からフェンスまで (m)</small></div>
     <div class="scroll">${parkSheet()}</div>
@@ -8368,6 +8435,285 @@ function densityChart(rows, id){
 }
 
 /* --------------------------------------------------------- 打球分布 */
+/* ===================================================== 統計(リーグ全体)
+   選手ひとりではなく、読み込んだ記録ぜんぶをまとめて見る画面。
+   選手の画面と同じ部品を使い回すために、plateOf / pitchOf が
+   「全員ぶん」を返す名前を 1 つ決めておく。 */
+
+
+/** 打球の種類。チェックの並びと色はここで決まる。 */
+const BIP_KINDS=[
+  {key:"single", label:"単打",         color:"var(--single)", hit:true},
+  {key:"double", label:"二塁打",       color:"var(--double)", hit:true},
+  {key:"triple", label:"三塁打",       color:"var(--triple)", hit:true},
+  {key:"homer",  label:"本塁打",       color:"var(--homer)",  hit:true},
+  {key:"fly",    label:"フライアウト", color:"#4a8fd0", hit:false},
+  {key:"liner",  label:"ライナーアウト", color:"#2aa79b", hit:false},
+  {key:"ground", label:"ゴロ",         color:"#b07c3a", hit:false},
+  {key:"dp",     label:"ゴロ(併殺)",   color:"#c04a4a", hit:false},
+  {key:"other",  label:"その他",       color:"var(--out)", hit:false}
+];
+
+/** いま出している打球の種類。 */
+const BIP_PICK=new Set(BIP_KINDS.map(k=>k.key));
+
+/**
+ * その打球はどの種類か。
+ *
+ * <p>フライアウトとライナーアウトは打ち出し角で分ける(25 度未満がライナー)。
+ * 失策や野選はどれにも当てはまらないので「その他」にまとめる。
+ */
+function bipKind(r){
+  switch(String(r.result||"")){
+    case "SINGLE": return "single";
+    case "DOUBLE": return "double";
+    case "TRIPLE": return "triple";
+    case "HOME_RUN": return "homer";
+    case "DOUBLE_PLAY": return "dp";
+    case "GROUND_OUT": return "ground";
+    case "FLY_OUT": {
+      const la=Number(r.launch_angle);
+      return isFinite(la) && la<25 ? "liner" : "fly";
+    }
+    default: return "other";
+  }
+}
+
+/** 種類の決まり。色や呼び名を引くのに使う。 */
+function bipInfo(key){
+  return BIP_KINDS.find(k=>k.key===key) || BIP_KINDS[BIP_KINDS.length-1];
+}
+
+/** インプレーになった打球ぜんぶ。飛距離と方向が分かるものだけ。 */
+function allBattedBalls(){
+  return summarize(pitchOf(ALL_PLAYERS,"bat")).bip
+    .map(r=>({...r, _kind:bipKind(r), _d:distanceOf(r)}))
+    .filter(r=>r._d>0 && isFinite(Number(r.spray_angle)));
+}
+
+/** 打球分布の枠。チェックで種類を出し入れする。 */
+function bipBox(){
+  const all=allBattedBalls();
+  const count={};
+  all.forEach(r=>{ count[r._kind]=(count[r._kind]||0)+1; });
+  const picks=BIP_KINDS.map(k=>`<label>
+    <input type="checkbox" data-bip="${k.key}" ${BIP_PICK.has(k.key)?"checked":""}>
+    <i style="background:${k.color}"></i>${k.label}
+    <em class="bipn">${count[k.key]||0}</em></label>`).join("");
+  return `<div class="bipctl">
+    <div class="pickrow">${picks}</div>
+    <div class="bipsets">
+      <button data-bip-set="all">すべて</button>
+      <button data-bip-set="hit">ヒットのみ</button>
+      <button data-bip-set="out">アウトのみ</button>
+      <button data-bip-set="none">なし</button>
+    </div>
+  </div>
+  <div class="spraywrap">
+    <svg id="bip" viewBox="0 0 320 306" role="img" aria-label="打球の落下地点"
+      style="flex:1"></svg>
+  </div>
+  <p class="note" style="padding:8px 0 0">
+    インプレーになった打球を、本塁からの方向と飛距離で置いています。
+    飛距離が測れていない打球は出ません。</p>`;
+}
+
+/** 打球分布を描く。選手ページの打球方向と同じ形の球場に置く。 */
+function drawBip(){
+  const svg=document.getElementById("bip"); if(!svg) return;
+  const all=allBattedBalls();
+  const shown=all.filter(r=>BIP_PICK.has(r._kind));
+  const cx=160, cy=278;
+  const park=activePark();
+  const F=deg=>fenceOf(park,deg);
+  const maxD=Math.max(F(0)+8,
+    ...(park?[Math.max(...park.dist)+8]:[]),
+    ...shown.map(r=>r._d));
+  const scale=248/maxD;
+  const P=(deg,d)=>{const a=deg*Math.PI/180;
+    return [cx+Math.sin(a)*d*scale, cy-Math.cos(a)*d*scale];};
+  const arc=d=>{const [x1,y1]=P(-45,d),[x2,y2]=P(45,d);
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${(d*scale).toFixed(1)} ${(d*scale).toFixed(1)} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;};
+  let g=`<path d="${fencePath(park,P,cx,cy)+" Z"}" fill="var(--grass)"
+      stroke="var(--line)" stroke-width="1.5"/>`;
+  g+=`<path d="M ${cx} ${cy} L ${P(-45,38)[0].toFixed(1)} ${P(-45,38)[1].toFixed(1)}
+      L ${P(0,54)[0].toFixed(1)} ${P(0,54)[1].toFixed(1)}
+      L ${P(45,38)[0].toFixed(1)} ${P(45,38)[1].toFixed(1)} Z"
+      fill="var(--dirt)" stroke="var(--line)" stroke-opacity=".7"/>`;
+  [-45,-22.5,0,22.5,45].map(a=>[a,F(a)]).forEach(([a,d])=>{
+    const [tx,ty]=P(a,d+7);
+    g+=`<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="var(--muted)" font-size="9.5"
+        font-family="Roboto Mono, monospace" text-anchor="middle">${Math.round(d)}</text>`;
+  });
+  [40,80].forEach(d=>{
+    g+=`<path d="${arc(d)}" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>`;
+  });
+  const [lx,ly]=P(-45,F(-45)), [rx,ry]=P(45,F(45));
+  g+=`<line x1="${cx}" y1="${cy}" x2="${lx.toFixed(1)}" y2="${ly.toFixed(1)}" stroke="var(--line)"/>`;
+  g+=`<line x1="${cx}" y1="${cy}" x2="${rx.toFixed(1)}" y2="${ry.toFixed(1)}" stroke="var(--line)"/>`;
+  // 数の多い打球に埋もれないよう、長打を後に描いて上に重ねる
+  const order=["other","ground","dp","fly","liner","single","double","triple","homer"];
+  shown.slice().sort((a,b)=>order.indexOf(a._kind)-order.indexOf(b._kind)).forEach(r=>{
+    const info=bipInfo(r._kind);
+    const [x,y]=P(Number(r.spray_angle)||0, Math.min(r._d,maxD));
+    g+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.2" fill="${info.color}"
+        fill-opacity="0.85" stroke="var(--panel)" stroke-width="1">
+        <title>${esc(r.batter||"")} ${info.label} ${f1(r._d)}m / ${f1(Number(r.exit_velocity))}km/h / ${f1(Number(r.launch_angle))}°</title></circle>`;
+  });
+  svg.innerHTML=g;
+  const note=document.getElementById("bipcount");
+  if(note) note.textContent=shown.length+" / "+all.length+" 打球";
+}
+
+/** 球種の使用率。上位いくつかを帯で見せる。 */
+function typeBars(rows, limit){
+  const types=typeUsage(rows).slice(0, limit||8);
+  if(!types.length) return '<div class="empty">投球の記録がありません</div>';
+  const total=rows.length;
+  return `<table class="usage"><tbody>
+    ${types.map((t,i)=>`<tr>
+      <td class="pillcell"><span class="ptype">
+        <span class="pdot" style="background:${TYPE_COLORS[i%TYPE_COLORS.length]}"></span>
+        ${esc(t.name)}</span></td>
+      <td style="width:100%"><span class="ubar">
+        <i style="width:${(100*t.n/total).toFixed(0)}%;
+           background:${TYPE_COLORS[i%TYPE_COLORS.length]}"></i></span></td>
+      <td>${(100*t.n/total).toFixed(0)}%</td>
+      <td>${f1(t.ev)}</td>
+    </tr>`).join("")}
+  </tbody></table>
+  <p class="note" style="padding:8px 0 0">右の 2 列は使用率と平均球速(km/h)。</p>`;
+}
+
+/** 統計の画面。読み込んだ記録ぜんぶをまとめたもの。 */
+function statsView(){
+  if(!DATA.plate.length && !DATA.pitch.length){
+    return '<section class="span"><div class="empty">csv を読み込むと出ます</div></section>';
+  }
+  const bpa=plateOf(ALL_PLAYERS,"bat"), bps=pitchOf(ALL_PLAYERS,"bat");
+  const ppa=plateOf(ALL_PLAYERS,"pit"), pps=pitchOf(ALL_PLAYERS,"pit");
+  const bended=bps.filter(r=>r.result), pended=pps.filter(r=>r.result);
+  const games=gameIds().length;
+  return `
+  <section class="span"><div class="pad">
+    <div class="head">打球分布<small id="bipcount"></small>
+      <em class="headnote">チェックを外すとその打球を隠します</em></div>
+    ${bipBox()}
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="twoup">
+      <div>
+        <div class="head">投球分布<small>${located(pps).length} 球</small></div>
+        <div class="locwrap">
+          <svg id="loc" viewBox="0 0 250 270" role="img" aria-label="投球の位置"
+            style="flex:1"></svg>
+          <div class="loclegend">${typeUsage(pps).slice(0,7).map((t,i)=>
+            `<span><i style="background:${TYPE_COLORS[i%TYPE_COLORS.length]}"></i>${esc(t.name)}</span>`).join("")}
+          </div>
+        </div>
+        <p class="note" style="padding:9px 0 0">
+          投げた人ぜんぶぶん。捕手目線。太枠がストライクゾーン。丸の色が球種。</p>
+      </div>
+      <div>
+        <div class="head">球種使用率<small>上位 8 球種 / ${pps.length} 球</small></div>
+        ${typeBars(pps, 8)}
+      </div>
+    </div>
+  </div></section>
+  <section class="span"><div class="pad">
+    <div class="head">総合成績<small>${games} 試合</small>
+      <em class="headnote">左が打撃、右が投球。読み込んだ記録を全部足したもの</em></div>
+    <div class="twoup statsum">
+      <div>
+        <div class="head">打撃 通算</div>
+        ${batterBoxes(ALL_PLAYERS)}
+        <div class="head">ゾーン別打率<small>捕手目線</small></div>
+        <div class="zonewrap">${zoneGrid(bps)}</div>
+        <div class="head">打球方向<small>外側は本塁打の数</small></div>
+        ${sprayFan(ALL_PLAYERS)}
+        <div class="head">カウント別<small>${bended.length} 打席</small></div>
+        ${splitTable(countGroups(bended), SPLIT_BAT)}
+        <div class="head">得点圏<small>二塁か三塁に走者</small></div>
+        ${splitTable(scoringGroups(bpa), SPLIT_BAT)}
+        <div class="head">塁状況別<small>打席が始まった時点</small></div>
+        ${splitTable(baseGroups(bpa), SPLIT_BAT)}
+        <div class="head">左右別<small>投手の投げ手</small></div>
+        ${splitTable(handGroups(bpa,"throws"), SPLIT_BAT)}
+        <div class="head">球場別</div>
+        ${splitTable(parkGroups(bpa), SPLIT_BAT)}
+        <div class="head">四半期別<small>3 か月ごと</small></div>
+        ${splitTable(quarterGroups(bpa), [SPLIT_GAMES].concat(SPLIT_BAT))}
+      </div>
+      <div>
+        <div class="head">投球 通算</div>
+        ${pitcherBoxes(ALL_PLAYERS)}
+        <div class="head">投球データ</div>
+        ${pitchMix(ALL_PLAYERS)}
+        <div class="head">ゾーン別被打率<small>捕手目線</small></div>
+        <div class="zonewrap">${zoneGrid(pps)}</div>
+        <div class="head">カウント別<small>${pended.length} 打席</small></div>
+        ${splitTable(countGroups(pended), SPLIT_PIT_COUNT)}
+        <div class="head">得点圏<small>二塁か三塁に走者</small></div>
+        ${splitTable(scoringGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
+        <div class="head">塁状況別<small>打席が始まった時点</small></div>
+        ${splitTable(baseGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
+        <div class="head">左右別<small>打者の打席</small></div>
+        ${splitTable(handGroups(ppa,"stance").map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
+        <div class="head">球場別</div>
+        ${splitTable(parkGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})), SPLIT_PIT)}
+        <div class="head">四半期別<small>3 か月ごと</small></div>
+        ${splitTable(quarterGroups(ppa).map(g=>Object.assign(g,{line:pitcherLine})),
+          [SPLIT_GAMES].concat(SPLIT_PIT))}
+      </div>
+    </div>
+  </div></section>`;
+}
+
+/** 四半期別などに足す「試合」の列。場面ごとの行から数える。 */
+const SPLIT_GAMES={head:"試合",
+  get:(L,g)=>g ? new Set(g.rows.map(r=>String(r.game_id))).size : "—"};
+
+/**
+ * 記録にあるのに、形を測っていない球場。
+ *
+ * <p>stadium.yml に無い球場は広さも形も分からないが、
+ * 写真とパークファクターは出せる。出さないと、その球場だけ
+ * サイトのどこにも現れない。
+ */
+function unmeasuredParks(){
+  const known=new Set(PARKS.map(p=>p.name));
+  const box=new Map();
+  gameIds().forEach(id=>{
+    const name=venueOf(id);
+    if(!name || known.has(name)) return;
+    box.set(name, (box.get(name)||0)+1);
+  });
+  return [...box.entries()].map(([name,games])=>({name, games}));
+}
+
+/** 測っていない球場の札。写真とパークファクターだけ。 */
+function plainParkCard(one){
+  const pf=parkFactors().get(one.name);
+  const shot=faceSrc(one.name) || parkShotUrl(one.name);
+  const num=(v)=>v===null||v===undefined||!isFinite(v) ? "—" : Math.round(v);
+  return `<div class="parkcard">
+    <div class="shotwrap">
+      <div class="noshot">写真なし</div>
+      ${shot ? `<img class="shot" src="${esc(shot)}" alt="">` : ""}
+    </div>
+    <div class="body">
+      <h4>${esc(one.name)}</h4>
+      <div class="facts">
+        <div><b>${one.games}</b><span>試合</span></div>
+        <div><b>${num(pf && pf.run)}</b><span>得点PF</span></div>
+        <div><b>${num(pf && pf.hr)}</b><span>本塁打PF</span></div>
+      </div>
+      <p class="note">形を測っていないので広さは出せません。
+        /sbge stadium save で測ると広さも並びます。</p>
+    </div>
+  </div>`;
+}
+
 function sprayColor(res){
   if(res==="HOME_RUN") return "var(--homer)";
   if(res==="TRIPLE") return "var(--triple)";
@@ -9094,6 +9440,22 @@ document.getElementById("app").addEventListener("click",e=>{
   }
   const game=e.target.closest("[data-game]");
   if(game){ pushView(); GAME=game.dataset.game; render(); pushView(); return; }
+  // 打球分布。ヒットのみ・アウトのみの一括切り替え
+  const set=e.target.closest("[data-bip-set]");
+  if(set){
+    const how=set.dataset.bipSet;
+    BIP_PICK.clear();
+    BIP_KINDS.forEach(k=>{
+      if(how==="all" || (how==="hit" && k.hit) || (how==="out" && !k.hit)){
+        BIP_PICK.add(k.key);
+      }
+    });
+    document.querySelectorAll("input[data-bip]").forEach(box=>{
+      box.checked=BIP_PICK.has(box.dataset.bip);
+    });
+    drawBip();
+    return;
+  }
   // 広さの一覧の並べ替え
   const ps=e.target.closest("th[data-park-sort]");
   if(ps){
@@ -9321,6 +9683,13 @@ document.getElementById("app").addEventListener("change",e=>{
 document.getElementById("app").addEventListener("toggle",e=>{
   if(e.target.id==="parkbox") OVERLAY_OPEN=e.target.open;
 }, true);
+// 打球分布の種類のチェック
+document.getElementById("app").addEventListener("change",e=>{
+  const box=e.target.closest("input[data-bip]");
+  if(!box) return;
+  if(box.checked) BIP_PICK.add(box.dataset.bip); else BIP_PICK.delete(box.dataset.bip);
+  drawBip();
+});
 document.getElementById("theme").addEventListener("click",()=>{
   const now=document.documentElement.getAttribute("data-theme");
   document.documentElement.setAttribute("data-theme", now==="dark"?"light":"dark");
