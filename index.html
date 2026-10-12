@@ -4038,9 +4038,12 @@ function pitcherColumns(mode){
     {key:"whip",  head:"WHIP",   get:d=>d.L.whip,   fmt:f2, low:true, rate:true},
     {key:"ops",   head:"被OPS",  get:d=>d.L.ops,    fmt:f3, low:true, rate:true},
     {key:"bf",    head:"被打席",  get:d=>d.L.pa,     fmt:v=>v},
-    {key:"np",    head:"投球数",  get:d=>d.S.pitches, fmt:v=>v},
+    {key:"np",    head:"投球数",  get:d=>d.S.pitches, fmt:v=>v, nozero:true},
+    // 1 イニングあたりの投球数。少ないほど球数を使わずに回を終えている。
+    // 0 になるのは 1 球ずつの記録が無いときだけなので、数えない。
     {key:"npi",   head:"投球平均", get:d=>d.L.outs ? d.S.pitches/(d.L.outs/3) : null,
-      fmt:f1, low:true, rate:true},
+      fmt:f1, low:true, rate:true, nozero:true,
+      hint:"1 イニングあたりの投球数。少ないほど球数を使わずに回を終えている"},
     {key:"xera",  head:"xERA(5回)",   get:d=>d.xera,  fmt:f1, low:true, rate:true},
     {key:"xba",   head:"xBA",    get:d=>d.S.xba,    fmt:f3, low:true, rate:true},
     {key:"ev",    head:"EV",     get:d=>d.S.ev,     fmt:f1, low:true, rate:true},
@@ -4167,7 +4170,10 @@ function leaderSorted(rows, col, side){
     return (ax-by)*dir;
   }).filter(d=>{
     const v=col.get(d);
-    return v!==null && v!==undefined && isFinite(v);
+    if(v===null || v===undefined || !isFinite(v)) return false;
+    // 0 になりようのない項目の 0 は、計り損ねたもの。順位に入れない
+    if(col.nozero && v===0) return false;
+    return true;
   }).map(d=>Object.assign({qualified:ok(d)}, d));
 }
 
@@ -4193,7 +4199,8 @@ function leaderCard(col, rows, side){
           rest && i===list.length-1 ? `<em class="tiedrest">ほか ${rest} 人</em>` : ""
         }</span><b>${col.fmt(one.v)}</b></li>`).join("")}</ol>`
     : '<div class="empty">記録がありません</div>';
-  return `<div class="card lbcard" data-lb-key="${col.key}">
+  return `<div class="card lbcard" data-lb-key="${col.key}"${
+      col.hint ? ` title="${esc(col.hint)}"` : ""}>
     <h4>${col.head}</h4>${body}</div>`;
 }
 
@@ -4239,9 +4246,11 @@ function leaderboardView(){
     <div class="cards three">${cols.map(c=>leaderCard(c, rows, LB.side)).join("")}</div>
   </div></section>
   <section class="span" id="lbfull"><div class="pad">
-    <div class="head">${col.head}<small>全員の順位</small></div>
+    <div class="head">${col.head}<small>全員の順位</small>${
+      col.hint ? `<em class="headnote">${esc(col.hint)}</em>` : ""}</div>
     <div class="lbpick">${cols.map(c=>
-      `<button data-lb-key="${c.key}" aria-selected="${c.key===LB.key}">${c.head}</button>`).join("")}</div>
+      `<button data-lb-key="${c.key}" aria-selected="${c.key===LB.key}"${
+        c.hint ? ` title="${esc(c.hint)}"` : ""}>${c.head}</button>`).join("")}</div>
     ${leaderFull(col, rows, LB.side)}
   </div></section>`;
 }
