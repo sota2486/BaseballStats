@@ -1180,10 +1180,41 @@ function ingestGames(rows){
         // 見出しに列の名前が無い(試合進行プラグインが見出しを書き直した)ときも、
         // どこかの列に YouTube の住所があればそれを使う
         || Object.keys(r).map(k=>String(r[k]||"")).find(v=>/youtu[.]?be/i.test(v))
-        || "").trim()
+        || "").trim(),
+      // 配信が途中で途切れたぶんのずれ。「1裏-60 5表+10」のように、
+      // その回から先を何秒ずらすかを書く。いくつ書いても足し上げる
+      shift:parseShift(r.shift || r["ずれ"] || "")
     });
   });
 }
+/**
+ * game.csv の shift 列を読む。「1裏-60」「5TOP+10」のような書き方。
+ *
+ * <p>返すのは [{inning, bottom, sec}]。書いた回から先の打席にだけ効く。
+ */
+function parseShift(text){
+  const out=[];
+  String(text||"").split(new RegExp("[\\s;/、]+")).forEach(one=>{
+    const m=one.match(new RegExp("^([0-9]+)(表|裏|TOP|BOTTOM|T|B)?([+-][0-9]+)$", "i"));
+    if(!m) return;
+    const half=String(m[2]||"表").toUpperCase();
+    out.push({inning:Number(m[1]), bottom:half==="裏"||half==="BOTTOM"||half==="B",
+      sec:Number(m[3])});
+  });
+  return out;
+}
+
+/** その打席の位置を、配信が途切れたぶんだけ直す秒数。 */
+function shiftAt(row){
+  const info=GAMES.get(String(row && row.game_id || "").trim());
+  if(!info || !info.shift || !info.shift.length) return 0;
+  const inning=Number(row.inning), bottom=String(row.half).toUpperCase()==="BOTTOM";
+  if(!isFinite(inning)) return 0;
+  const here=inning*2 + (bottom ? 1 : 0);
+  return info.shift.reduce((sum, one)=>
+    here >= one.inning*2 + (one.bottom ? 1 : 0) ? sum + one.sec : sum, 0);
+}
+
 /**
  * その試合の動画。YouTube の住所を埋め込み用に直す。
  *
@@ -1245,7 +1276,7 @@ function replayAt(row){
   const at=Number(row.pitchat);
   if(!isFinite(at) || at<=0) return null;
   // 今の記録は「その試合の 1 打席目が呼ばれてから何秒か」。そのまま使える。
-  if(at < 1e9) return at;
+  if(at < 1e9) return Math.max(0, at + shiftAt(row));
   // 昔の記録は 1970 年からのミリ秒。1 打席目との差をとる。
   // ただし表計算で 1.79E+12 に丸められていると差が 0 になるので、そのときは出さない。
   const game=String(row.game_id);
@@ -1256,7 +1287,7 @@ function replayAt(row){
     if(isFinite(called) && called>0){ start=called; break; }
   }
   if(start===null || at-start<=0) return null;
-  return (at-start)/1000;
+  return Math.max(0, (at-start)/1000 + shiftAt(row));
 }
 
 /**
@@ -5114,8 +5145,11 @@ function resultText(result, rec, row){
     if(result==="GROUND_OUT") return at+"ゴロ";
     // 内野が捕った単打は内野安打。打球の方向ではなく、
     // 最初に完全捕球した人の守備位置で呼ぶ
+    // 内野の選手でも、外野まで抜けた球を追いかけて拾ったのなら内野安打ではない
+    const far=nz(own.distance);
     if(result==="SINGLE" && own.caughtonfly!==true
-        && INFIELD_POS.has(String(own.position))){
+        && INFIELD_POS.has(String(own.position))
+        && !(far!==null && far>40)){
       return at+"内野安打";
     }
     if(result==="DOUBLE_PLAY") return at+"ゴロ併殺";
