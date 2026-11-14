@@ -1,0 +1,425 @@
+# これまでの通算成績。result の csv から数えたもの。
+# /sbge reload で数え直します。手で書き換えても次の数え直しで戻ります。
+
+Batting:
+  Pen4:
+    PA: 59
+    Hits: 27
+    Doubles: 7
+    Triples: 1
+    HomeRuns: 0
+    RBI: 4
+    StrikeOuts: 17
+    Walks: 1
+  TYPE_NOOB:
+    PA: 51
+    Hits: 22
+    Doubles: 6
+    Triples: 0
+    HomeRuns: 6
+    RBI: 18
+    StrikeOuts: 14
+    Walks: 1
+  sooo2486:
+    PA: 53
+    Hits: 29
+    Doubles: 11
+    Triples: 0
+    HomeRuns: 9
+    RBI: 21
+    StrikeOuts: 16
+    Walks: 2
+  pipis_57:
+    PA: 13
+    Hits: 1
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 8
+    Walks: 0
+  syobonnkun:
+    PA: 30
+    Hits: 3
+    Doubles: 1
+    Triples: 0
+    HomeRuns: 0
+    RBI: 2
+    StrikeOuts: 15
+    Walks: 1
+  Obake_zzz:
+    PA: 34
+    Hits: 7
+    Doubles: 2
+    Triples: 0
+    HomeRuns: 0
+    RBI: 3
+    StrikeOuts: 16
+    Walks: 1
+  gaifukaisei:
+    PA: 40
+    Hits: 15
+    Doubles: 7
+    Triples: 2
+    HomeRuns: 2
+    RBI: 10
+    StrikeOuts: 17
+    Walks: 2
+  Amaya_Tsubame:
+    PA: 8
+    Hits: 2
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 4
+    Walks: 0
+  Alpha6000:
+    PA: 60
+    Hits: 24
+    Doubles: 10
+    Triples: 0
+    HomeRuns: 6
+    RBI: 17
+    StrikeOuts: 21
+    Walks: 7
+  omarupin:
+    PA: 20
+    Hits: 2
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 2
+    RBI: 1
+    StrikeOuts: 10
+    Walks: 0
+  M0nJ:
+    PA: 30
+    Hits: 6
+    Doubles: 0
+    Triples: 1
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 14
+    Walks: 3
+  LagnaKt:
+    PA: 34
+    Hits: 14
+    Doubles: 8
+    Triples: 1
+    HomeRuns: 1
+    RBI: 4
+    StrikeOuts: 13
+    Walks: 0
+  hachi_18:
+    PA: 10
+    Hits: 2
+    Doubles: 1
+    Triples: 0
+    HomeRuns: 0
+    RBI: 1
+    StrikeOuts: 6
+    Walks: 0
+  Rosario20:
+    PA: 27
+    Hits: 9
+    Doubles: 5
+    Triples: 0
+    HomeRuns: 2
+    RBI: 6
+    StrikeOuts: 9
+    Walks: 2
+  Opanku:
+    PA: 20
+    Hits: 4
+    Doubles: 2
+    Triples: 0
+    HomeRuns: 0
+    RBI: 1
+    StrikeOuts: 10
+    Walks: 0
+  Taikin:
+    PA: 3
+    Hits: 1
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 0
+    Walks: 0
+  lllumination1:
+    PA: 9
+    Hits: 2
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 1
+    RBI: 1
+    StrikeOuts: 4
+    Walks: 2
+  EmeraldREX91:
+    PA: 31
+    Hits: 5
+    Doubles: 1
+    Triples: 0
+    HomeRuns: 1
+    RBI: 2
+    StrikeOuts: 19
+    Walks: 2
+  sota2486:
+    PA: 4
+    Hits: 3
+    Doubles: 1
+    Triples: 0
+    HomeRuns: 1
+    RBI: 3
+    StrikeOuts: 1
+    Walks: 0
+  Nosada:
+    PA: 3
+    Hits: 1
+    Doubles: 1
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 1
+    Walks: 0
+  Lemon_55:
+    PA: 4
+    Hits: 3
+    Doubles: 2
+    Triples: 0
+    HomeRuns: 0
+    RBI: 3
+    StrikeOuts: 0
+    Walks: 0
+  jamu12:
+    PA: 5
+    Hits: 0
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 2
+    Walks: 0
+  crurc:
+    PA: 8
+    Hits: 3
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 4
+    Walks: 0
+  Philia_Gray:
+    PA: 18
+    Hits: 7
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 1
+    RBI: 8
+    StrikeOuts: 6
+    Walks: 0
+  GMMF:
+    PA: 20
+    Hits: 4
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 12
+    Walks: 2
+  viocat77:
+    PA: 16
+    Hits: 1
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 8
+    Walks: 2
+  MooonJ:
+    PA: 17
+    Hits: 3
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 1
+    StrikeOuts: 9
+    Walks: 0
+  AL1S_JP:
+    PA: 3
+    Hits: 0
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 2
+    Walks: 1
+  Girigiri_ikiteru:
+    PA: 1
+    Hits: 0
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 1
+    Walks: 0
+  rlaiy:
+    PA: 2
+    Hits: 0
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 2
+    Walks: 0
+  nextbardo:
+    PA: 3
+    Hits: 3
+    Doubles: 1
+    Triples: 0
+    HomeRuns: 1
+    RBI: 5
+    StrikeOuts: 0
+    Walks: 0
+  namako3125:
+    PA: 5
+    Hits: 3
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 1
+    RBI: 4
+    StrikeOuts: 2
+    Walks: 0
+  Miku_Dayo_:
+    PA: 4
+    Hits: 2
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 2
+    Walks: 0
+  Dra_goons:
+    PA: 2
+    Hits: 1
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 1
+    StrikeOuts: 1
+    Walks: 0
+  Nagase_Futaba:
+    PA: 5
+    Hits: 2
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 1
+    StrikeOuts: 2
+    Walks: 0
+  xyzen1:
+    PA: 1
+    Hits: 1
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 0
+    Walks: 0
+  Baru_u:
+    PA: 4
+    Hits: 1
+    Doubles: 1
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 2
+    Walks: 0
+  Venenocholy:
+    PA: 2
+    Hits: 0
+    Doubles: 0
+    Triples: 0
+    HomeRuns: 0
+    RBI: 0
+    StrikeOuts: 0
+    Walks: 0
+Pitching:
+  LagnaKt:
+    Outs: 39
+    Innings: '13.0'
+    Runs: 7
+    StrikeOuts: 22
+    Walks: 2
+  syobonnkun:
+    Outs: 84
+    Innings: '28.0'
+    Runs: 21
+    StrikeOuts: 53
+    Walks: 5
+  sooo2486:
+    Outs: 92
+    Innings: '30.2'
+    Runs: 22
+    StrikeOuts: 61
+    Walks: 2
+  gaifukaisei:
+    Outs: 66
+    Innings: '22.0'
+    Runs: 14
+    StrikeOuts: 43
+    Walks: 3
+  Pen4:
+    Outs: 38
+    Innings: '12.2'
+    Runs: 15
+    StrikeOuts: 21
+    Walks: 6
+  omarupin:
+    Outs: 7
+    Innings: '2.1'
+    Runs: 4
+    StrikeOuts: 7
+    Walks: 0
+  Alpha6000:
+    Outs: 46
+    Innings: '15.1'
+    Runs: 7
+    StrikeOuts: 25
+    Walks: 2
+  Opanku:
+    Outs: 0
+    Innings: '0.0'
+    Runs: 0
+    StrikeOuts: 0
+    Walks: 1
+  sota2486:
+    Outs: 9
+    Innings: '3.0'
+    Runs: 2
+    StrikeOuts: 8
+    Walks: 0
+  Philia_Gray:
+    Outs: 9
+    Innings: '3.0'
+    Runs: 12
+    StrikeOuts: 7
+    Walks: 4
+  crurc:
+    Outs: 6
+    Innings: '2.0'
+    Runs: 3
+    StrikeOuts: 3
+    Walks: 2
+  TYPE_NOOB:
+    Outs: 21
+    Innings: '7.0'
+    Runs: 10
+    StrikeOuts: 16
+    Walks: 1
+  Miku_Dayo_:
+    Outs: 6
+    Innings: '2.0'
+    Runs: 0
+    StrikeOuts: 4
+    Walks: 1
