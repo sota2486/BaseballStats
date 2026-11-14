@@ -1176,7 +1176,11 @@ function ingestGames(rows){
       bottom:String(r.bottomteam||"").trim(),
       stadium:String(r.stadium||"").trim(),
       // 列の名前はいくつか受ける。あとから足しやすいように
-      video:String(r.video || r.youtube || r.url || r.link || r.movie || "").trim()
+      video:String(r.video || r.youtube || r.url || r.link || r.movie
+        // 見出しに列の名前が無い(試合進行プラグインが見出しを書き直した)ときも、
+        // どこかの列に YouTube の住所があればそれを使う
+        || Object.keys(r).map(k=>String(r[k]||"")).find(v=>/youtu[.]?be/i.test(v))
+        || "").trim()
     });
   });
 }
