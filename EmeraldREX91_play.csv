@@ -1,0 +1,16 @@
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,holdTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+2026111401,1,TOP,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111401,2,TOP,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111401,3,TOP,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111401,3,TOP,2026111401#22,field,EmeraldREX91,6,18,18,201.0,-5.7,11.8,LT0/200+,,,,,THIRD_BASEMAN,1,454.9,-37.7,454.0,-20.8,false,false,true,false,false,2,34,123.8,false,true,false,false,,R
+2026111401,3,TOP,2026111401#23,field,EmeraldREX91,3,13,13,157.5,-9.7,6.1,LT0/150-175,,,,,THIRD_BASEMAN,4,455.3,-36.7,455.1,-13.6,false,false,true,false,false,1,8,92.5,false,true,false,false,,R
+2026111401,4,TOP,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111401,5,TOP,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111401,5,BOTTOM,,run,EmeraldREX91,88,-1,-1,183.4,33.1,13407807929942596000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0,30-45/175-200,0,4,false,0.00,,,,,,,,,,,,,,,false,,,,R
+2026111402,1,BOTTOM,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111402,2,BOTTOM,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111402,3,BOTTOM,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111402,4,BOTTOM,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R
+2026111402,4,BOTTOM,2026111402#28,field,EmeraldREX91,30,83,139,126.8,7.1,46.8,0-15/125-150,,,,,THIRD_BASEMAN,,457.6,-38.0,487.7,-37.8,false,false,false,false,false,1,-1,,true,false,false,false,,R
+2026111402,5,TOP,2026111402#32,run,EmeraldREX91,3,35,35,187.4,-20.0,5.0,LT0/175-200,0,1,false,0.00,,,,,,,,,,,,,,,false,,,,R
+2026111402,5,BOTTOM,,spot,EmeraldREX91,,,,,,,,,,,,THIRD_BASEMAN,,,,,,,,,,,,,,,,,,,R

@@ -1,0 +1,4 @@
+﻿side,game,pa,pitch_no,inning,half,count,outs,pitcher,batter,stance,type,velocity,v_break,h_break,zone,in_zone,plate_x,plate_y,swing,whiff,contact,call,exit_velocity,launch_angle,spray_angle,distance,result,throws,swing_power,bat_power,init_velocity
+Batting,2026111401,2026111401#24,1,3,TOP,0-0,2,sooo2486,Venenocholy,R,高速スライダー,107.1,-0.1,1.1,20,false,0.7,0.7,true,true,false,SWINGING_STRIKE,,,,,,R,1.0,1.0,114.7
+Batting,2026111401,2026111401#24,2,3,TOP,0-1,2,sooo2486,Venenocholy,R,高速スライダー,133.5,0.1,1.0,19,true,0.4,0.6,true,false,true,IN_PLAY,74.5,-10.0,-4.5,17.5,GROUND_OUT,R,,1.0,113.2
+Batting,2026111401,2026111401#35,1,4,TOP,0-0,2,sooo2486,Venenocholy,R,サークルチェンジ,111.3,0.8,-0.7,14,true,0.5,1.0,true,false,true,IN_PLAY,41.8,0.5,-6.3,16.2,GROUND_OUT,R,,1.0,107.6

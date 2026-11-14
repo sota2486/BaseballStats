@@ -7,3 +7,12 @@
 2026091201,4,TOP,,spot,Opanku,,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
 2026091201,4,BOTTOM,2026091201#29,run,Opanku,3,38,,117,-14.6,3.6,LT0/100-125,0,0,TRUE,0,,,,,,,,,,,,,,,FALSE,,,FORCE,,R
 2026091201,5,TOP,,spot,Opanku,,,,,,,,,,,,RIGHT_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026111402,2,TOP,,spot,Opanku,,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
+2026111402,3,TOP,,spot,Opanku,,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
+2026111402,3,TOP,,field,Opanku,23,83,83,121.0,12.5,34.7,0-15/100-125,,,,,SHORTSTOP,2,471.6,-44.5,483.5,-20.0,false,false,true,false,false,1,171,108.9,true,false,false,false,,R
+2026111402,3,TOP,2026111402#17,field,Opanku,5,30,319,166.9,-2.1,10.9,LT0/150-175,,,,,SHORTSTOP,1,470.5,-44.6,456.6,-18.5,false,false,true,false,false,4,36,125.3,true,true,false,false,,R
+2026111402,3,TOP,2026111402#18,field,Opanku,4,57,95,151.2,-6.3,8.3,LT0/150-175,,,,,SHORTSTOP,1,468.6,-43.4,456.2,-15.5,false,false,true,false,false,0,27,127.2,false,false,false,true,,R
+2026111402,4,TOP,,spot,Opanku,,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
+2026111402,5,TOP,,spot,Opanku,,,,,,,,,,,,SHORTSTOP,,,,,,,,,,,,,,,,,,,R
+2026111402,5,TOP,2026111402#32,field,Opanku,3,35,35,187.4,-20.0,5.0,LT0/175-200,,,,,SHORTSTOP,1,468.5,-43.6,452.2,-14.2,false,false,true,false,false,1,45,124.0,true,false,false,true,,R
+2026111402,5,BOTTOM,2026111402#34,run,Opanku,2,56,112,99.8,-67.7,0.6,LT0/LT100,0,0,true,0.00,,,,,,,,,,,,,,,false,,,FORCE,R

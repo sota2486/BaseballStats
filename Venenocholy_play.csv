@@ -1,0 +1,4 @@
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,holdTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+2026111401,1,BOTTOM,,field,Venenocholy,2,53,53,132.5,-27.9,2.5,LT0/125-150,,,,,PITCHER,,447.7,0.6,451.3,-11.9,false,false,false,false,false,2,-1,,false,false,false,false,,R
+2026111402,5,BOTTOM,2026111402#34,field,Venenocholy,2,56,112,99.8,-67.7,0.6,LT0/LT100,,,,,PITCHER,,449.4,-1.8,450.7,-10.0,false,false,false,false,false,0,-1,,false,false,false,false,,R
+2026111402,5,BOTTOM,2026111402#35,field,Venenocholy,2,12,65,181.9,-8.5,5.6,LT0/175-200,,,,,PITCHER,,448.8,-2.7,455.1,-12.7,false,false,false,false,false,0,-1,,false,false,false,false,,R

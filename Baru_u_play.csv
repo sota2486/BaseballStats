@@ -1,0 +1,6 @@
+﻿game,inning,half,pa,kind,player,hangTicks,touchTicks,holdTicks,exitVelocity,launchAngle,distance,battedType,startBase,endBase,outOnPlay,sprintRatio,position,touchOrder,startX,startZ,landX,landZ,caughtOnFly,fumbled,threwToBase,gotOut,doublePlay,basesAllowed,transferTicks,throwSpeed,dived,throwError,fumbleOnFly,assist,outKind,throwHand
+2026111401,1,BOTTOM,,spot,Baru_u,,,,,,,,,,,,CENTER_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026111401,3,BOTTOM,,spot,Baru_u,,,,,,,,,,,,CENTER_FIELDER,,,,,,,,,,,,,,,,,,,R
+2026111401,4,TOP,2026111401#31,run,Baru_u,74,152,152,150.1,22.0,99.5,15-30/150-175,0,2,false,0.17,,,,,,,,,,,,,,,false,,,,R
+2026111401,4,TOP,2026111401#33,run,Baru_u,60,139,139,147.7,21.6,84.7,15-30/125-150,2,4,false,0.29,,,,,,,,,,,,,,,false,,,,R
+2026111401,4,BOTTOM,,field,Baru_u,65,71,71,172.6,21.3,104.9,15-30/150-175,,,,,CENTER_FIELDER,1,533.7,-86.7,526.3,-82.0,false,false,true,false,false,2,91,128.7,false,true,false,false,,R
